@@ -1,0 +1,132 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Skill",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y ccstatusline@latest --hook"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'CMD=$(jq -r \".tool_input.command\" <<< \"$(cat)\"); echo \"$CMD\" | grep -qiE \"rm\\s+-rf\\s+/|DROP\\s+TABLE|TRUNCATE\\s+TABLE|--force\\s+push|push\\s+--force|push\\s+-f\" && { echo \"BLOCKED: Destructive command detected. Review and run manually if intended.\" >&2; exit 2; } || exit 0'",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=$(jq -r \".tool_input.file_path\" <<< \"$(cat)\"); echo \"$FILE\" | grep -qE \"(\\.env|\\.env\\..+|package-lock\\.json|yarn\\.lock|\\.git/)\" && { echo \"BLOCKED: Protected file. Edit manually if intended: $FILE\" >&2; exit 2; } || exit 0'",
+            "timeout": 5
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'CMD=$(jq -r \".tool_input.command\" <<< \"$(cat)\"); if echo \"$CMD\" | grep -qE \"^git\\s+commit\"; then echo \"$CMD\" | grep -qiE \"(api_key|secret|token|password|private_key)\" && { echo \"BLOCKED: Possible secret in commit message.\" >&2; exit 2; } || exit 0; else exit 0; fi'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=$(jq -r \".tool_input.file_path\" <<< \"$(cat)\"); if command -v npx &>/dev/null; then case \"$FILE\" in *.js|*.jsx|*.ts|*.tsx|*.css|*.json|*.md|*.html) npx prettier --write \"$FILE\" 2>/dev/null ;; *.py) if command -v black &>/dev/null; then black -q \"$FILE\" 2>/dev/null; elif command -v ruff &>/dev/null; then ruff format \"$FILE\" 2>/dev/null; fi ;; *.go) if command -v gofmt &>/dev/null; then gofmt -w \"$FILE\" 2>/dev/null; fi ;; *.rs) if command -v rustfmt &>/dev/null; then rustfmt \"$FILE\" 2>/dev/null; fi ;; esac; fi; exit 0'",
+            "timeout": 15
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'INPUT=$(cat); if [ \"$(echo \"$INPUT\" | jq -r \".stop_hook_active\")\" = \"true\" ]; then exit 0; fi; if command -v npm &>/dev/null && [ -f package.json ]; then npm test --silent 2>/dev/null || { echo \"Tests are failing. Fix them before completing.\" >&2; exit 2; }; elif command -v pytest &>/dev/null; then pytest --tb=short -q 2>/dev/null || { echo \"Tests are failing. Fix them before completing.\" >&2; exit 2; }; fi; exit 0'",
+            "timeout": 120
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'BRANCH=$(git branch --show-current 2>/dev/null || echo \"no-git\"); LAST=$(git log --oneline -3 2>/dev/null || echo \"no commits\"); echo \"{\\\"additionalContext\\\": \\\"Current branch: $BRANCH. Recent commits: $LAST\\\"}\"'",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'MSG=$(jq -r \".message\" <<< \"$(cat)\"); if command -v notify-send &>/dev/null; then notify-send \"Claude Code\" \"$MSG\"; elif command -v osascript &>/dev/null; then osascript -e \"display notification \\\"$MSG\\\" with title \\\"Claude Code\\\"\"; fi; exit 0'",
+            "timeout": 5,
+            "async": true
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y ccstatusline@latest --hook"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest",
+    "padding": 0
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true,
+    "playwright@claude-plugins-official": true,
+    "commit-commands@claude-plugins-official": true,
+    "feature-dev@claude-plugins-official": true,
+    "claude-md-management@claude-plugins-official": true,
+    "code-review@claude-plugins-official": true,
+    "security-guidance@claude-plugins-official": true,
+    "superpowers@claude-plugins-official": true,
+    "context7@claude-plugins-official": true,
+    "ralph-loop@claude-plugins-official": true,
+    "skill-creator@claude-plugins-official": true,
+    "sentry@claude-plugins-official": false,
+    "firecrawl@claude-plugins-official": true,
+    "code-simplifier@claude-plugins-official": true
+  },
+  "effortLevel": "high",
+  "autoUpdatesChannel": "latest",
+  "voiceEnabled": true,
+  "model": "opus",
+  "env": {
+    "MAX_THINKING_TOKENS": "20000",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
+  }
+}
+    
