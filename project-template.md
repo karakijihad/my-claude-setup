@@ -1,4 +1,4 @@
-# Project Template
+# Example Project Template
 
 > Copy this into a new project as `CLAUDE.md` and fill in each section.
 > The global `~/.claude/CLAUDE.md` handles protocols, tools, and workflow.

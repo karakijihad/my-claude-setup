@@ -129,8 +129,8 @@ After installing, restart Claude Code. Verify with `/plugins`.
 
 | Variable | Value | Purpose |
 |-|-|-|
-| `MAX_THINKING_TOKENS` | 20000 | Extended thinking budget |
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | 50 | Auto-compact at 50% context usage |
+| `MAX_THINKING_TOKENS` | 20000 | Extended thinking budget (default ~31200|
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | 50 | Auto-compact at 50% context usage (default ~75)|
 | `CLAUDE_CODE_SUBAGENT_MODEL` | sonnet | Sub-agents use Sonnet (faster, cheaper) |
 
 ---
