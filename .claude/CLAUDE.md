@@ -54,7 +54,7 @@ Weak criteria ("make it work") require constant clarification. Strong criteria l
 **Larger tasks (multi-file, new features, unclear requirements):**
 
 1. **Research** — Read relevant files before touching code. Use `Explore` agent for broad questions, `Grep`/`Glob` for targeted lookups. Verify external library APIs against current docs (use Context7), not memory. Never propose changes to files you haven't read.
-2. **Plan** — New feature → `superpowers:brainstorming` first. Multi-step task → `superpowers:writing-plans`, confirm plan before coding.
+2. **Plan** — New feature → `superpowers:brainstorming` first. Multi-step task → `superpowers:writing-plans`, Enter plan mode, and confirm plan before coding.
 3. **Delegate** — See AgentProtocol.md. Don't do in main context what a sub-agent can do faster.
 4. **Implement** — Execute via `superpowers:executing-plans` or `superpowers:subagent-driven-development` for parallel workstreams.
 5. **Simplify** — Run `code-simplifier:code-simplifier` on modified files before verification.
@@ -134,9 +134,9 @@ Weak criteria ("make it work") require constant clarification. Strong criteria l
 
 ```
 Docs/Logs/
-├── Sessions/           # One .md per day — the primary work log
-├── CHANGELOG.md        # One line per version/phase (high-level only)
-└── DOCLOG.md           # Durable architecture decisions only
+├── Sessions/           # One .md per day — the primary work log (Newest entry first per .md file)
+├── CHANGELOG.md        # One line per version/phase (high-level only - Newest entry first per .md file) 
+└── DOCLOG.md           # Durable architecture decisions only (Newest entry first per .md file)
 ```
 
 **Session note template** (`Sessions/YYYY-MM-DD.md`):

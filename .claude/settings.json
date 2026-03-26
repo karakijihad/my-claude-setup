@@ -39,6 +39,16 @@
             "timeout": 5
           }
         ]
+      },
+      {
+        "_tag": "ccstatusline-managed",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y ccstatusline@latest --hook"
+          }
+        ],
+        "matcher": "Skill"
       }
     ],
     "PostToolUse": [
@@ -95,6 +105,15 @@
             "command": "npx -y ccstatusline@latest --hook"
           }
         ]
+      },
+      {
+        "_tag": "ccstatusline-managed",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "npx -y ccstatusline@latest --hook"
+          }
+        ]
       }
     ]
   },
@@ -125,8 +144,7 @@
   "model": "opus",
   "env": {
     "MAX_THINKING_TOKENS": "20000",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "50",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "65",
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
   }
 }
-    

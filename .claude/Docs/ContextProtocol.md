@@ -15,7 +15,7 @@ As context usage increases, instruction-following quality degrades uniformly —
 
 ## 2. Compaction Rules
 
-- **Compact proactively at ~50% context usage.** Don't wait for visible degradation — by then quality has already dropped.
+- **Compact proactively at ~65% context usage.** Don't wait for visible degradation — by then quality has already dropped.
 - **Use manual `/compact` with preservation instructions** rather than relying on auto-compaction, which can't know what you care about.
 - **Preservation template:** When compacting, always include:
 
