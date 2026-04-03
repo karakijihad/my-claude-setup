@@ -1,4 +1,10 @@
 {
+  "env": {
+    "MAX_THINKING_TOKENS": "20000",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "65",
+    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
+  },
+  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -41,14 +47,13 @@
         ]
       },
       {
-        "_tag": "ccstatusline-managed",
+        "matcher": "Skill",
         "hooks": [
           {
             "type": "command",
             "command": "npx -y ccstatusline@latest --hook"
           }
-        ],
-        "matcher": "Skill"
+        ]
       }
     ],
     "PostToolUse": [
@@ -107,7 +112,6 @@
         ]
       },
       {
-        "_tag": "ccstatusline-managed",
         "hooks": [
           {
             "type": "command",
@@ -138,13 +142,7 @@
     "firecrawl@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true
   },
-  "effortLevel": "high",
+  "effortLevel": "medium",
   "autoUpdatesChannel": "latest",
-  "voiceEnabled": true,
-  "model": "opus",
-  "env": {
-    "MAX_THINKING_TOKENS": "20000",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "65",
-    "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
-  }
+  "voiceEnabled": true
 }
