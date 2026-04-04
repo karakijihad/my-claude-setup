@@ -139,6 +139,8 @@ Docs/Logs/
 └── DOCLOG.md           # Durable architecture decisions only (Newest entry first per .md file)
 ```
 
+**Ordering rule: newest first.** Within every doc file, the most recent content appears at the top of its section. In session logs, the latest stage goes first under "Done", the latest decision goes first under "Decisions", etc. This applies to CHANGELOG, DOCLOG, and session files equally.
+
 **Session note template** (`Sessions/YYYY-MM-DD.md`):
 
 ```markdown

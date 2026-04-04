@@ -47,11 +47,12 @@
         ]
       },
       {
-        "matcher": "Skill",
+        "matcher": "Bash",
         "hooks": [
           {
             "type": "command",
-            "command": "npx -y ccstatusline@latest --hook"
+            "command": "bash -c 'CMD=$(jq -r \".tool_input.command\" <<< \"$(cat)\"); if echo \"$CMD\" | grep -qE \"^git\\s+commit\"; then if command -v npm &>/dev/null && [ -f package.json ]; then npm test --silent 2>/dev/null || { echo \"BLOCKED: Tests failing. Fix before committing.\" >&2; exit 2; }; elif command -v pytest &>/dev/null; then pytest --tb=short -q 2>/dev/null || { echo \"BLOCKED: Tests failing. Fix before committing.\" >&2; exit 2; }; fi; fi; exit 0'",
+            "timeout": 120
           }
         ]
       }
@@ -64,17 +65,6 @@
             "type": "command",
             "command": "bash -c 'FILE=$(jq -r \".tool_input.file_path\" <<< \"$(cat)\"); if command -v npx &>/dev/null; then case \"$FILE\" in *.js|*.jsx|*.ts|*.tsx|*.css|*.json|*.md|*.html) npx prettier --write \"$FILE\" 2>/dev/null ;; *.py) if command -v black &>/dev/null; then black -q \"$FILE\" 2>/dev/null; elif command -v ruff &>/dev/null; then ruff format \"$FILE\" 2>/dev/null; fi ;; *.go) if command -v gofmt &>/dev/null; then gofmt -w \"$FILE\" 2>/dev/null; fi ;; *.rs) if command -v rustfmt &>/dev/null; then rustfmt \"$FILE\" 2>/dev/null; fi ;; esac; fi; exit 0'",
             "timeout": 15
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash -c 'INPUT=$(cat); if [ \"$(echo \"$INPUT\" | jq -r \".stop_hook_active\")\" = \"true\" ]; then exit 0; fi; if command -v npm &>/dev/null && [ -f package.json ]; then npm test --silent 2>/dev/null || { echo \"Tests are failing. Fix them before completing.\" >&2; exit 2; }; elif command -v pytest &>/dev/null; then pytest --tb=short -q 2>/dev/null || { echo \"Tests are failing. Fix them before completing.\" >&2; exit 2; }; fi; exit 0'",
-            "timeout": 120
           }
         ]
       }
@@ -103,14 +93,6 @@
       }
     ],
     "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx -y ccstatusline@latest --hook"
-          }
-        ]
-      },
       {
         "hooks": [
           {
