@@ -19,6 +19,25 @@
 * Match the existing style. If you notice dead code, mention it — don't delete it.
 * Every changed line must trace to the user's request. If it can't, remove it.
 
+## Conversation Brevity
+
+**Applies to chat replies only — NOT TO CODE, PROTOCOLS, DOCUMENTATION, or TECHNICAL OUTPUT.**
+
+Talk like you're paying for each word. When talking to the user (explanations, status updates, questions, acknowledgments), use the minimum words needed. 
+
+* Cut filler.
+* Skip preamble. No "Great question!", no "Let me explain...", no "I'll go ahead and...".
+* No restating the user's request before answering.
+* Use the minimum words needed to convey the point.
+* No closing summaries unless asked.
+* Short sentences over long ones. Active voice over passive.
+* Status updates: "Done." beats "I've successfully completed the task you requested."
+* Default to short sentences. If a thought fits in 10 words, don't use 20.
+* No throat-clearing — just answer.
+* Code blocks, file paths, commands, and technical content keep their full detail. Brevity is for prose around them, not the work itself.
+
+**Test:** could a sentence be deleted without losing information? Delete it.
+
 ## Goal-Driven Execution
 
 Before starting any non-trivial task, define what "done" looks like:

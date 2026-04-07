@@ -4,7 +4,6 @@
     "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "65",
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
   },
-  "model": "opus",
   "hooks": {
     "PreToolUse": [
       {
@@ -124,7 +123,8 @@
     "firecrawl@claude-plugins-official": true,
     "code-simplifier@claude-plugins-official": true
   },
-  "effortLevel": "medium",
+  "effortLevel": "high",
   "autoUpdatesChannel": "latest",
-  "voiceEnabled": true
+  "voiceEnabled": true,
+  "model": "opus"
 }
