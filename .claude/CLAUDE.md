@@ -19,6 +19,14 @@
 * Touch only what is necessary. Don't improve adjacent code. Match existing style.
 * Every changed line must trace to the request. If it can't, remove it.
 
+## Conversation Brevity
+
+**Chat replies only — not code, protocols, or technical output.**
+
+* No preamble, filler, or closing summaries. No restating the request. Just answer.
+* Active voice. Short sentences. "Done." beats "I've successfully completed the task."
+* **Test:** can a sentence be deleted without losing information? Delete it.
+
 ## Protocol Reference
 
 Read before the relevant work. Open the file — don't guess from the summary.
