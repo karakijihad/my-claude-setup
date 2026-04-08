@@ -15,6 +15,8 @@ Drop-in Claude Code configuration that enforces security, testing, git disciplin
 │   ├── GitProtocol.md         # Branching, conventional commits, safety rules
 │   ├── ContextProtocol.md     # Context window management, compaction, session hygiene
 │   └── FeedbackProtocol.md    # Correction classification, rule routing, protocol updates
+├── hooks/
+│   └── protocol-reminder.sh  # SessionStart hook — reminds Claude to read protocols
 └── skills/
     ├── pr-review-expert/      # Blast radius, security scan, coverage delta for PRs
     └── dependency-auditor/    # Vulnerability scanning, license compliance, upgrade planning

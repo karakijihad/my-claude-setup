@@ -17,9 +17,20 @@ git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
 mv ~/.claude ~/.claude-backup 2>/dev/null        # macOS/Linux
 # Rename-Item "$env:USERPROFILE\.claude" "$env:USERPROFILE\.claude-backup"  # Windows (admin PowerShell)
 
-# Symlink
-ln -s /path/to/my-claude-setup/.claude ~/.claude   # macOS/Linux
-# New-Item -ItemType SymbolicLink -Path "$env:USERPROFILE\.claude" -Target "C:\path\to\my-claude-setup\.claude"  # Windows
+# Symlink individual items (preserves Claude's runtime dirs like sessions/, history.jsonl)
+
+# macOS/Linux
+ln -s /path/to/my-claude-setup/.claude/CLAUDE.md ~/.claude/CLAUDE.md
+ln -s /path/to/my-claude-setup/.claude/settings.json ~/.claude/settings.json
+ln -s /path/to/my-claude-setup/.claude/Docs ~/.claude/Docs
+ln -s /path/to/my-claude-setup/.claude/hooks ~/.claude/hooks
+
+# Windows — use ln -s for files, PowerShell junction for directories
+ln -s /c/path/to/my-claude-setup/.claude/CLAUDE.md ~/.claude/CLAUDE.md
+ln -s /c/path/to/my-claude-setup/.claude/settings.json ~/.claude/settings.json
+# Run in PowerShell for Docs and hooks:
+# New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\Docs" -Target "C:\path\to\my-claude-setup\.claude\Docs"
+# New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\hooks" -Target "C:\path\to\my-claude-setup\.claude\hooks"
 ```
 
 ---
