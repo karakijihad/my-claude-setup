@@ -8,13 +8,13 @@ Drop-in Claude Code configuration that enforces security, testing, git disciplin
 .claude/
 ├── CLAUDE.md              # Core rules — code discipline, workflow, tool/skill reference
 ├── settings.json          # Hooks, plugins, model config, env vars
-├── Docs/
+├── Docs/Protocols/
 │   ├── SecurityProtocol.md    # Input validation, auth, data protection, API security
 │   ├── TestingProtocol.md     # Test requirements, verification levels, coverage
 │   ├── AgentProtocol.md       # Sub-agent delegation, task reporting, orchestration
 │   ├── GitProtocol.md         # Branching, conventional commits, safety rules
 │   ├── ContextProtocol.md     # Context window management, compaction, session hygiene
-│   └── FeedbackProtocol.md    # Correction classification, rule updates, monthly review
+│   └── FeedbackProtocol.md    # Correction classification, rule routing, protocol updates
 └── skills/
     ├── pr-review-expert/      # Blast radius, security scan, coverage delta for PRs
     └── dependency-auditor/    # Vulnerability scanning, license compliance, upgrade planning
@@ -103,7 +103,7 @@ Each protocol is a standalone reference document that Claude reads on-demand (no
 - **AgentProtocol** — orchestration model, delegation reference, structured task reporting, verification gates
 - **GitProtocol** — branching strategy, conventional commits, safety rules, PR process
 - **ContextProtocol** — compaction rules, session hygiene, sub-agent context, warning signs
-- **FeedbackProtocol** — correction classification, where to add rules, monthly review process
+- **FeedbackProtocol** — correction classification, where to add rules, protocol routing table
 
 ## Updating
 

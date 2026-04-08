@@ -1,7 +1,8 @@
 # Security Protocol
 
-> Referenced by `CLAUDE.md`. Read this before writing any code that touches auth, endpoints, user input, file operations, data storage, or dependencies.
+> Referenced by `~/.claude/CLAUDE.md`. Read this before writing any code that touches auth, endpoints, user input, file operations, data storage, or dependencies.
 > Applies to all project types — web apps, APIs, CLIs, mobile, serverless, microservices, static sites with backends.
+> **Skip the checklist** for pure UI/styling changes, config-only changes, or documentation. Apply judgment for everything else.
 
 **Core principle: every input is hostile, every endpoint is a target, every default is wrong until proven safe.**
 
@@ -235,84 +236,46 @@ Set these on every response:
 
 ---
 
-## 7. Infrastructure & Deployment
+## 7. Common Attack Vectors — Checklist
 
-### Environment Isolation
-
-- Strict separation between development, staging, and production environments.
-- Production secrets must never exist in development or staging.
-- Database access from production should require explicit credentials not shared with other environments.
-
-### Container Security (Docker, etc.)
-
-- Use minimal base images (Alpine, distroless). Don't ship compilers, shells, or package managers in production containers.
-- Don't run as root inside containers. Use a non-root user.
-- Scan container images for vulnerabilities (`trivy`, `grype`, `snyk container`).
-- Pin base image versions by digest, not just tag. `node:20-alpine@sha256:...` not just `node:20-alpine`.
-- Don't embed secrets in images or Dockerfiles. Use runtime injection (env vars, mounted secrets).
-
-### CI/CD Pipeline
-
-- Secrets in CI: use the CI platform's secrets management, not env files or hardcoded values.
-- Run security scans (SAST, dependency audit, container scan) as pipeline steps. Fail the build on critical findings.
-- Sign commits and artifacts where possible.
-- Restrict who can modify CI/CD configuration files.
-
-### Database Security
-
-- Use dedicated database users per service with minimum required permissions. No shared `root` access.
-- Enable query logging for audit purposes (in a secure, access-controlled location).
-- Regular backups. Test restoration. Encrypt backups.
-- Network-level restrictions: database should not be publicly accessible. Use VPC, security groups, or firewall rules.
-
----
-
-## 8. Common Attack Vectors — Checklist
-
-Check every relevant item before committing code that handles user input, auth, data access, or external communication.
+Check relevant items before committing code that handles user input, auth, data access, or external communication.
 
 | Attack | What to Check |
 |--------|--------------|
-| **SQL Injection** | All queries parameterized. Zero string concatenation in queries. Test with `'; DROP TABLE--` and `' OR '1'='1`. |
+| **SQL Injection** | All queries parameterized. Zero string concatenation in queries. |
 | **XSS (Cross-Site Scripting)** | All output encoded for context. No raw user content in HTML/JS/attributes. CSP blocks inline scripts. |
 | **CSRF** | Anti-CSRF tokens on all state-changing requests. SameSite cookies set. |
-| **SSRF (Server-Side Request Forgery)** | All user-provided URLs validated and whitelisted before server-side fetch. Internal network ranges blocked (`127.0.0.1`, `10.x`, `172.16-31.x`, `192.168.x`, `169.254.x`, `::1`, `fd00::/8`). |
-| **Path Traversal** | No user input in file paths without sanitization. Reject `../`, null bytes, encoded slashes. Canonical path verified within allowed directory. |
-| **IDOR** | Every resource access verifies the requesting user has permission. Tested with different user tokens. |
-| **Privilege Escalation** | Both vertical (user → admin) and horizontal (user A → user B) tested. Role checks on every endpoint. |
+| **SSRF (Server-Side Request Forgery)** | User-provided URLs validated and whitelisted before server-side fetch. Internal network ranges blocked. |
+| **Path Traversal** | No user input in file paths without sanitization. Canonical path verified within allowed directory. |
+| **IDOR / Auth Bypass** | Every resource access verifies the requesting user has permission. Role checks on every endpoint. Tested with different/no auth tokens. |
 | **Mass Assignment** | Explicit field whitelists on all create/update operations. Request bodies never passed blindly to models. |
-| **Open Redirects** | All redirect URLs validated. Only relative paths or whitelisted domains allowed. |
-| **Deserialization** | Never deserialize untrusted data with formats that allow code execution (pickle, Java serialization, YAML `!!python/object`). Use JSON. |
-| **Clickjacking** | `X-Frame-Options: DENY` set. CSP `frame-ancestors` configured. |
-| **DNS Rebinding** | Host header validation on all requests. Don't rely solely on IP checks for access control. |
-| **Regex DoS (ReDoS)** | No unbounded regex on user input. Test regex with long repetitive strings. Use RE2 or safe regex libraries for untrusted patterns. |
-| **Race Conditions** | Critical operations (balance changes, inventory, token usage) use atomic operations, transactions, or locking. |
+| **Secrets Exposure** | No API keys, tokens, or passwords in code, logs, error messages, or git history. |
 
 ---
 
-## 9. Security Review Gate
+## 8. Security Review Gate
 
 **Triggers:** Any commit that touches auth, endpoints, user input handling, file operations, data access patterns, cryptography, or adds/updates dependencies.
 
 **Process:**
 
-1. Run the attack vector checklist (Section 8) against the diff.
+1. Run the attack vector checklist (Section 7) against the diff — check only rows relevant to this change.
 2. Get a security review — `feature-dev:code-reviewer` agent with an explicit security brief, a manual review pass, or pair review. The method is flexible. The review is not.
 3. The review must explicitly check: injection, auth bypass, IDOR, XSS, SSRF, secrets exposure, privilege escalation, mass assignment, and CSRF.
 4. If the review doesn't check these, it's not a security review.
 
-**Quick security audit command (run before commit):**
+**Quick security audit (run before commit):**
 
 ```
 Grep for: TODO security, FIXME security, password, secret, token, api_key, hardcoded
 Check: .env in .gitignore, no secrets in committed files
-Run: dependency vulnerability scan
+Run: dependency-auditor skill for any dependency changes
 Verify: all new endpoints have auth middleware
 ```
 
 ---
 
-## 10. Verification Checklist — Security Gate
+## 9. Verification Checklist — Security Gate
 
 Required if the change touches auth, endpoints, user input, file operations, or dependencies:
 
@@ -333,4 +296,4 @@ Required if the change touches auth, endpoints, user input, file operations, or 
 
 ---
 
-*This document is the single source of truth for security. If CLAUDE.md contradicts it, this file wins.*
+*This document is the single source of truth for security. If `~/.claude/CLAUDE.md` contradicts it, this file wins.*

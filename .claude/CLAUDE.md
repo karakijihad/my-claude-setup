@@ -10,6 +10,7 @@
 * If multiple interpretations exist, present them. Don't pick one without saying so.
 * If the simplest approach is being skipped, name why. Push back when warranted.
 * If something is genuinely unclear, stop and ask. Don't produce plausible-looking wrong work.
+* **When to stop and ask:** if a design decision affects >2 files, would be hard to reverse, or requires a structural assumption — confirm before proceeding. Small changes: decide and say so.
 
 ## Code Discipline
 
@@ -21,22 +22,14 @@
 
 ## Conversation Brevity
 
-**Applies to chat replies only — NOT TO CODE, PROTOCOLS, DOCUMENTATION, or TECHNICAL OUTPUT.**
+**Applies to chat replies only — not to code, protocols, or technical output.**
 
-Talk like you're paying for each word. When talking to the user (explanations, status updates, questions, acknowledgments), use the minimum words needed. 
+* No preamble, filler, or closing summaries. No "Great question!", "Let me explain...", "I'll go ahead and...".
+* No restating the request. Just answer.
+* Active voice. Short sentences. "Done." beats "I've successfully completed the task."
+* Code, file paths, and commands keep their full detail — brevity is for prose only.
 
-* Cut filler.
-* Skip preamble. No "Great question!", no "Let me explain...", no "I'll go ahead and...".
-* No restating the user's request before answering.
-* Use the minimum words needed to convey the point.
-* No closing summaries unless asked.
-* Short sentences over long ones. Active voice over passive.
-* Status updates: "Done." beats "I've successfully completed the task you requested."
-* Default to short sentences. If a thought fits in 10 words, don't use 20.
-* No throat-clearing — just answer.
-* Code blocks, file paths, commands, and technical content keep their full detail. Brevity is for prose around them, not the work itself.
-
-**Test:** could a sentence be deleted without losing information? Delete it.
+**Test:** can a sentence be deleted without losing information? Delete it.
 
 ## Goal-Driven Execution
 
@@ -57,12 +50,12 @@ Weak criteria ("make it work") require constant clarification. Strong criteria l
 
 | Domain | File | Read before... |
 |-|-|-|
-| Security | `Docs/SecurityProtocol.md` | ...writing code that touches auth, endpoints, user input, file operations, data storage, or dependencies |
-| Testing | `Docs/TestingProtocol.md` | ...writing tests, modifying test infrastructure, or verifying any non-trivial change |
-| Agents | `Docs/AgentProtocol.md` | ...delegating tasks to sub-agents, setting up agent teams, or reviewing agent output |
-| Git | `Docs/GitProtocol.md` | ...creating branches, committing, or interacting with git in any way |
-| Context | `Docs/ContextProtocol.md` | ...when sessions run long, context approaches limits, or agent output starts degrading |
-| Feedback | `Docs/FeedbackProtocol.md` | ...when correcting Claude, reviewing agent output, or updating any protocol file |
+| Security | `~/.claude/Docs/Protocols/SecurityProtocol.md` | ...writing code that touches auth, endpoints, user input, file operations, data storage, or dependencies |
+| Testing | `~/.claude/Docs/Protocols/TestingProtocol.md` | ...writing tests, modifying test infrastructure, or verifying any non-trivial change |
+| Agents | `~/.claude/Docs/Protocols/AgentProtocol.md` | ...delegating tasks to sub-agents, setting up agent teams, or reviewing agent output |
+| Git | `~/.claude/Docs/Protocols/GitProtocol.md` | ...creating branches, committing, or interacting with git in any way |
+| Context | `~/.claude/Docs/Protocols/ContextProtocol.md` | ...when sessions run long, context approaches limits, or agent output starts degrading |
+| Feedback | `~/.claude/Docs/Protocols/FeedbackProtocol.md` | ...when correcting Claude, reviewing agent output, or updating any protocol file |
 
 ---
 
@@ -140,10 +133,10 @@ Weak criteria ("make it work") require constant clarification. Strong criteria l
 * [ ] External API usage verified against current docs (Context7), not from memory
 * [ ] UI changes verified with Playwright (DOM + zero console errors)
 
-**Testing gate** → `Docs/TestingProtocol.md`
-**Agent gate** → `Docs/AgentProtocol.md`
-**Git gate** → `Docs/GitProtocol.md`
-**Security gate** → `Docs/SecurityProtocol.md`
+**Testing gate** → `~/.claude/Docs/Protocols/TestingProtocol.md`
+**Agent gate** → `~/.claude/Docs/Protocols/AgentProtocol.md`
+**Git gate** → `~/.claude/Docs/Protocols/GitProtocol.md`
+**Security gate** → `~/.claude/Docs/Protocols/SecurityProtocol.md`
 
 ---
 
@@ -151,14 +144,17 @@ Weak criteria ("make it work") require constant clarification. Strong criteria l
 
 **Suggested structure:**
 
-```
-Docs/Logs/
-├── Sessions/           # One .md per day — the primary work log (Newest entry first per .md file)
-├── CHANGELOG.md        # One line per version/phase (high-level only - Newest entry first per .md file) 
-└── DOCLOG.md           # Durable architecture decisions only (Newest entry first per .md file)
-```
+| Path | Purpose |
+|------|---------|
+| `Docs/CHANGELOG.md` | Semver changelog (newest first) |
+| `Docs/DOCLOG.md` | Architecture decisions only (newest first) |
+| `Docs/Sessions/YYYY-MM-DD.md` | Per-day work logs (newest sections first) |
+| `Docs/Logs/CODEMAP.md` | Full codebase map — files, roles, line counts, data flows. Update after structural changes. |
+| `Docs/Logs/` | Build logs, benchmarks |
 
-**Ordering rule: newest first.** Within every doc file, the most recent content appears at the top of its section. In session logs, the latest stage goes first under "Done", the latest decision goes first under "Decisions", etc. This applies to CHANGELOG, DOCLOG, and session files equally.
+**Ordering rule: newest first.** Latest entries at the top in every doc file — CHANGELOG, DOCLOG, session logs, all sections within them.
+
+**Update CODEMAP after structural changes.** When files are created, deleted, moved, or significantly restructured, update `Docs/Logs/CODEMAP.md`. It is the single source of truth for what exists and where. Update line counts, add new entries, remove deleted ones.
 
 **Session note template** (`Sessions/YYYY-MM-DD.md`):
 
@@ -171,7 +167,7 @@ Docs/Logs/
 ## Files Changed
 ## Commits
 ## Next
-## Corrections → Protocol Updates (see FeedbackProtocol.md)
+## Corrections → Protocol Updates (see ~/.claude/Docs/Protocols/FeedbackProtocol.md)
 ```
 
 Write the session note as the last act before committing.

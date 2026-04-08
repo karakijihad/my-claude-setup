@@ -1,7 +1,8 @@
 # Testing & Verification Protocol
 
-> Referenced by `CLAUDE.md`. Read this before writing tests, modifying test infrastructure, or verifying any non-trivial change.
+> Referenced by `~/.claude/CLAUDE.md`. Read this before writing tests, modifying test infrastructure, or verifying any non-trivial change.
 > Applies to all project types — web apps, APIs, CLIs, mobile, serverless, microservices, libraries.
+> **Skip the checklist** for changes under ~50 lines with clear intent and no branching logic — verify by running the code, then commit.
 
 **Core principle: nothing ships without execution evidence. "I reviewed the code" is not verification.**
 
@@ -11,11 +12,13 @@
 
 Tests are **required** for:
 
-- Any new function, method, endpoint, or component
+- Any new function, method, endpoint, or component with branching logic or edge cases
 - Any bug fix — write a regression test that fails without the fix, passes with it
 - Any refactor that changes behavior (not pure renames, moves, or formatting)
 - Any code that touches auth, payments, or data persistence
 - Any public API surface (exported functions, REST endpoints, GraphQL resolvers)
+
+**Exception:** changes under ~50 lines with clear, linear intent — run the code, confirm it works, commit. No formal test required unless the logic is non-obvious.
 
 Tests are **optional** for:
 
@@ -118,4 +121,4 @@ Multiple levels can apply. A new API endpoint needs automated tests, a build che
 
 ---
 
-*This document is the single source of truth for testing and verification. If CLAUDE.md contradicts it, this file wins.*
+*This document is the single source of truth for testing and verification. If `~/.claude/CLAUDE.md` contradicts it, this file wins.*

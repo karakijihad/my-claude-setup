@@ -7,18 +7,19 @@
 
 ## 1. Installation
 
-Copy the contents of this repo to your Claude global config directory:
+Symlink the `.claude/` directory so edits here are immediately live everywhere:
 
 ```bash
 # Clone
 git clone https://github.com/YOUR_USERNAME/YOUR_REPO.git
-cd YOUR_REPO
 
-# Copy to global Claude config
-cp CLAUDE.md ~/.claude/CLAUDE.md
-cp -r .claude/settings.json ~/.claude/settings.json
-cp -r Docs/ ~/.claude/Docs/
-cp -r skills/ ~/.claude/skills/
+# Back up existing config if needed
+mv ~/.claude ~/.claude-backup 2>/dev/null        # macOS/Linux
+# Rename-Item "$env:USERPROFILE\.claude" "$env:USERPROFILE\.claude-backup"  # Windows (admin PowerShell)
+
+# Symlink
+ln -s /path/to/my-claude-setup/.claude ~/.claude   # macOS/Linux
+# New-Item -ItemType SymbolicLink -Path "$env:USERPROFILE\.claude" -Target "C:\path\to\my-claude-setup\.claude"  # Windows
 ```
 
 ---
@@ -83,7 +84,7 @@ After installing, restart Claude Code. Verify with `/plugins`.
 | `context7` | External library API docs verification | CLAUDE.md Work Protocol step 1 |
 | `feature-dev` | code-explorer, code-architect, code-reviewer agents | CLAUDE.md Agent Delegation, AgentProtocol.md |
 | `code-review` | Automated PR/code review | GitProtocol.md §5 |
-| `security-guidance` | Security review and vulnerability guidance | SecurityProtocol.md §9, CLAUDE.md Tool Reference |
+| `security-guidance` | Security review and vulnerability guidance | SecurityProtocol.md §8, CLAUDE.md Tool Reference |
 | `playwright` | Browser/UI testing and verification | TestingProtocol.md §5, CLAUDE.md Verification Checklist |
 | `frontend-design` | UI/frontend design quality | CLAUDE.md Tool Reference |
 | `firecrawl` | Web scraping and crawling | CLAUDE.md Tool Reference |
@@ -102,7 +103,7 @@ After installing, restart Claude Code. Verify with `/plugins`.
 > [!NOTE]
 > `pr-review-expert` and `dependency-auditor` are inspired by [mar-antaya/my-claude-skills](https://github.com/mar-antaya/my-claude-skills)
 
-### Protocol Docs (in `Docs/` directory)
+### Protocol Docs (in `Docs/Protocols/` directory)
 
 | Document | Governs | Read before... |
 |-|-|-|
@@ -129,8 +130,8 @@ After installing, restart Claude Code. Verify with `/plugins`.
 
 | Variable | Value | Purpose |
 |-|-|-|
-| `MAX_THINKING_TOKENS` | 20000 | Extended thinking budget (default ~31200|
-| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | 50 | Auto-compact at 50% context usage (default ~75)|
+| `MAX_THINKING_TOKENS` | 20000 | Extended thinking budget (default ~31200) |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | 50 | Auto-compact at 50% context usage (default ~75) |
 | `CLAUDE_CODE_SUBAGENT_MODEL` | sonnet | Sub-agents use Sonnet (faster, cheaper) |
 
 ---

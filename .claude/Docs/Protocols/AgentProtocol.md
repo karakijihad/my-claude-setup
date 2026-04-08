@@ -1,7 +1,8 @@
 # Agent Protocol
 
-> Referenced by `CLAUDE.md`. Read this before delegating tasks to sub-agents, setting up agent teams, or reviewing agent output.
+> Referenced by `~/.claude/CLAUDE.md`. Read this before delegating tasks to sub-agents, setting up agent teams, or reviewing agent output.
 > Applies to all delegation — built-in sub-agents, custom agents, parallel dispatch, and agent teams.
+> **Skip delegation** for tasks under ~50 lines with clear intent — do them directly. Sub-agents add overhead; use them when the gain outweighs the cost.
 
 **Core principle: delegate with structure, report with evidence, verify before claiming done.**
 
@@ -79,17 +80,7 @@ Every delegated task must return a structured report.
 
 ---
 
-## 6. Agent Teams (Multi-Session) — Placeholder
-
-> Experimental. Requires `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS` enabled.
-
-Agent teams spawn separate Claude Code instances with their own context windows that can communicate with each other. Use when: 3+ independent workstreams, agents need to read each other's output mid-flight, or visual monitoring (split-pane via tmux/iTerm2) is valuable.
-
-**Key rules:** Never manually close a teammate's pane. Always shut down through the lead. All reporting rules (§3) apply to teammates. The lead synthesizes all reports before reporting to the user.
-
----
-
-## 7. Verification Checklist — Agent Gate
+## 6. Verification Checklist — Agent Gate
 
 - [ ] Each delegated task has specific acceptance criteria
 - [ ] Task report received from every agent with all required fields
@@ -100,4 +91,4 @@ Agent teams spawn separate Claude Code instances with their own context windows 
 
 ---
 
-*This document is the single source of truth for agent delegation and task reporting. If CLAUDE.md contradicts it, this file wins.*
+*This document is the single source of truth for agent delegation and task reporting. If `~/.claude/CLAUDE.md` contradicts it, this file wins.*

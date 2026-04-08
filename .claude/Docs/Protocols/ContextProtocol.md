@@ -1,6 +1,6 @@
 # Context Management Protocol
 
-> Referenced by `CLAUDE.md`. Read this when sessions run long, context approaches limits, or agent output starts degrading.
+> Referenced by `~/.claude/CLAUDE.md`. Read this when sessions run long, context approaches limits, or agent output starts degrading.
 > Applies to all Claude Code sessions — main context, sub-agents, and agent teams.
 
 **Core principle: a lean context produces better results than a full one.**
@@ -78,4 +78,4 @@ Recognize these as context degradation signals:
 
 ---
 
-*This document is the single source of truth for context management. If CLAUDE.md contradicts it, this file wins.*
+*This document is the single source of truth for context management. If `~/.claude/CLAUDE.md` contradicts it, this file wins.*

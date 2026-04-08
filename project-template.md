@@ -15,7 +15,7 @@
 
 ## Architecture
 
-[High-level architecture. Or pointer: "See Docs/CodeMap.md for the authoritative file map."]
+[High-level architecture. Or pointer: "See Docs/Logs/CODEMAP.md for the authoritative file map."]
 
 ## Key Files
 
@@ -82,3 +82,31 @@ Add these if the project needs them:
 **## Deployment** — if there are non-obvious deployment steps.
 **## Third-Party Integrations** — if the project talks to external services with quirks.
 **## Known Tech Debt** — if there are landmines Claude should be aware of.
+
+---
+
+## Docs Structure
+
+If the project uses session logging (recommended for multi-day work):
+
+| Path | Purpose |
+|------|---------|
+| `Docs/CHANGELOG.md` | Semver changelog (newest first) |
+| `Docs/DOCLOG.md` | Architecture decisions only (newest first) |
+| `Docs/Sessions/YYYY-MM-DD.md` | Per-day work logs (newest sections first) |
+| `Docs/Logs/CODEMAP.md` | Full codebase map — files, roles, line counts, data flows |
+| `Docs/Logs/` | Build logs, benchmarks |
+
+Session note template (`Sessions/YYYY-MM-DD.md`):
+
+```markdown
+# Session YYYY-MM-DD — [focus]
+
+## Done
+## Decisions
+## Security Review
+## Files Changed
+## Commits
+## Next
+## Corrections → Protocol Updates
+```

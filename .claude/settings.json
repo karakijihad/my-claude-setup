@@ -1,9 +1,19 @@
 {
   "env": {
     "MAX_THINKING_TOKENS": "20000",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "65",
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "70",
     "CLAUDE_CODE_SUBAGENT_MODEL": "sonnet"
   },
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(xargs grep:*)",
+      "Bash(git commit:*)",
+      "Bash(git add:*)"
+    ],
+    "defaultMode": "default"
+  },
+  "model": "opusplan",
   "hooks": {
     "PreToolUse": [
       {
@@ -99,6 +109,15 @@
             "command": "npx -y ccstatusline@latest --hook"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/hooks/protocol-reminder.sh",
+            "timeout": 5
+          }
+        ]
       }
     ]
   },
@@ -125,6 +144,5 @@
   },
   "effortLevel": "high",
   "autoUpdatesChannel": "latest",
-  "voiceEnabled": true,
-  "model": "opus"
+  "voiceEnabled": true
 }

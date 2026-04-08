@@ -1,6 +1,6 @@
 # Git Workflow Protocol
 
-> Referenced by `CLAUDE.md`. Read this before creating branches, committing, or interacting with git in any way.
+> Referenced by `~/.claude/CLAUDE.md`. Read this before creating branches, committing, or interacting with git in any way.
 > Applies to all projects using git version control.
 
 **Core principle: every change is traceable, reversible, and isolated until verified.**
@@ -71,14 +71,4 @@ Before every commit:
 
 ---
 
-## 6. Working with Agent Teams
-
-When multiple agents work in parallel on separate branches:
-
-- The orchestrator is responsible for merge order and conflict resolution.
-- Agents should pull latest from the base branch before starting work.
-- If two agents touch the same file, the orchestrator reviews both changes and resolves conflicts — agents don't merge each other's work.
-
----
-
-*This document is the single source of truth for git workflow. If CLAUDE.md contradicts it, this file wins.*
+*This document is the single source of truth for git workflow. If `~/.claude/CLAUDE.md` contradicts it, this file wins.*
