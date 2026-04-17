@@ -30,7 +30,7 @@ Drop-in Claude Code configuration that enforces security, testing, git disciplin
 │   ├── project-CLAUDE.md
 │   ├── session-note.md
 │   ├── doclog-entry.md
-│   ├── changelog-year.md
+│   ├── changelog-entry.md
 │   ├── audit-README.md
 │   └── Docs-skeleton/            # Full Docs/ tree to copy into new projects
 ├── hooks/
@@ -50,7 +50,7 @@ Each project follows a folder-based layout that keeps append-only records bounde
 
 ```
 Docs/
-├── Changelog/YYYY.md             # One file per year, newest at top
+├── Changelog/YYYY-MM-DD.md       # One file per day — all changelog entries that day
 ├── Doclog/YYYY-MM-DD.md          # One file per day — all decisions that day
 ├── Sessions/YYYY-MM-DD.md        # One file per day — work log
 ├── Audit/{agent}/YYYY-MM-DD/     # Review artifacts — claude/ and codex/

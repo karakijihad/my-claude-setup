@@ -114,8 +114,8 @@ Full gates live inside each protocol's own checklist.
 ```
 Docs/
 ├── Changelog/
-│   ├── README.md              # Index: version bumps, links by year
-│   └── YYYY.md                # One file per year, newest first
+│   ├── README.md              # Index: version bumps, links by date
+│   └── YYYY-MM-DD.md          # One file per day — all changelog entries that day
 ├── Doclog/
 │   ├── README.md              # Index: decision titles by date
 │   └── YYYY-MM-DD.md          # One file per day — all decisions that day
@@ -145,6 +145,6 @@ Docs/
 | `project-CLAUDE.md` | Per-project CLAUDE.md skeleton |
 | `session-note.md` | Daily session log |
 | `doclog-entry.md` | Architecture decision record |
-| `changelog-year.md` | Yearly changelog file header |
+| `changelog-entry.md` | Daily changelog file |
 | `audit-README.md` | Copy into `Docs/Audit/README.md` |
 | `Docs-skeleton/` | Full folder tree to copy into a new project |

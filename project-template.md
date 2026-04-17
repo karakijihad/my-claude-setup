@@ -5,7 +5,7 @@ Templates have moved to [`.claude/Templates/`](./.claude/Templates/). See that d
 - `project-CLAUDE.md` — per-project CLAUDE.md skeleton
 - `session-note.md` — daily session log
 - `doclog-entry.md` — architecture decision record (one file per day)
-- `changelog-year.md` — yearly changelog
+- `changelog-entry.md` — daily changelog
 - `audit-README.md` — audit folder usage
 - `Docs-skeleton/` — full `Docs/` folder tree to copy into new projects
 
