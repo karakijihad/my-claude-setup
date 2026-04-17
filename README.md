@@ -6,24 +6,61 @@ Drop-in Claude Code configuration that enforces security, testing, git disciplin
 
 ```
 .claude/
-├── CLAUDE.md              # Core rules — code discipline, workflow, tool/skill reference
-├── settings.json          # Hooks, plugins, model config, env vars
+├── CLAUDE.md                     # Core rules — code discipline, workflow, tool/skill reference
+├── settings.json                 # Hooks, plugins, model config, env vars
 ├── Docs/Protocols/
-│   ├── SecurityProtocol.md    # Input validation, auth, data protection, API security
-│   ├── TestingProtocol.md     # Test requirements, verification levels, coverage
-│   ├── AgentProtocol.md       # Sub-agent delegation, task reporting, orchestration
-│   ├── GitProtocol.md         # Branching, conventional commits, safety rules
-│   ├── ContextProtocol.md     # Context window management, compaction, session hygiene
-│   └── FeedbackProtocol.md    # Correction classification, rule routing, protocol updates
+│   ├── Security/                 # Folder-split — one subfile per domain
+│   │   ├── README.md
+│   │   ├── 01-Threat-Model.md
+│   │   ├── 02-Input.md
+│   │   ├── 03-Auth.md
+│   │   ├── 04-Data.md
+│   │   ├── 05-API.md
+│   │   ├── 06-Dependencies.md
+│   │   ├── 07-AI-Agents.md       # Prompt injection, MCP trust, skill supply chain
+│   │   ├── 08-Attack-Vectors.md
+│   │   ├── 09-Review-Gate.md
+│   │   └── 10-Verification.md
+│   ├── TestingProtocol.md        # Test requirements, verification levels, coverage
+│   ├── AgentProtocol.md          # Sub-agent delegation, task reporting, orchestration
+│   ├── GitProtocol.md            # Branching, conventional commits, safety rules
+│   ├── ContextProtocol.md        # Context window management, compaction, session hygiene
+│   └── FeedbackProtocol.md       # Correction classification, rule routing, protocol updates
+├── Templates/                    # Bootstrap skeletons for new projects
+│   ├── project-CLAUDE.md
+│   ├── session-note.md
+│   ├── doclog-entry.md
+│   ├── changelog-year.md
+│   ├── audit-README.md
+│   └── Docs-skeleton/            # Full Docs/ tree to copy into new projects
 ├── hooks/
-│   └── protocol-reminder.sh  # SessionStart hook — reminds Claude to read protocols
+│   └── protocol-reminder.sh      # UserPromptSubmit hook — brevity rule + protocol routing
 └── skills/
-    ├── pr-review-expert/      # Blast radius, security scan, coverage delta for PRs
-    └── dependency-auditor/    # Vulnerability scanning, license compliance, upgrade planning
+    ├── pr-review-expert/         # Blast radius, security scan, coverage delta for PRs
+    ├── dependency-auditor/       # Vulnerability scanning, license compliance, upgrade planning
+    └── skill-security-auditor/   # Audit skills before installation
 
-project-template.md            # Template for per-project CLAUDE.md files
-SETUP.md                       # Full inventory of plugins, skills, hooks, and env vars
+project-template.md               # Pointer to .claude/Templates/
+SETUP.md                          # Full inventory of plugins, skills, hooks, and env vars
 ```
+
+## Per-project `Docs/` convention
+
+Each project follows a folder-based layout that keeps append-only records bounded:
+
+```
+Docs/
+├── Changelog/YYYY.md             # One file per year, newest at top
+├── Doclog/YYYY-MM-DD.md          # One file per day — all decisions that day
+├── Sessions/YYYY-MM-DD.md        # One file per day — work log
+├── Audit/{agent}/YYYY-MM-DD/     # Review artifacts — claude/ and codex/
+│   └── audit-{N}.md
+├── Plan/                         # Stage checklists for in-flight work
+├── Logs/CODEMAP.md               # File map — updated on structural changes
+└── Protocols/                    # Project-specific overrides (rare)
+```
+
+**Rules:** newest first in every file; audits are evidence, not decisions; decisions belong in Doclog or Sessions.
 
 ## Quick start
 
@@ -37,19 +74,13 @@ git clone https://github.com/YOUR_USERNAME/my-claude-setup.git
 
 Windows (admin PowerShell):
 ```powershell
-# Back up existing config if needed
 Rename-Item "$env:USERPROFILE\.claude" "$env:USERPROFILE\.claude-backup" -ErrorAction SilentlyContinue
-
-# Create symlink
 New-Item -ItemType SymbolicLink -Path "$env:USERPROFILE\.claude" -Target "C:\path\to\my-claude-setup\.claude"
 ```
 
 macOS / Linux:
 ```bash
-# Back up existing config if needed
 mv ~/.claude ~/.claude-backup 2>/dev/null
-
-# Create symlink
 ln -s /path/to/my-claude-setup/.claude ~/.claude
 ```
 
@@ -57,16 +88,16 @@ ln -s /path/to/my-claude-setup/.claude ~/.claude
 
 Open Claude Code and run each install command from [SETUP.md](SETUP.md#2-required-plugins).
 
-**4. Per-project setup**
-
-For each new project, create a thin project-level `CLAUDE.md` using the [project template](project-template.md):
+**4. Bootstrap a new project**
 
 ```bash
-cd ~/your-project
-# Run /init for scaffolding, then add project-specific sections
+cd your-project
+cp ~/.claude/Templates/project-CLAUDE.md ./CLAUDE.md
+cp -r ~/.claude/Templates/Docs-skeleton ./Docs
+# Fill in project specifics in CLAUDE.md.
 ```
 
-The global config handles protocols, tools, and workflow. The project file only needs: architecture, key files, tech stack, commands, environment, and gotchas.
+The global config handles protocols, tools, and workflow. The project file only needs architecture, key files, tech stack, commands, environment, and gotchas.
 
 ## How it works
 
@@ -82,6 +113,7 @@ The global config provides the foundation: security-first code discipline, struc
 
 | Hook | What it does |
 |------|-------------|
+| `protocol-reminder.sh` | Injects brevity rule on every prompt; routes keywords to protocol files |
 | Destructive command blocker | Blocks `rm -rf /`, `DROP TABLE`, force push |
 | Protected file guard | Blocks edits to `.env`, lockfiles, `.git/` |
 | Secret-in-commit blocker | Blocks commits containing secrets |
@@ -92,16 +124,16 @@ The global config provides the foundation: security-first code discipline, struc
 
 ## Plugins
 
-See [SETUP.md](SETUP.md#3-full-inventory) for the complete inventory with descriptions and what references each plugin.
+See [SETUP.md](SETUP.md#3-full-inventory) for the complete inventory.
 
-Core stack: superpowers, code-simplifier, context7, feature-dev, code-review, security-guidance, playwright, firecrawl.
+Core stack: superpowers, code-simplifier, context7, feature-dev, code-review, security-guidance, playwright, firecrawl, skill-security-auditor.
 
 ## Protocol docs
 
 Each protocol is a standalone reference document that Claude reads on-demand (not loaded into every session):
 
-- **SecurityProtocol** — threat assessment, input validation, auth, session management, API security, dependency auditing, attack vector checklist
-- **TestingProtocol** — when tests are required, test quality rules, verification levels, coverage expectations
+- **Security/** — folder-split: threat model, input validation, auth, data protection, API security, dependencies, AI/agent workflow, attack vectors, review gate, verification
+- **TestingProtocol** — when tests are required, test quality rules, verification levels
 - **AgentProtocol** — orchestration model, delegation reference, structured task reporting, verification gates
 - **GitProtocol** — branching strategy, conventional commits, safety rules, PR process
 - **ContextProtocol** — compaction rules, session hygiene, sub-agent context, warning signs

@@ -9,7 +9,7 @@
 * State assumptions before implementing. Ask if unclear — don't guess silently.
 * If multiple interpretations exist, present them. Don't pick one without saying so.
 * If the simplest approach is being skipped, name why. Push back when warranted.
-* **When to stop and ask:** if a decision affects >2 files, is hard to reverse, or requires a structural assumption — confirm first. Small changes: decide and say so.
+* **When to stop and ask:** decisions that affect >2 files, are hard to reverse, or require a structural assumption — confirm first. Small changes: decide and say so.
 * For non-trivial tasks, define done criteria before starting: `Step → verify: concrete check`.
 
 ## Code Discipline
@@ -19,26 +19,24 @@
 * Touch only what is necessary. Don't improve adjacent code. Match existing style.
 * Every changed line must trace to the request. If it can't, remove it.
 
-## Conversation Brevity
+> Brevity rule is enforced per-prompt by `hooks/protocol-reminder.sh`, not duplicated here.
 
-**Chat replies only — not code, protocols, or technical output.**
-
-* No preamble, filler, or closing summaries. No restating the request. Just answer.
-* Active voice. Short sentences. "Done." beats "I've successfully completed the task."
-* **Test:** can a sentence be deleted without losing information? Delete it.
+---
 
 ## Protocol Reference
 
-Read before the relevant work. Open the file — don't guess from the summary.
+Read the file before relevant work — don't guess from the summary.
 
 | Domain | File | Trigger |
 |-|-|-|
-| Security | `~/.claude/Docs/Protocols/SecurityProtocol.md` | auth, endpoints, user input, file ops, data, dependencies |
+| Security | `~/.claude/Docs/Protocols/Security/README.md` | auth, endpoints, user input, file ops, data, dependencies, AI/agent tooling (folder — read the relevant subfile) |
 | Testing | `~/.claude/Docs/Protocols/TestingProtocol.md` | writing tests, verifying non-trivial changes |
 | Agents | `~/.claude/Docs/Protocols/AgentProtocol.md` | delegating to sub-agents, reviewing agent output |
 | Git | `~/.claude/Docs/Protocols/GitProtocol.md` | branches, commits, any git interaction |
 | Context | `~/.claude/Docs/Protocols/ContextProtocol.md` | long sessions, context approaching limits |
 | Feedback | `~/.claude/Docs/Protocols/FeedbackProtocol.md` | correcting Claude, updating protocols |
+
+Each protocol owns its own verification gate. When protocols and this file disagree, protocols win.
 
 ---
 
@@ -50,26 +48,13 @@ Read before the relevant work. Open the file — don't guess from the summary.
 
 1. **Research** — Read files before touching code. `Explore` for broad questions, `Grep`/`Glob` for targeted lookups. Verify library APIs via Context7, not memory.
 2. **Plan** — New feature → `superpowers:brainstorming`. Multi-step → `superpowers:writing-plans` + plan mode.
-3. **Delegate** — See AgentProtocol.md. Don't do in main context what a sub-agent can do faster.
+3. **Delegate** — See `AgentProtocol.md`. Don't do in main context what a sub-agent can do faster.
 4. **Implement** — `superpowers:executing-plans` or `superpowers:subagent-driven-development`.
 5. **Simplify** — `code-simplifier:code-simplifier` on modified files.
-6. **Verify** — TestingProtocol.md. Security pass if relevant. Playwright for UI. Code trace for backend.
+6. **Verify** — TestingProtocol. Security pass if relevant. Playwright for UI. Code trace for backend.
 7. **Document then commit** — Session note if project uses them. Then commit.
 
 **Evidence before assertions. Never claim something works without completing step 6.**
-
----
-
-## Agent Delegation
-
-| Task | Delegate to |
-|-|-|
-| Broad codebase exploration | `Explore` agent |
-| Architecture design | `Plan` agent |
-| Deep feature analysis | `feature-dev:code-explorer` |
-| Implementation blueprint | `feature-dev:code-architect` |
-| Post-implementation / security review | `feature-dev:code-reviewer` |
-| 2+ independent tasks | `superpowers:dispatching-parallel-agents` |
 
 ---
 
@@ -91,6 +76,9 @@ Read before the relevant work. Open the file — don't guess from the summary.
 | After implementation, before commit | `code-simplifier:code-simplifier` |
 | PR review / merge review | `pr-review-expert` |
 | Dependency audit / license check | `dependency-auditor` |
+| Auditing a skill before install | `skill-security-auditor` |
+
+Delegation map (which agent does what): `AgentProtocol.md` §2.
 
 **Tools** — invoke directly:
 
@@ -98,7 +86,6 @@ Read before the relevant work. Open the file — don't guess from the summary.
 |-|-|
 | External library API (accuracy matters) | Context7: resolve-library-id → query-docs |
 | Any interactive UI change | Playwright: navigate → snapshot → interact → screenshot → console |
-| Security review or guidance | `security-guidance` |
 | Web scraping and crawling | `firecrawl` |
 | UI/frontend design quality | `frontend-design` |
 
@@ -106,7 +93,7 @@ If a skill or tool is unavailable, proceed with the equivalent manual approach.
 
 ---
 
-## Verification Checklist
+## Pre-Commit Verification
 
 * [ ] All changed files read before editing
 * [ ] Success criteria defined and met
@@ -116,23 +103,48 @@ If a skill or tool is unavailable, proceed with the equivalent manual approach.
 * [ ] External API usage verified against current docs (Context7), not from memory
 * [ ] UI changes verified with Playwright (DOM + zero console errors)
 
-**Testing gate** → `~/.claude/Docs/Protocols/TestingProtocol.md`
-**Agent gate** → `~/.claude/Docs/Protocols/AgentProtocol.md`
-**Git gate** → `~/.claude/Docs/Protocols/GitProtocol.md`
-**Security gate** → `~/.claude/Docs/Protocols/SecurityProtocol.md`
+Full gates live inside each protocol's own checklist.
 
 ---
 
-## Docs (Per-Project)
+## Per-Project Docs
 
-| Path | Purpose |
-|------|---------|
-| `Docs/CHANGELOG.md` | Semver changelog (newest first) |
-| `Docs/DOCLOG.md` | Architecture decisions (newest first) |
-| `Docs/Sessions/YYYY-MM-DD.md` | Per-day work logs (newest first) |
-| `Docs/Logs/CODEMAP.md` | Codebase map — files, roles, line counts, data flows |
-| `Docs/Logs/` | Build logs, benchmarks |
+**Rule: newest first in every append-only file. Dated files are one-per-day. Folder-based to prevent bloat.**
 
-**Newest first** in all doc files. **Update CODEMAP** after any structural change (files created, deleted, moved, restructured).
+```
+Docs/
+├── Changelog/
+│   ├── README.md              # Index: version bumps, links by year
+│   └── YYYY.md                # One file per year, newest first
+├── Doclog/
+│   ├── README.md              # Index: decision titles by date
+│   └── YYYY-MM-DD.md          # One file per day — all decisions that day
+├── Sessions/
+│   └── YYYY-MM-DD.md          # One file per day — work log
+├── Audit/
+│   ├── README.md              # How audits are produced and reconciled
+│   ├── claude/YYYY-MM-DD/audit-{N}.md
+│   └── codex/YYYY-MM-DD/audit-{N}.md
+├── Plan/                      # Stage checklists for in-flight work
+├── Logs/
+│   ├── CODEMAP.md             # File map — roles, line counts, data flows
+│   └── …                      # Build logs, benchmarks
+└── Protocols/                 # Project-specific overrides only (rare)
+```
 
-**Session note** (`Sessions/YYYY-MM-DD.md`): Done · Decisions · Security Review · Files Changed · Commits · Next · Corrections → Protocol Updates (see `~/.claude/Docs/Protocols/FeedbackProtocol.md`). Write before committing.
+**Authoritative records** (what decisions were accepted): `Doclog/`, `Sessions/`. **Supporting evidence** (what reviewers found): `Audit/`. An audit is never a decision by itself — see `Docs/Audit/README.md`.
+
+**CODEMAP** updates after any structural change (files created, deleted, moved, restructured).
+
+**Session note** (`Sessions/YYYY-MM-DD.md`): Done · Decisions · Security Review · Files Changed · Commits · Next · Corrections → Protocol Updates. Write before committing. See template in `~/.claude/Templates/session-note.md`.
+
+**Bootstrap a new project** from `~/.claude/Templates/`:
+
+| Template | Purpose |
+|-|-|
+| `project-CLAUDE.md` | Per-project CLAUDE.md skeleton |
+| `session-note.md` | Daily session log |
+| `doclog-entry.md` | Architecture decision record |
+| `changelog-year.md` | Yearly changelog file header |
+| `audit-README.md` | Copy into `Docs/Audit/README.md` |
+| `Docs-skeleton/` | Full folder tree to copy into a new project |
