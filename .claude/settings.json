@@ -17,7 +17,7 @@
       "Bash(curl:*)",
       "Bash(cd * && git*:*)"
     ],
-    "defaultMode": "auto"
+    "defaultMode": "default"
   },
   "hooks": {
     "PreToolUse": [

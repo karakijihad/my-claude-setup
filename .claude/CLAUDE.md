@@ -19,7 +19,12 @@
 * Touch only what is necessary. Don't improve adjacent code. Match existing style.
 * Every changed line must trace to the request. If it can't, remove it.
 
-> Brevity rule is enforced per-prompt by `hooks/protocol-reminder.sh`, not duplicated here.
+## Brevity
+
+* No preamble, no restatement of the ask, no closing summary. Prose only — code, paths, and command output stay unabridged.
+* One sentence per status update. If you have nothing new to say, say nothing.
+* Final response ≤100 words unless the task itself requires more. Match response shape to the task: a question gets an answer, not a section header.
+* Per-prompt reinforcement lives in `hooks/protocol-reminder.sh`; this block is the always-loaded fallback.
 
 ---
 
@@ -137,6 +142,16 @@ Docs/
 **CODEMAP** updates after any structural change (files created, deleted, moved, restructured).
 
 **Session note** (`Sessions/YYYY-MM-DD.md`): Done · Decisions · Security Review · Files Changed · Commits · Next · Corrections → Protocol Updates. Write before committing. See template in `~/.claude/Templates/session-note.md`.
+
+**Sizing rule — highlights, not monoliths.** These files exist for *trackability*, not reconstruction. Evidence lives in commits, diffs, audits, and plan folders; docs link to it, don't duplicate it.
+
+- **Session note** — target ≤80 lines. Per phase/workstream: 1-line headline + 3-5 bullets (what changed, why, where the evidence lives). Link audits and plan files; don't inline their prose.
+- **Changelog entry** — target ≤30 lines per release. `Added/Changed/Fixed/Removed` lists, one line per item with file path. No paragraphs, no narrative, no "Review process" sections — that belongs in the session note or plan folder.
+- **Doclog entry** — target ≤15 lines per decision. Format: **Decision** (1-2 sentences) · **Why** (1-2 sentences, include the triggering incident if any) · **Mechanism** (1-2 sentences — file + function, not code). If it needs more, link to the plan or audit.
+- **CODEMAP** — structural map only. Roles, not histories. No phase-by-phase block-quotes; those belong in session notes.
+- **Anti-patterns to reject:** pasting commit messages verbatim, embedding entire audit findings, paragraph-prose per file touched, restating the same change under Done + Files Changed + Commits, line-count bookkeeping that rots.
+
+If a reader needs the full story, they open the commit, the audit, or the plan file. The daily doc's job is to help them find it.
 
 **Bootstrap a new project** from `~/.claude/Templates/`:
 

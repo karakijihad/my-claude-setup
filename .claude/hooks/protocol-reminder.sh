@@ -3,7 +3,7 @@
 # Always injects brevity rule. Concatenates every matching protocol reminder.
 # Uses python for JSON I/O so the hook works with or without jq on PATH.
 
-BREVITY="Brevity rule — prose only (explanations, status updates, questions, acknowledgments): no preamble, no filler, no closing summaries, never restate the request. This rule does NOT apply to code, commands, file paths, file contents, or any technical output — keep those complete and unabridged."
+BREVITY="Brevity: no preamble, no restatement of the ask, no closing summary. Prose only — code, paths, and command output stay unabridged."
 
 INPUT=$(cat)
 

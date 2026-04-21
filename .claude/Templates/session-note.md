@@ -1,36 +1,26 @@
 # Session YYYY-MM-DD — [focus]
 
-> Copy to `Docs/Sessions/YYYY-MM-DD.md`. Newest sections first within the file if multiple sessions run in one day.
+> Destination: `Docs/Sessions/YYYY-MM-DD.md`. Newest session first if multiple in one day.
+> **Budget: ≤80 lines total.** Highlights, not narration. Evidence lives in commits, diffs, audits, plan files — link, don't inline.
+> Anti-patterns: pasting commit messages verbatim, embedding audit prose, paragraph-per-file, restating the same change under Done + Files Changed + Commits.
 
 ## Done
-
-- [What shipped. Concrete outcomes, not "worked on X."]
+- [Concrete outcome. One line per item. Not "worked on X."]
 
 ## Decisions
-
-- [Decisions made today that change direction or architecture. Also record in `Docs/Doclog/YYYY-MM-DD.md` if architectural.]
+- [Direction/architecture changes. Mirror to `Doclog/YYYY-MM-DD.md` if architectural.]
 
 ## Security Review
-
-- [What security-relevant code changed. Which checklist items were run. Any deferred items.]
-- [If nothing security-relevant: "None."]
+- [Changed area + checklist items run, or "None."]
 
 ## Files Changed
-
-- `path/to/file.ext` — one-line summary
+- `path/to/file.ext` — one-line reason
 
 ## Commits
-
 - `abc1234` — commit subject
 
 ## Next
-
-- [What's next for tomorrow or the next session. Open questions.]
+- [Open thread for tomorrow. Open questions.]
 
 ## Corrections → Protocol Updates
-
-> Follow `~/.claude/Docs/Protocols/FeedbackProtocol.md`. Every correction is one-off or pattern; patterns become rules.
-
-- **Correction:** [what went wrong]
-  **Classification:** [one-off | pattern]
-  **Rule added:** [file + section where the new rule lives, or "N/A (one-off)"]
+- **Correction:** [what went wrong] · **Classification:** one-off | pattern · **Rule:** [file+section] or "N/A (one-off)"

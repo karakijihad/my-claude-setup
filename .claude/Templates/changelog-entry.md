@@ -1,40 +1,29 @@
 # Changelog YYYY-MM-DD
 
-> Copy to `Docs/Changelog/YYYY-MM-DD.md`. One file per day — all changelog entries for that day. Newest entry at the top within the file. Follows [Keep a Changelog](https://keepachangelog.com/) + [Semantic Versioning](https://semver.org/) for version markers.
+> Destination: `Docs/Changelog/YYYY-MM-DD.md`. One file per day — newest entry first.
+> **Budget: ≤30 lines per entry.** One line per change with file path. No paragraphs, no narrative, no "Review process" sections — those belong in the session note or plan folder.
+> Format: [Keep a Changelog](https://keepachangelog.com/) + [SemVer](https://semver.org/).
 
 ---
 
-## [HH:MM] — [1.2.0] or [Unreleased]
+## [HH:MM] — [1.2.0] | [Unreleased]
 
 ### Added
-
-- …
+- `path` — …
 
 ### Changed
-
-- …
-
-### Deprecated
-
-- …
-
-### Removed
-
-- …
+- `path` — …
 
 ### Fixed
+- `path` — …
 
-- …
+### Removed
+- `path` — …
 
 ### Security
+- `path` — …
 
-- …
-
-**References**
-
-- Commit: `abc1234`
-- PR: #NN
-- Doclog: `Docs/Doclog/YYYY-MM-DD.md` (if there's an architectural decision behind this)
+**Refs** — commit `abc1234` · PR #NN · doclog `Docs/Doclog/YYYY-MM-DD.md`
 
 ---
 
