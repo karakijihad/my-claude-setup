@@ -17,7 +17,7 @@
       "Bash(curl:*)",
       "Bash(cd * && git*:*)"
     ],
-    "defaultMode": "default"
+    "defaultMode": "auto"
   },
   "hooks": {
     "PreToolUse": [
@@ -156,7 +156,8 @@
       }
     }
   },
-  "effortLevel": "xhigh",
+  "effortLevel": "high",
+  "theme": "dark",
   "autoUpdatesChannel": "latest",
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
