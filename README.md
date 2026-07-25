@@ -33,6 +33,8 @@ Drop-in Claude Code configuration that enforces security, testing, git disciplin
 │   ├── changelog-entry.md
 │   ├── audit-README.md
 │   └── Docs-skeleton/            # Full Docs/ tree to copy into new projects
+├── ccstatusline/
+│   └── settings.json             # Status line widget layout — linked to ~/.config/ccstatusline
 ├── hooks/
 │   └── protocol-reminder.sh      # UserPromptSubmit hook — brevity rule + protocol routing
 └── skills/
@@ -72,21 +74,14 @@ git clone https://github.com/YOUR_USERNAME/my-claude-setup.git
 
 **2. Symlink to `~/.claude/`**
 
-Windows (admin PowerShell):
-```powershell
-Rename-Item "$env:USERPROFILE\.claude" "$env:USERPROFILE\.claude-backup" -ErrorAction SilentlyContinue
-New-Item -ItemType SymbolicLink -Path "$env:USERPROFILE\.claude" -Target "C:\path\to\my-claude-setup\.claude"
-```
+Link the items individually rather than the whole directory — `~/.claude` also holds Claude's
+runtime state (`sessions/`, `projects/`, `history.jsonl`, `.credentials.json`) that must stay local.
+See [SETUP.md](SETUP.md#1-installation) for the exact per-OS commands.
 
-macOS / Linux:
-```bash
-mv ~/.claude ~/.claude-backup 2>/dev/null
-ln -s /path/to/my-claude-setup/.claude ~/.claude
-```
+**3. Install plugins and the status line**
 
-**3. Install plugins**
-
-Open Claude Code and run each install command from [SETUP.md](SETUP.md#2-required-plugins).
+Open Claude Code and run each install command from [SETUP.md](SETUP.md#2-required-plugins),
+then `npm install -g ccstatusline` — see [SETUP.md](SETUP.md#2b-status-line-ccstatusline).
 
 **4. Bootstrap a new project**
 

@@ -24,14 +24,26 @@ ln -s /path/to/my-claude-setup/.claude/CLAUDE.md ~/.claude/CLAUDE.md
 ln -s /path/to/my-claude-setup/.claude/settings.json ~/.claude/settings.json
 ln -s /path/to/my-claude-setup/.claude/Docs ~/.claude/Docs
 ln -s /path/to/my-claude-setup/.claude/hooks ~/.claude/hooks
+ln -s /path/to/my-claude-setup/.claude/Templates ~/.claude/Templates
+ln -s /path/to/my-claude-setup/.claude/skills ~/.claude/skills
+# Status line config lives outside ~/.claude
+mkdir -p ~/.config
+ln -s /path/to/my-claude-setup/.claude/ccstatusline ~/.config/ccstatusline
 
-# Windows — use ln -s for files, PowerShell junction for directories
-ln -s /c/path/to/my-claude-setup/.claude/CLAUDE.md ~/.claude/CLAUDE.md
-ln -s /c/path/to/my-claude-setup/.claude/settings.json ~/.claude/settings.json
-# Run in PowerShell for Docs and hooks:
-# New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\Docs" -Target "C:\path\to\my-claude-setup\.claude\Docs"
-# New-Item -ItemType Junction -Path "$env:USERPROFILE\.claude\hooks" -Target "C:\path\to\my-claude-setup\.claude\hooks"
+# Windows — file symlinks need an ADMIN PowerShell; directories use junctions (no admin)
+$R = "C:\path\to\my-claude-setup\.claude"; $H = "$env:USERPROFILE\.claude"
+New-Item -ItemType SymbolicLink -Path "$H\CLAUDE.md"     -Target "$R\CLAUDE.md"
+New-Item -ItemType SymbolicLink -Path "$H\settings.json" -Target "$R\settings.json"
+foreach ($d in "Docs","hooks","Templates","skills") {
+  New-Item -ItemType Junction -Path "$H\$d" -Target "$R\$d"
+}
+New-Item -ItemType Junction -Path "$env:USERPROFILE\.config\ccstatusline" -Target "$R\ccstatusline"
 ```
+
+> [!IMPORTANT]
+> On Windows, use **SymbolicLink** for the two files, not HardLink. Claude Code rewrites
+> `settings.json` atomically whenever you change effort or permission mode via `/config`,
+> which severs a hardlink and silently desyncs the repo from `~/.claude`.
 
 ---
 
@@ -81,6 +93,28 @@ claude plugin install skill-creator@claude-plugins-official
 ```
 
 After installing, restart Claude Code. Verify with `/plugins`.
+
+---
+
+## 2b. Status Line (ccstatusline)
+
+Requires Node.js. Install globally — do **not** use `npx -y ccstatusline@latest` as the
+`statusLine` command: it re-resolves the npm registry on every render (~1.8 s vs ~0.65 s),
+which can exceed Claude Code's status line timeout and render nothing at all.
+
+```bash
+npm install -g ccstatusline
+```
+
+`settings.json` already points at the global binary:
+
+```json
+"statusLine": { "type": "command", "command": "ccstatusline", "padding": 0 }
+```
+
+The widget layout is versioned in this repo at `.claude/ccstatusline/settings.json` and is
+picked up via the `~/.config/ccstatusline` link from step 1. Run `ccstatusline` with no
+arguments to open the TUI — it writes straight through the link, so edits land in the repo.
 
 ---
 
