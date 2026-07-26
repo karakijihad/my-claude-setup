@@ -19,6 +19,7 @@
     ],
     "defaultMode": "auto"
   },
+  "model": "opus[1m]",
   "hooks": {
     "PreToolUse": [
       {
@@ -63,13 +64,13 @@
       },
       {
         "_tag": "ccstatusline-managed",
+        "matcher": "Skill",
         "hooks": [
           {
             "type": "command",
             "command": "ccstatusline --hook"
           }
-        ],
-        "matcher": "Skill"
+        ]
       }
     ],
     "PostToolUse": [
@@ -159,8 +160,8 @@
     }
   },
   "effortLevel": "high",
-  "theme": "dark",
   "autoUpdatesChannel": "latest",
+  "theme": "dark",
   "skipAutoPermissionPrompt": true,
   "voiceEnabled": true
 }
