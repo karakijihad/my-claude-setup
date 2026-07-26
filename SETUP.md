@@ -25,21 +25,29 @@ Windows ships 0-byte *app execution alias* stubs at
 they exit 9009 with "Python was not found" and open the Microsoft Store.
 
 Installing via winget or python.org does **not** displace them for `python3`, because those
-builds ship `python.exe` and `py.exe` but **no `python3.exe`**. `security-guidance` copes (it
-executes each candidate and falls through failures to `python`/`py -3`), but anything calling
-`python3` directly — including `dependency-auditor` — still hits the dead stub.
+builds ship `python.exe` and `py.exe` but **no `python3.exe`**. So `python3` stays broken even
+after a successful install.
 
 ```powershell
 winget install --id Python.Python.3.13 -e
-# Then shadow the stub, so `python3` works without editing any skill:
+```
+
+Both components tolerate this — they execute each candidate rather than trusting the name, and
+fall through to `python`/`py -3`: `security-guidance` via its own `sg-python.sh`,
+`dependency-auditor` via `scripts/py.sh`. **Any new skill invoking Python must do the same;
+never call `python3` directly.**
+
+Optionally make `python3` work for your own shell use. This relies on the installer
+**prepending** its directories to PATH, ahead of `WindowsApps` — verify with
+`$env:PATH -split ';'`:
+
+```powershell
 $PY = "$env:LOCALAPPDATA\Programs\Python\Python313"
 Copy-Item "$PY\python.exe" "$PY\python3.exe"
 ```
 
-This works because the installer **prepends** its directories to PATH, ahead of `WindowsApps`.
-Verify the ordering with `$env:PATH -split ';'` if `python3` still resolves to the stub.
-Installing from the Microsoft Store instead also works — that build does provide a real
-`python3.exe` — at the cost of Store sandboxing quirks.
+Installing from the Microsoft Store instead also gives a real `python3.exe`, at the cost of
+Store sandboxing quirks.
 
 Exit code 1618 during install means another MSI holds the installer mutex. Don't kill
 `msiexec`; reboot and retry.

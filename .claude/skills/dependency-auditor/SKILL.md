@@ -13,24 +13,29 @@ Scan dependencies for vulnerabilities, license compliance, and safe upgrade path
 
 ## Quick Start
 
+Invoke the scripts through `scripts/py.sh`, which resolves a working interpreter
+(`python3` → `python` → `py -3`). Don't call `python3` directly — on Windows that name
+is usually the Microsoft Store alias stub, which exits 9009 without running anything.
+
 ```bash
 # Full vulnerability scan
-python3 scripts/dep_scanner.py /path/to/project
+scripts/py.sh scripts/dep_scanner.py /path/to/project
 
 # License compliance check
-python3 scripts/license_checker.py /path/to/project --policy strict
+scripts/py.sh scripts/license_checker.py /path/to/project --policy strict
 
 # Upgrade path planning
-python3 scripts/upgrade_planner.py deps.json --risk-threshold medium
+scripts/py.sh scripts/upgrade_planner.py deps.json --risk-threshold medium
 
 # JSON output for CI
-python3 scripts/dep_scanner.py /path/to/project --format json --fail-on-high
+scripts/py.sh scripts/dep_scanner.py /path/to/project --format json --fail-on-high
 ```
 
 ## Scripts
 
 | Script | Purpose |
 |-|-|
+| `scripts/py.sh` | Interpreter resolver — probes `python3`, `python`, `py -3`; execs the first that runs |
 | `scripts/dep_scanner.py` | Vulnerability scanning, CVE matching, transitive dependency analysis |
 | `scripts/license_checker.py` | License detection, compatibility matrix, conflict detection |
 | `scripts/upgrade_planner.py` | Semver analysis, breaking change prediction, upgrade prioritization |
@@ -67,6 +72,6 @@ PHP: `composer.json`, `composer.lock`
 # GitHub Actions step
 - name: Dependency Audit
   run: |
-    python3 scripts/dep_scanner.py . --format json --fail-on-high
-    python3 scripts/license_checker.py . --policy strict --format json
+    scripts/py.sh scripts/dep_scanner.py . --format json --fail-on-high
+    scripts/py.sh scripts/license_checker.py . --policy strict --format json
 ```
