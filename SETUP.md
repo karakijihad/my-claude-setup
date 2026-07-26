@@ -5,6 +5,49 @@
 
 ---
 
+## 0. Prerequisites
+
+| Requirement | Needed by | Check |
+|-|-|-|
+| Node.js | `ccstatusline` status line | `node --version` |
+| Python **3.10+** | `security-guidance` plugin, `dependency-auditor` skill | `python3 -c "import sys; print(sys.version_info[:2])"` |
+| Git | everything | `git --version` |
+
+`security-guidance` requires 3.10+ specifically — it installs `claude_agent_sdk`, which won't
+resolve below that, and the plugin silently degrades to regex-only checks. Anything lower
+produces `security-guidance: no working Python 3 interpreter found.` on every hook run.
+
+<details>
+<summary><b>Windows: the <code>python3</code> Store-stub trap</b></summary>
+
+Windows ships 0-byte *app execution alias* stubs at
+`%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe` and `python3.exe`. They aren't interpreters —
+they exit 9009 with "Python was not found" and open the Microsoft Store.
+
+Installing via winget or python.org does **not** displace them for `python3`, because those
+builds ship `python.exe` and `py.exe` but **no `python3.exe`**. `security-guidance` copes (it
+executes each candidate and falls through failures to `python`/`py -3`), but anything calling
+`python3` directly — including `dependency-auditor` — still hits the dead stub.
+
+```powershell
+winget install --id Python.Python.3.13 -e
+# Then shadow the stub, so `python3` works without editing any skill:
+$PY = "$env:LOCALAPPDATA\Programs\Python\Python313"
+Copy-Item "$PY\python.exe" "$PY\python3.exe"
+```
+
+This works because the installer **prepends** its directories to PATH, ahead of `WindowsApps`.
+Verify the ordering with `$env:PATH -split ';'` if `python3` still resolves to the stub.
+Installing from the Microsoft Store instead also works — that build does provide a real
+`python3.exe` — at the cost of Store sandboxing quirks.
+
+Exit code 1618 during install means another MSI holds the installer mutex. Don't kill
+`msiexec`; reboot and retry.
+
+</details>
+
+---
+
 ## 1. Installation
 
 Symlink the `.claude/` directory so edits here are immediately live everywhere:
