@@ -1,11 +1,11 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Skill Security Auditor — Scan AI agent skills for security risks before installation.
 
-Usage:
-    python3 skill_security_auditor.py /path/to/skill/
-    python3 skill_security_auditor.py https://github.com/user/repo --skill skill-name
-    python3 skill_security_auditor.py /path/to/skill/ --strict --json
+Usage (run via hooks/py.sh, not `python3` — see that script for the Windows reason):
+    bash hooks/py.sh skill_security_auditor.py /path/to/skill/
+    bash hooks/py.sh skill_security_auditor.py https://github.com/user/repo --skill skill-name
+    bash hooks/py.sh skill_security_auditor.py /path/to/skill/ --strict --json
 
 Exit codes:
     0 = PASS (safe to install)
@@ -947,9 +947,29 @@ def scan_skill(skill_path: Path) -> AuditReport:
     return report
 
 
+def _redact_url(url: str) -> str:
+    """Strip any user:password@ from a URL before it reaches a log or a report.
+
+    Clone URLs routinely carry a token in the userinfo field. Echoing git's
+    stderr verbatim on failure would put that token in terminal output, agent
+    context, and CI logs — a report this tool exists to keep clean.
+    """
+    return re.sub(r"(?<=://)[^/@\s]+(?=@)", "***", url)
+
+
+def _contained(base: Path, target: Path) -> bool:
+    """True if target resolves to base itself or something beneath it."""
+    try:
+        base_r, target_r = base.resolve(), target.resolve()
+    except OSError:
+        return False
+    return base_r == target_r or base_r in target_r.parents
+
+
 def clone_repo(url: str, skill_name: Optional[str] = None, cleanup: bool = False):
     """Clone a git repo to a temp directory and return the skill path."""
     tmp_dir = tempfile.mkdtemp(prefix="skill-audit-")
+    safe_url = _redact_url(url)
     try:
         subprocess.run(
             ["git", "clone", "--depth", "1", url, tmp_dir],
@@ -958,21 +978,46 @@ def clone_repo(url: str, skill_name: Optional[str] = None, cleanup: bool = False
             text=True,
         )
     except subprocess.CalledProcessError as e:
-        print(f"Error cloning {url}: {e.stderr}", file=sys.stderr)
+        print(
+            f"Error cloning {safe_url}: {_redact_url(e.stderr or '')}", file=sys.stderr
+        )
         shutil.rmtree(tmp_dir, ignore_errors=True)
         sys.exit(1)
 
     if skill_name:
-        skill_path = Path(tmp_dir) / skill_name
+        # --skill is untrusted input. Joining it raw lets an absolute path
+        # replace tmp_dir outright, and "../" climb out of it — either way the
+        # scanners below would then walk arbitrary local directories and quote
+        # matching lines into the report. Constrain it to a plain relative name,
+        # and verify containment after resolving, since rglob can match a
+        # symlink that points outside the clone.
+        if os.path.isabs(skill_name) or ".." in Path(skill_name).parts:
+            print(
+                f"Invalid --skill '{skill_name}': must be a relative path inside the repo",
+                file=sys.stderr,
+            )
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            sys.exit(1)
+
+        base = Path(tmp_dir)
+        skill_path = base / skill_name
         if not skill_path.exists():
             # Try finding it
-            matches = list(Path(tmp_dir).rglob(skill_name))
+            matches = [m for m in base.rglob(skill_name) if _contained(base, m)]
             if matches:
                 skill_path = matches[0]
             else:
                 print(f"Skill '{skill_name}' not found in repo", file=sys.stderr)
                 shutil.rmtree(tmp_dir, ignore_errors=True)
                 sys.exit(1)
+
+        if not _contained(base, skill_path):
+            print(
+                f"Refusing to scan '{skill_name}': resolves outside the cloned repo",
+                file=sys.stderr,
+            )
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            sys.exit(1)
     else:
         skill_path = Path(tmp_dir)
 
