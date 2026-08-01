@@ -16,10 +16,18 @@ description: >
 
 ## 1. Branching Strategy
 
-- **Always branch for multi-file changes.** Never commit directly to main/master for anything beyond a trivial single-file fix.
-- **Branch naming:** `type/short-description` — e.g., `feat/user-auth`, `fix/login-redirect`, `refactor/db-queries`.
-- **One concern per branch.** Don't mix a feature addition with an unrelated refactor. If you discover a separate issue while working, note it — don't fix it in the same branch.
-- **Delete branches after merging.** Clean up stale branches. A merged branch has no further purpose.
+- **Ask before creating a branch. Never create one unprompted.** Branching is the user's call, not a default to apply because a change touched several files. Most repos here are single-maintainer, where a branch and a PR to yourself is pure ceremony: it splits the history, leaves a second branch to clean up, and delays the work landing for no review that was ever going to happen.
+- **Default: commit to the branch already checked out.** Usually `main`. Size is not the trigger — a 17-file change on a solo repo still belongs on `main`.
+- **Ask when there is a real reason to isolate**, and say which reason: other people pull this branch and the work would break them; the change needs review before it lands; it is genuinely experimental and may be abandoned; or CI gates merges. If none of those hold, don't raise it.
+- **Branch naming, when the user does want one:** `type/short-description` — e.g., `feat/user-auth`, `fix/login-redirect`.
+- **One concern per branch.** If you discover a separate issue while working, note it — don't fix it in the same branch.
+- **Delete branches after merging**, and confirm the merge landed. Use `git branch -d`, which refuses an unmerged branch; reach for `-D` only when the user has said to discard the work.
+
+> This rule used to read "always branch for multi-file changes." It was wrong for
+> this repo and every repo like it, and following it produced exactly the mess it
+> was meant to prevent — a second branch and a self-approved PR on a solo plugin.
+> Rules that manufacture ceremony get ignored, and a rule the maintainer ignores
+> is worse than no rule.
 
 ---
 
@@ -50,6 +58,7 @@ Use **conventional commits**: `type(scope): description`
 
 ## 3. Safety Rules
 
+- **Ask before any decision that reshapes the repo, rather than picking one.** Creating a branch, opening a PR, merging, rebasing, tagging, deleting a branch, changing the default branch. These are the maintainer's calls and they are cheap to ask about — a one-line question costs far less than the cleanup when the guess is wrong. Committing and pushing the work you were asked to do is not in this list; do that.
 - **Never force-push** to shared branches. If you need to rewrite history, do it on your own feature branch before sharing.
 - **Never rewrite shared history.** Rebasing a branch that others have pulled from is destructive.
 - **Never commit secrets.** The `guard.sh` hook scans the staged diff for value-shaped secrets (`key = "value"` patterns, AWS keys, private-key blocks), but it's pattern-based — verify manually: no API keys, tokens, passwords, connection strings, or private keys in any committed file. If a secret was ever committed, rotate it immediately — git history is permanent.

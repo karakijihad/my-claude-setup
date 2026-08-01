@@ -98,7 +98,7 @@ assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit RE
 |-|-|-|
 | `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the independent-review rule — plus current branch and recent commits, and the one-time onboarding check. If no Python is available it falls back to a reduced core rather than emitting nothing |
 | `brevity.sh` | UserPromptSubmit | Reinforces brevity, which decays over a long session. One `printf`, no stdin parse, no interpreter |
-| `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `branch -D`, `DROP`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`), lockfiles, and `.git/`; scans the **staged diff** for value-shaped secrets on commit |
+| `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `branch -D` (but not `-d`), `DROP`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`), lockfiles, and `.git/`; scans the **staged diff** for value-shaped secrets on commit |
 | `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |
 
 `guard.sh` is one script doing what three used to. The old ones each spawned a shell and a JSON
@@ -120,7 +120,7 @@ Invoke by name, or let the description trigger them.
 |-|-|
 | `security-protocol` | Threat model, input validation, auth, data, API, dependencies, AI/agent security — 10 references |
 | `testing-protocol` | When tests are required, quality rules, coverage, verification levels |
-| `git-protocol` | Branching, conventional commits, safety rules, PR process |
+| `git-protocol` | Conventional commits, safety rules, PR process — and asks before branching rather than assuming |
 | `agent-protocol` | Delegation, structured task reports, orchestration |
 | `context-protocol` | Compaction thresholds, session hygiene, sub-agent budgeting |
 | `feedback-protocol` | Turning corrections into permanent rules |
