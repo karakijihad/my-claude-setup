@@ -1,5 +1,6 @@
 #!/bin/bash
-# PreToolUse (Bash|Edit|Write|NotebookEdit). Exit 2 = block.
+# PreToolUse (Bash|Edit|Write|NotebookEdit — keep hooks.json's matcher in sync).
+# Exit 2 = block.
 #
 # One script for what used to be three (block-destructive, check-secrets,
 # protect-files). Those each spawned a shell and a JSON parse on *every* Bash
@@ -43,7 +44,17 @@ fi
 
 # --- Edit / Write / NotebookEdit ------------------------------------------
 FILE=$(parse_field "tool_input.file_path")
-[ -z "$FILE" ] && exit 0
+[ -z "$FILE" ] && FILE=$(parse_field "tool_input.notebook_path")
+
+if [ -z "$FILE" ]; then
+  # Every tool this hook matches carries a command, a file_path, or a
+  # notebook_path. Finding none of them in a non-empty payload means the parser
+  # failed, not that the event was empty. Still exit 0 — a hook that blocks on
+  # its own failure is worse — but say so: a silent skip here is a guard that
+  # has stopped guarding without anyone noticing.
+  [ -n "$INPUT" ] && echo "my-claude-setup: guard.sh could not parse the hook payload; checks were SKIPPED. Install jq or a working Python 3." >&2
+  exit 0
+fi
 
 case "$(basename "$FILE")" in
   # security-protocol §04-Data requires an example env file to exist.
