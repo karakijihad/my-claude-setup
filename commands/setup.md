@@ -19,7 +19,7 @@ Plugins cannot set `settings.json` keys, so this command does it explicitly and 
 | `permissions.defaultMode` | `"auto"` | |
 | `permissions.allow` | union with `["Bash(git:*)", "Bash(ls:*)", "Bash(npm:*)", "Bash(pnpm:*)", "Bash(python:*)", "Bash(xargs grep:*)"]` | Least-privilege allowlist per `security-protocol` §7.2 |
 | `effortLevel` | `"high"` | |
-| `statusLine.command` | `"ccstatusline"` | Only if `ccstatusline` is on PATH. The global binary — never an absolute path to a node script, which breaks on every other machine |
+| `statusLine.command` | `"ccstatusline"` | See the status line step below. The global binary — never an absolute path to a node script, which breaks on every other machine |
 
 Do **not** set `model` — leave the user's choice alone.
 
@@ -31,8 +31,23 @@ Do **not** add a `hooks` block. This plugin's hooks are declared in its own `hoo
 and are active as soon as the plugin is enabled. A hook copied into `settings.json` would run
 twice.
 
-## Optional
+## Status line
 
-If the user wants the status line, mention: `npm install -g ccstatusline`, and that a starting
-config is at `${CLAUDE_PLUGIN_ROOT}/assets/ccstatusline-settings.json` which they can copy to
-`~/.config/ccstatusline/settings.json`. Don't copy it for them unless asked.
+Do this as an explicit step, not a footnote. The earlier version of this command only set
+`statusLine.command` when `ccstatusline` was *already* on PATH — which on a new machine it never
+is, so the key was never written and the config this plugin ships was never installed. Nothing
+was broken; it just silently did nothing, forever.
+
+1. Check PATH: `command -v ccstatusline`.
+2. **Already installed** → include `statusLine.command` in the merge diff above like any other key.
+3. **Not installed** → ask whether they want it. Describe it in one line (a configurable status
+   line showing model, context use, git branch, and token cost). If they say no, skip the key
+   entirely and don't ask again this session.
+4. If they say yes: run `npm install -g ccstatusline`, confirm with `command -v ccstatusline`,
+   then include the key in the merge. If npm is missing or the install fails, say so and skip the
+   key — never write a `statusLine.command` that isn't on PATH, which produces a broken status
+   line on every subsequent launch.
+5. Then offer the shipped starting config: copy
+   `${CLAUDE_PLUGIN_ROOT}/assets/ccstatusline-settings.json` to
+   `~/.config/ccstatusline/settings.json`. **Never overwrite an existing file there** — if one
+   exists, say so, show what differs, and leave theirs alone unless they ask.
