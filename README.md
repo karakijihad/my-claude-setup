@@ -24,22 +24,6 @@ one: `SessionStart` context arrives with no user turn attached, so the notice is
 once you type something, and a notice spent on a session you closed immediately would otherwise
 be lost for good. It stops as soon as nothing is missing. Delete that file to see it again.
 
-## Design
-
-Two things were true of the previous symlink-based version and are no longer:
-
-- **A 3,400-token `CLAUDE.md` loaded on every session**, most of it either restated elsewhere in
-  the same file or relevant only occasionally — the independent-review rule alone appeared five
-  times. Now a ~600-token core is injected at session start, and everything situational is a
-  skill that loads on demand. With the nine skill descriptions, resident cost is ~1,050 tokens
-  against 3,400.
-- **A hook that regex-matched your prompt against a keyword table** to decide which protocol to
-  suggest. Skill descriptions already do that matching, semantically rather than by pattern, so
-  the hook is gone and the descriptions carry the trigger vocabulary.
-
-Nothing is lost by moving a protocol out of the resident context. It is loaded when the work
-touches it, in full, rather than summarized permanently.
-
 ## Prerequisites
 
 | Requirement | Needed by | Check |
