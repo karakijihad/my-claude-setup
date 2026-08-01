@@ -12,7 +12,13 @@ they're relevant.
 /plugin install my-claude-setup@my-claude-setup
 ```
 
-Then restart Claude Code and run `/setup` to merge the recommended `settings.json` keys.
+Then restart Claude Code. On the first session after install, the plugin checks what is actually
+missing — companion plugins you don't have, recommended settings not yet applied, leftovers from
+an older symlink install — and offers to walk you through it. It runs nothing without your
+agreement, stays silent if there is nothing to fix, and never raises it again.
+
+Claude Code has no install-time hook event, so this rides on `SessionStart`, gated by a marker at
+`~/.claude/.my-claude-setup-onboarded`. Delete that file to see the offer again.
 
 ## Design
 
@@ -86,7 +92,7 @@ assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit RE
 
 | Hook | Event | What it does |
 |-|-|-|
-| `session-start.sh` → `.py` | SessionStart | Injects the resident core — brevity, code discipline, the confirm-first threshold, the fast path, the independent-review rule — plus current branch and recent commits. If no Python is available it falls back to a reduced core rather than emitting nothing |
+| `session-start.sh` → `.py` | SessionStart | Injects the resident core — brevity, code discipline, the confirm-first threshold, the fast path, the independent-review rule — plus current branch and recent commits, and the one-time onboarding check. If no Python is available it falls back to a reduced core rather than emitting nothing |
 | `brevity.sh` | UserPromptSubmit | Reinforces brevity, which decays over a long session. One `printf`, no stdin parse, no interpreter |
 | `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `branch -D`, `DROP`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`), lockfiles, and `.git/`; scans the **staged diff** for value-shaped secrets on commit |
 | `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |

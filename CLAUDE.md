@@ -14,6 +14,9 @@ references on demand, and enforces four safety hooks. Published as its own marke
   Every token here is paid on every session, so additions need to earn their place.
 - `hooks/session-start.sh` — dispatcher with the no-Python fallback. Edit both when the core changes.
 - `hooks/guard.sh` — all PreToolUse blocking. One script, dispatches on which field is present.
+- `hooks/onboarding.py` — one-time first-run check, imported by `session-start.py`. Detects real
+  state; must never nag a user who is already set up. Reads settings as **`utf-8-sig`**, because
+  Windows tooling writes a BOM and plain `utf-8` would make a healthy config look absent.
 - `hooks/py.sh` — interpreter resolver. Every Python entry point goes through it.
 - `skills/*/SKILL.md` — the `description:` field is the router. See Gotchas.
 - `.claude-plugin/` — `plugin.json` and `marketplace.json`. Bump `version` in the former on release.

@@ -9,10 +9,18 @@ Invoked through py.sh, never as `python3` directly — see that script for why.
 """
 import io
 import json
+import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
+try:
+    from onboarding import notice
+except Exception:  # onboarding is a convenience; never let it cost the core
+    def notice() -> str:
+        return ""
 
 CORE = """\
 Brevity — no preamble, no restatement of the ask, no closing summary. One sentence per status \
@@ -74,7 +82,8 @@ def git_context() -> str:
 
 def main() -> None:
     sys.stdin.read()  # drain payload; nothing in it is needed
-    print(json.dumps({"additionalContext": CORE + git_context()}, ensure_ascii=False))
+    context = CORE + git_context() + notice()
+    print(json.dumps({"additionalContext": context}, ensure_ascii=False))
 
 
 if __name__ == "__main__":
