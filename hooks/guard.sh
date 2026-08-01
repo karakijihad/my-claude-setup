@@ -17,8 +17,16 @@ CMD=$(parse_field "tool_input.command")
 if [ -n "$CMD" ]; then
   # --- Bash ---------------------------------------------------------------
   if echo "$CMD" | grep -qiE \
-    "rm\s+-[a-z]*r[a-z]*f[a-z]*\s+(/|~|\*|\"?\\\$HOME)|rm\s+-[a-z]*f[a-z]*r[a-z]*\s+(/|~|\*)|DROP\s+(TABLE|DATABASE)|TRUNCATE\s+TABLE|push\s+--force(\s|$)|push\s+-f\b|git\s+reset\s+--hard|git\s+clean\s+-[a-z]*f|git\s+branch\s+-D\b|git\s+checkout\s+--\s"; then
+    "rm\s+-[a-z]*r[a-z]*f[a-z]*\s+(/|~|\*|\"?\\\$HOME)|rm\s+-[a-z]*f[a-z]*r[a-z]*\s+(/|~|\*)|DROP\s+(TABLE|DATABASE)|TRUNCATE\s+TABLE|push\s+--force(\s|$)|push\s+-f\b|git\s+reset\s+--hard|git\s+clean\s+-[a-z]*f|git\s+checkout\s+--\s"; then
     echo "BLOCKED: Destructive command. Review and run manually if intended." >&2
+    exit 2
+  fi
+
+  # Case-sensitive, unlike the block above: `git branch -D` force-deletes an
+  # unmerged branch, `git branch -d` refuses to. Folding case caught the safe
+  # one too, so tidying up after a merge tripped the guard.
+  if echo "$CMD" | grep -qE "git\s+branch\s+(-[a-zA-Z]*D|--delete\s+--force|--force\s+--delete)"; then
+    echo "BLOCKED: Force-deletes an unmerged branch. Use -d, or run manually if intended." >&2
     exit 2
   fi
 

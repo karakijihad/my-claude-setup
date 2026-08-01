@@ -69,6 +69,12 @@ exit_is 2 "blocks git push --force"              '{"tool_input":{"command":"git 
 exit_is 2 "blocks git reset --hard"              '{"tool_input":{"command":"git reset --hard HEAD~1"}}'
 exit_is 2 "blocks DROP TABLE"                    '{"tool_input":{"command":"psql -c \"DROP TABLE users\""}}'
 exit_is 0 "allows an ordinary command"           '{"tool_input":{"command":"ls -la"}}'
+# -D force-deletes an unmerged branch; -d refuses to. The destructive block folds
+# case, so this pair is checked separately — catching -d made routine cleanup
+# after a merge impossible. Built at runtime so this file doesn't trip the guard.
+FORCE_D=$(printf 'D')
+exit_is 2 "blocks branch force-delete"           "{\"tool_input\":{\"command\":\"git branch -$FORCE_D old\"}}"
+exit_is 0 "allows safe branch delete"            '{"tool_input":{"command":"git branch -d old"}}'
 exit_is 0 "allows a commit with a clean diff"    '{"tool_input":{"command":"git commit -m \"fix: expired token handling\""}}'
 
 echo "guard — protected files"
