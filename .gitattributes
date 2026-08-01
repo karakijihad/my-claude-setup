@@ -4,3 +4,7 @@
 # Shell scripts must keep LF. With core.autocrlf=true on Windows, text=auto
 # checks them out as CRLF, and bash then fails on the \r ("bad interpreter").
 *.sh text eol=lf
+
+# core.md is data, not prose: the no-Python fallback pipes it through `jq -Rs`,
+# which reads raw bytes, so CRLF would end up inside the emitted JSON string.
+hooks/core.md text eol=lf

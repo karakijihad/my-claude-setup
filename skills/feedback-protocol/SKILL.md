@@ -33,7 +33,7 @@ This loop is the single highest-leverage practice for improving Claude's output 
 
 | Type of correction                                                  | Where to add it                                                        |
 | ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| General behavior (too verbose, wrong tone, asks too many questions) | the resident core in `hooks/session-start.py` |
+| General behavior (too verbose, wrong tone, asks too many questions) | the resident core in `hooks/core.md` |
 | Security mistake (missed validation, exposed secret)                | the `security-protocol` skill — the relevant subfile            |
 | Testing mistake (skipped tests, weak verification)                  | the `testing-protocol` skill                          |
 | Delegation mistake (bad task definition, missing report fields)     | the `agent-protocol` skill                            |

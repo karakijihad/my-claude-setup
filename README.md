@@ -12,13 +12,17 @@ they're relevant.
 /plugin install my-claude-setup@my-claude-setup
 ```
 
-Then restart Claude Code. On the first session after install, the plugin checks what is actually
+Then **restart Claude Code** — installing a plugin mid-session fires no `SessionStart`, so nothing
+happens until you do. On the first sessions after install, the plugin checks what is actually
 missing — companion plugins you don't have, recommended settings not yet applied, leftovers from
 an older symlink install — and offers to walk you through it. It runs nothing without your
-agreement, stays silent if there is nothing to fix, and never raises it again.
+agreement, and stays silent once there is nothing to fix.
 
-Claude Code has no install-time hook event, so this rides on `SessionStart`, gated by a marker at
-`~/.claude/.my-claude-setup-onboarded`. Delete that file to see the offer again.
+Claude Code has no install-time hook event, so this rides on `SessionStart`, tracked by
+`~/.claude/.my-claude-setup-onboarded`. It appears for up to three sessions rather than exactly
+one: `SessionStart` context arrives with no user turn attached, so the notice is only acted on
+once you type something, and a notice spent on a session you closed immediately would otherwise
+be lost for good. It stops as soon as nothing is missing. Delete that file to see it again.
 
 ## Design
 
@@ -92,7 +96,7 @@ assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit RE
 
 | Hook | Event | What it does |
 |-|-|-|
-| `session-start.sh` → `.py` | SessionStart | Injects the resident core — brevity, code discipline, the confirm-first threshold, the fast path, the independent-review rule — plus current branch and recent commits, and the one-time onboarding check. If no Python is available it falls back to a reduced core rather than emitting nothing |
+| `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the independent-review rule — plus current branch and recent commits, and the one-time onboarding check. If no Python is available it falls back to a reduced core rather than emitting nothing |
 | `brevity.sh` | UserPromptSubmit | Reinforces brevity, which decays over a long session. One `printf`, no stdin parse, no interpreter |
 | `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `branch -D`, `DROP`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`), lockfiles, and `.git/`; scans the **staged diff** for value-shaped secrets on commit |
 | `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |
@@ -104,8 +108,9 @@ Two hooks were deliberately removed: a pre-commit test runner that cost up to 12
 and discarded its own output, and a formatter that ran `npx prettier` after every write —
 rewriting Markdown as it was authored and desyncing editor state.
 
-All hooks parse stdin with `lib-parse.sh` (jq if present, Python otherwise), so they work
-without `jq` installed.
+Hooks that need event fields parse stdin with `lib-parse.sh` (jq if present, otherwise a Python
+located by `py.sh`), so they work without `jq` installed. `brevity.sh` is the exception — it
+prints a fixed string and deliberately reads nothing.
 
 ### Skills
 
@@ -148,7 +153,14 @@ and fall back to the manual equivalent — but the workflow is thinner.
 /plugin install code-review@claude-plugins-official        # PR review
 /plugin install code-simplifier@claude-plugins-official    # post-implementation cleanup
 /plugin install playwright@claude-plugins-official         # UI verification
+
+/plugin marketplace add karakijihad/trio-cc                # trio needs its own marketplace
+/plugin install trio@trio-cc                               # independent Codex audit
 ```
+
+This list, the companion sentence at the end of `hooks/core.md`, and `COMPANIONS` in
+`hooks/onboarding.py` name the same set. `hooks/test-hooks.sh` asserts the last two agree; keep
+this one with them.
 
 | Plugin | Referenced by |
 |-|-|

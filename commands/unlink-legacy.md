@@ -31,10 +31,13 @@ Report each of these with its type (symlink/junction → target, or real file/di
   - If it is a symlink into the clone, it must become a real file first — copy the target's
     contents in place — or Claude Code loses its settings when the clone goes. Offer to do that.
   - Read its `hooks` block. Old installs wired hooks by absolute path, e.g.
-    `bash ~/.claude/hooks/block-destructive.sh`. Those scripts no longer exist, so every
-    matching tool call now fails its hook — exit 127, noisy but non-blocking. This plugin
-    declares its own hooks in `hooks/hooks.json`, so any entry pointing into `~/.claude/hooks/`
-    is dead weight. Show the user the exact entries and get confirmation before removing them.
+    `bash ~/.claude/hooks/block-destructive.sh`. Where the named script is gone, every matching
+    tool call now fails its hook — exit 127, noisy but non-blocking. Check whether each
+    referenced script actually exists before calling it dead: `~/.claude/hooks/` is also where a
+    user keeps their *own* hooks, and those are none of this command's business. Only entries
+    naming this config's removed scripts (`block-destructive.sh`, `check-secrets.sh`,
+    `protect-files.sh`, `run-tests.sh`, the prettier formatter) are superseded by
+    `hooks/hooks.json`. Show the user the exact entries and get confirmation before removing them.
     Leave every other hook alone, including any tagged `ccstatusline-managed`.
 - **`CLAUDE.md`** → if it is the old global config this plugin replaced, it is now redundant
   with the session-start hook and will double the rules. Confirm the plugin is installed and

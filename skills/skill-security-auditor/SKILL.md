@@ -19,18 +19,25 @@ clear **PASS / WARN / FAIL** verdict with findings and remediation guidance.
 
 ## Quick Start
 
+Run it through `py.sh`, never as `python3`. On Windows `python3` is usually a 0-byte Microsoft
+Store alias stub that exits 9009 without running anything, and installing Python does not
+displace it; `py.sh` picks an interpreter by executing candidates rather than trusting the name.
+
 ```bash
+AUDIT="bash ${CLAUDE_PLUGIN_ROOT}/hooks/py.sh \
+${CLAUDE_PLUGIN_ROOT}/skills/skill-security-auditor/scripts/skill_security_auditor.py"
+
 # Audit a local skill directory
-python3 scripts/skill_security_auditor.py /path/to/skill-name/
+$AUDIT /path/to/skill-name/
 
 # Audit a skill from a git repo
-python3 scripts/skill_security_auditor.py https://github.com/user/repo --skill skill-name
+$AUDIT https://github.com/user/repo --skill skill-name
 
 # Audit with strict mode (any WARN becomes FAIL)
-python3 scripts/skill_security_auditor.py /path/to/skill-name/ --strict
+$AUDIT /path/to/skill-name/ --strict
 
 # Output JSON report
-python3 scripts/skill_security_auditor.py /path/to/skill-name/ --json
+$AUDIT /path/to/skill-name/ --json
 ```
 
 ## What Gets Scanned
@@ -135,17 +142,17 @@ CVE lookups are out of scope — this tool is offline pattern matching only (see
 
 ```bash
 # Clone to temp dir, audit, then clean up
-python3 scripts/skill_security_auditor.py https://github.com/user/skill-repo --skill my-skill --cleanup
+$AUDIT https://github.com/user/skill-repo --skill my-skill --cleanup
 ```
 
 ### CI/CD Integration
 
 ```yaml
-# GitHub Actions step
+# GitHub Actions step. `python3` is safe on the Linux runners — the Store-stub
+# problem is Windows-only — but use `py.sh` on a windows-latest runner.
 - name: "audit-skill-security"
   run: |
     python3 skill-security-auditor/scripts/skill_security_auditor.py ./skills/new-skill/ --strict --json > audit.json
-    if [ $? -ne 0 ]; then echo "Security audit failed"; exit 1; fi
 ```
 
 ### Batch Audit
@@ -153,7 +160,7 @@ python3 scripts/skill_security_auditor.py https://github.com/user/skill-repo --s
 ```bash
 # Audit all skills in a directory
 for skill in skills/*/; do
-  python3 scripts/skill_security_auditor.py "$skill" --json >> audit-results.jsonl
+  $AUDIT "$skill" --json >> audit-results.jsonl
 done
 ```
 

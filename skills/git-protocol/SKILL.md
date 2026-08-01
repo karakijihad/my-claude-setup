@@ -52,7 +52,7 @@ Use **conventional commits**: `type(scope): description`
 
 - **Never force-push** to shared branches. If you need to rewrite history, do it on your own feature branch before sharing.
 - **Never rewrite shared history.** Rebasing a branch that others have pulled from is destructive.
-- **Never commit secrets.** The `check-secrets.sh` hook scans the staged diff for value-shaped secrets (`key = "value"` patterns, AWS keys, private-key blocks), but it's pattern-based — verify manually: no API keys, tokens, passwords, connection strings, or private keys in any committed file. If a secret was ever committed, rotate it immediately — git history is permanent.
+- **Never commit secrets.** The `guard.sh` hook scans the staged diff for value-shaped secrets (`key = "value"` patterns, AWS keys, private-key blocks), but it's pattern-based — verify manually: no API keys, tokens, passwords, connection strings, or private keys in any committed file. If a secret was ever committed, rotate it immediately — git history is permanent.
 - **Never commit generated files** unless explicitly required (e.g., lock files). Add build artifacts, node_modules, .env, and similar to `.gitignore`.
 
 ---
@@ -62,7 +62,7 @@ Use **conventional commits**: `type(scope): description`
 Before every commit:
 
 - [ ] All tests passing
-- [ ] Lint/format clean (hooks should handle this automatically)
+- [ ] Lint/format clean — **run the project's own command**; no hook does this for you
 - [ ] No secrets in the diff — check with `git diff --staged | grep -iE 'api_key|secret|token|password'`
 - [ ] Commit message follows conventional format
 - [ ] Changes are scoped to one logical unit
@@ -74,7 +74,7 @@ Before every commit:
 - **Every PR needs a description** — what changed, why, how to test it.
 - **Request review** for changes touching auth, data access, or security. Use `feature-dev:code-reviewer` for automated first-pass.
 - **Squash merge** feature branches to keep main history clean. Preserve individual commits only when the intermediate steps have standalone value.
-- **Don't merge with failing tests.** The pre-commit `run-tests.sh` hook enforces this locally, but verify.
+- **Don't merge with failing tests.** Nothing enforces this locally — the pre-commit test-runner hook was removed for cost. Run the suite yourself and read the output before merging.
 
 ---
 
