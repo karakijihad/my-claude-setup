@@ -1,7 +1,7 @@
 {
   "name": "my-claude-setup",
   "description": "Security, testing, git, and delegation discipline for Claude Code. Protocol skills that load on demand, safety hooks, and project-doc scaffolding.",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "author": {
     "name": "karakijihad"
   },
