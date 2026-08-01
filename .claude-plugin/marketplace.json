@@ -1,0 +1,16 @@
+{
+  "name": "my-claude-setup",
+  "description": "Security, testing, git, and delegation discipline for Claude Code.",
+  "owner": {
+    "name": "karakijihad",
+    "url": "https://github.com/karakijihad"
+  },
+  "plugins": [
+    {
+      "name": "my-claude-setup",
+      "source": "./",
+      "description": "Protocol skills that load on demand, safety hooks, and project-doc scaffolding.",
+      "category": "Developer Tools"
+    }
+  ]
+}

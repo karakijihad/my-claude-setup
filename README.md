@@ -1,150 +1,199 @@
 # my-claude-setup
 
-Drop-in Claude Code configuration that enforces security, testing, git discipline, and structured agent delegation across every project. Symlink it to `~/.claude/` once, and every repo you open gets the full protocol stack automatically.
+Security, testing, git, and delegation discipline for Claude Code, packaged as a plugin.
+
+Install it once and every repo you open gets the same rules: minimum-code discipline, a
+mandatory independent review at the end of any code-modifying task, safety hooks that block
+destructive commands and staged secrets, and seven protocol references that load only when
+they're relevant.
+
+```
+/plugin marketplace add karakijihad/my-claude-setup
+/plugin install my-claude-setup@my-claude-setup
+```
+
+Then restart Claude Code and run `/setup` to merge the recommended `settings.json` keys.
+
+## Design
+
+Two things were true of the previous symlink-based version and are no longer:
+
+- **A 3,400-token `CLAUDE.md` loaded on every session**, most of it either restated elsewhere in
+  the same file or relevant only occasionally — the independent-review rule alone appeared five
+  times. Now a ~600-token core is injected at session start, and everything situational is a
+  skill that loads on demand. With the nine skill descriptions, resident cost is ~1,050 tokens
+  against 3,400.
+- **A hook that regex-matched your prompt against a keyword table** to decide which protocol to
+  suggest. Skill descriptions already do that matching, semantically rather than by pattern, so
+  the hook is gone and the descriptions carry the trigger vocabulary.
+
+Nothing is lost by moving a protocol out of the resident context. It is loaded when the work
+touches it, in full, rather than summarized permanently.
+
+## Prerequisites
+
+| Requirement | Needed by | Check |
+|-|-|-|
+| Git | everything | `git --version` |
+| Python 3 | `session-start` hook, `skill-security-auditor` | `python -c "import sys; print(sys.version_info[:2])"` |
+| Node.js | `ccstatusline` status line (optional) | `node --version` |
+
+Every Python entry point in this plugin runs through `hooks/py.sh`, which *executes* each of
+`python3`, `python`, and `py -3` and uses the first that actually works.
+
+<details>
+<summary><b>Windows: the <code>python3</code> Store-stub trap</b></summary>
+
+Windows ships 0-byte *app execution alias* stubs at
+`%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe` and `python3.exe`. They aren't interpreters —
+they exit 9009 with "Python was not found" and open the Microsoft Store.
+
+Installing via winget or python.org does **not** displace them for `python3`, because those
+builds ship `python.exe` and `py.exe` but **no `python3.exe`**. So `python3` stays broken even
+after a successful install.
+
+```powershell
+winget install --id Python.Python.3.13 -e
+```
+
+This plugin tolerates that by probing rather than trusting the name. **Any skill or hook you add
+must do the same — never call `python3` directly.**
+
+To make `python3` work for your own shell use, relying on the installer prepending its directory
+to PATH ahead of `WindowsApps` (verify with `$env:PATH -split ';'`):
+
+```powershell
+$PY = "$env:LOCALAPPDATA\Programs\Python\Python313"
+Copy-Item "$PY\python.exe" "$PY\python3.exe"
+```
+
+Exit code 1618 during install means another MSI holds the installer mutex. Don't kill
+`msiexec`; reboot and retry.
+
+</details>
 
 ## What's inside
 
 ```
-.claude/
-├── CLAUDE.md                     # Core rules — code discipline, workflow, tool/skill reference
-├── settings.json                 # Hooks, plugins, model config, env vars
-├── Docs/Protocols/
-│   ├── Security/                 # Folder-split — one subfile per domain
-│   │   ├── README.md
-│   │   ├── 01-Threat-Model.md
-│   │   ├── 02-Input.md
-│   │   ├── 03-Auth.md
-│   │   ├── 04-Data.md
-│   │   ├── 05-API.md
-│   │   ├── 06-Dependencies.md
-│   │   ├── 07-AI-Agents.md       # Prompt injection, MCP trust, skill supply chain
-│   │   ├── 08-Attack-Vectors.md
-│   │   ├── 09-Review-Gate.md
-│   │   └── 10-Verification.md
-│   ├── TestingProtocol.md        # Test requirements, verification levels, coverage
-│   ├── AgentProtocol.md          # Sub-agent delegation, task reporting, orchestration
-│   ├── GitProtocol.md            # Branching, conventional commits, safety rules
-│   ├── ContextProtocol.md        # Context window management, compaction, session hygiene
-│   └── FeedbackProtocol.md       # Correction classification, rule routing, protocol updates
-├── Templates/                    # Bootstrap skeletons for new projects
-│   ├── project-CLAUDE.md
-│   ├── session-note.md
-│   ├── doclog-entry.md
-│   ├── changelog-entry.md
-│   ├── audit-README.md
-│   └── Docs-skeleton/            # Full Docs/ tree to copy into new projects
-├── ccstatusline/
-│   └── settings.json             # Status line widget layout — linked to ~/.config/ccstatusline
-├── hooks/
-│   └── protocol-reminder.sh      # UserPromptSubmit hook — brevity rule + protocol routing
-└── skills/
-    ├── pr-review-expert/         # Blast radius, security scan, coverage delta for PRs
-    ├── dependency-auditor/       # Vulnerability scanning, license compliance, upgrade planning
-    └── skill-security-auditor/   # Audit skills before installation
-
-project-template.md               # Pointer to .claude/Templates/
-SETUP.md                          # Full inventory of plugins, skills, hooks, and env vars
+.claude-plugin/     marketplace.json, plugin.json
+hooks/              hooks.json + scripts
+skills/             9 skills
+commands/           setup, bootstrap-project, unlink-legacy
+assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit README, Docs skeleton
 ```
 
-## Per-project `Docs/` convention
+### Hooks
 
-Each project follows a folder-based layout that keeps append-only records bounded:
+| Hook | Event | What it does |
+|-|-|-|
+| `session-start.sh` → `.py` | SessionStart | Injects the resident core — brevity, code discipline, the confirm-first threshold, the fast path, the independent-review rule — plus current branch and recent commits. If no Python is available it falls back to a reduced core rather than emitting nothing |
+| `brevity.sh` | UserPromptSubmit | Reinforces brevity, which decays over a long session. One `printf`, no stdin parse, no interpreter |
+| `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `branch -D`, `DROP`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`), lockfiles, and `.git/`; scans the **staged diff** for value-shaped secrets on commit |
+| `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |
+
+`guard.sh` is one script doing what three used to. The old ones each spawned a shell and a JSON
+parse on *every* Bash call just to determine they had nothing to do.
+
+Two hooks were deliberately removed: a pre-commit test runner that cost up to 120s per commit
+and discarded its own output, and a formatter that ran `npx prettier` after every write —
+rewriting Markdown as it was authored and desyncing editor state.
+
+All hooks parse stdin with `lib-parse.sh` (jq if present, Python otherwise), so they work
+without `jq` installed.
+
+### Skills
+
+Invoke by name, or let the description trigger them.
+
+| Skill | Covers |
+|-|-|
+| `security-protocol` | Threat model, input validation, auth, data, API, dependencies, AI/agent security — 10 references |
+| `testing-protocol` | When tests are required, quality rules, coverage, verification levels |
+| `git-protocol` | Branching, conventional commits, safety rules, PR process |
+| `agent-protocol` | Delegation, structured task reports, orchestration |
+| `context-protocol` | Compaction thresholds, session hygiene, sub-agent budgeting |
+| `feedback-protocol` | Turning corrections into permanent rules |
+| `project-docs` | The `Docs/` convention, line budgets, templates |
+| `dependency-auditor` | Vulnerability scanning, license compliance, upgrade planning via each ecosystem's native tools |
+| `skill-security-auditor` | Static audit of a skill before you install it |
+
+`security-protocol` §7 (AI/agent security) is the one to read before adding an MCP server or
+installing someone else's skill — prompt injection, tool authority, supply chain, transcript
+hygiene.
+
+### Commands
+
+| Command | Does |
+|-|-|
+| `/setup` | Merges the recommended `settings.json` keys. Shows a diff, asks first, idempotent |
+| `/bootstrap-project` | Scaffolds a project `CLAUDE.md` and the `Docs/` tree |
+| `/unlink-legacy` | Finds and removes an old symlink installation |
+
+## Companion plugins
+
+The protocols name these by default. Nothing hard-fails without them — Claude is told to say so
+and fall back to the manual equivalent — but the workflow is thinner.
+
+```
+/plugin install feature-dev@claude-plugins-official        # code-explorer, code-architect, code-reviewer
+/plugin install superpowers@claude-plugins-official        # brainstorming, plans, TDD, verification
+/plugin install context7@claude-plugins-official           # live library docs instead of model memory
+/plugin install security-guidance@claude-plugins-official  # security review pass, /security-review
+/plugin install code-review@claude-plugins-official        # PR review
+/plugin install code-simplifier@claude-plugins-official    # post-implementation cleanup
+/plugin install playwright@claude-plugins-official         # UI verification
+```
+
+| Plugin | Referenced by |
+|-|-|
+| `feature-dev` | The independent-review rule names `feature-dev:code-reviewer` as its default reviewer — **the one that matters most** |
+| `superpowers` | The larger-task sequence: brainstorming, writing-plans, test-driven-development, verification-before-completion |
+| `context7` | The resident rule to verify external library APIs against docs rather than model memory |
+| `security-guidance` | `security-protocol` §9 review gate |
+| `code-review` | `git-protocol` §5 PR process |
+| `code-simplifier` | The simplify step, and `testing-protocol` §2.4 (re-run tests after it) |
+| `playwright` | `testing-protocol` §5 — the verification level for any UI change |
+
+Optional second opinion — an independent Codex audit that adjudicates its findings against the
+code, from a separate marketplace:
+
+```
+/plugin marketplace add karakijihad/trio-cc
+/plugin install trio@trio-cc
+```
+
+## Per-project docs
+
+Projects following this setup keep an append-only `Docs/` tree — newest first, one file per day,
+folder-based so nothing grows unbounded:
 
 ```
 Docs/
-├── Changelog/YYYY-MM-DD.md       # One file per day — all changelog entries that day
-├── Doclog/YYYY-MM-DD.md          # One file per day — all decisions that day
-├── Sessions/YYYY-MM-DD.md        # One file per day — work log
-├── Audit/{agent}/YYYY-MM-DD/     # Review artifacts — claude/ and codex/
-│   └── audit-{N}.md
-├── Plan/                         # Stage checklists for in-flight work
-├── Logs/CODEMAP.md               # File map — updated on structural changes
-└── Protocols/                    # Project-specific overrides (rare)
+├── Changelog/YYYY-MM-DD.md
+├── Doclog/YYYY-MM-DD.md          decisions
+├── Sessions/YYYY-MM-DD.md        work log
+├── Audit/{agent}/YYYY-MM-DD/     review evidence
+├── Plan/                         in-flight stage checklists
+├── Logs/CODEMAP.md
+└── Protocols/                    project overrides, rare
 ```
 
-**Rules:** newest first in every file; audits are evidence, not decisions; decisions belong in Doclog or Sessions.
+Decisions live in `Doclog/` and `Sessions/`; `Audit/` is evidence, never a decision by itself.
+`/bootstrap-project` creates all of it. See the `project-docs` skill for line budgets.
 
-## Quick start
+## Migrating from the symlink version
 
-**1. Clone**
-
-```bash
-git clone https://github.com/YOUR_USERNAME/my-claude-setup.git
-```
-
-**2. Symlink to `~/.claude/`**
-
-Link the items individually rather than the whole directory — `~/.claude` also holds Claude's
-runtime state (`sessions/`, `projects/`, `history.jsonl`, `.credentials.json`) that must stay local.
-See [SETUP.md](SETUP.md#1-installation) for the exact per-OS commands.
-
-**3. Install plugins and the status line**
-
-Open Claude Code and run each install command from [SETUP.md](SETUP.md#2-required-plugins),
-then `npm install -g ccstatusline` — see [SETUP.md](SETUP.md#2b-status-line-ccstatusline).
-
-**4. Bootstrap a new project**
-
-```bash
-cd your-project
-cp ~/.claude/Templates/project-CLAUDE.md ./CLAUDE.md
-cp -r ~/.claude/Templates/Docs-skeleton ./Docs
-# Fill in project specifics in CLAUDE.md.
-```
-
-The global config handles protocols, tools, and workflow. The project file only needs architecture, key files, tech stack, commands, environment, and gotchas.
-
-## How it works
-
-Claude Code loads configuration in layers that stack (not override):
-
-1. **`~/.claude/CLAUDE.md`** (global) — always active, every project
-2. **`<project>/CLAUDE.md`** (project) — adds project-specific context
-3. **`<project>/.claude.local.md`** (personal) — your overrides, gitignored
-
-The global config provides the foundation: security-first code discipline, structured verification before any commit, agent delegation with evidence-based reporting, and context management to keep sessions lean. Project files add the specifics.
-
-## What the hooks enforce
-
-| Hook | What it does |
-|------|-------------|
-| `protocol-reminder.sh` | Injects brevity rule on every prompt; routes keywords to protocol files |
-| Destructive command blocker | Blocks `rm -rf /`, `DROP TABLE`, force push |
-| Protected file guard | Blocks edits to `.env`, lockfiles, `.git/` |
-| Secret-in-commit blocker | Blocks commits containing secrets |
-| Auto-formatter | Runs prettier/black/gofmt/rustfmt on every file save |
-| Test runner on stop | Runs project tests before task completion |
-| Git context on start | Injects current branch and recent commits |
-| Desktop notification | OS notification when Claude needs attention |
-
-## Plugins
-
-See [SETUP.md](SETUP.md#3-full-inventory) for the complete inventory.
-
-Core stack: superpowers, code-simplifier, context7, feature-dev, code-review, security-guidance, playwright, firecrawl, skill-security-auditor.
-
-## Protocol docs
-
-Each protocol is a standalone reference document that Claude reads on-demand (not loaded into every session):
-
-- **Security/** — folder-split: threat model, input validation, auth, data protection, API security, dependencies, AI/agent workflow, attack vectors, review gate, verification
-- **TestingProtocol** — when tests are required, test quality rules, verification levels
-- **AgentProtocol** — orchestration model, delegation reference, structured task reporting, verification gates
-- **GitProtocol** — branching strategy, conventional commits, safety rules, PR process
-- **ContextProtocol** — compaction rules, session hygiene, sub-agent context, warning signs
-- **FeedbackProtocol** — correction classification, where to add rules, protocol routing table
+1. `/plugin marketplace add karakijihad/my-claude-setup` and install.
+2. `/unlink-legacy` — it identifies every link before removing anything, and refuses to delete
+   real files or your `settings.json`.
+3. `/setup`.
+4. Restart Claude Code.
 
 ## Updating
 
-Because `~/.claude/` is symlinked to this repo, any edits here are immediately live. Push changes to keep all your machines in sync:
-
-```bash
-cd /path/to/my-claude-setup
-git add -A && git commit -m "docs: update security protocol"
-git push
 ```
-
-On other machines: `git pull` and you're current.
+/plugin update my-claude-setup@my-claude-setup
+```
 
 ## License
 

@@ -1,2 +1,21 @@
 # Nested Claude local state (created when running Claude Code inside this repo)
 .claude/.claude/
+
+# Crash artifacts (Git Bash on Windows)
+*.stackdump
+
+# Claude Code runtime state — never commit (transcripts/history may contain secrets)
+.claude/history.jsonl
+.claude/projects/
+.claude/sessions/
+.claude/todos/
+.claude/statsig/
+.claude/shell-snapshots/
+.claude/plugins/
+.claude/cache/
+.claude/logs/
+.claude/settings.local.json
+__pycache__/
+
+# Trio raw audit artifacts — promoted copies live in Docs/Audit/
+.trio/

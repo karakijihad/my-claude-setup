@@ -1,0 +1,19 @@
+{
+  "name": "my-claude-setup",
+  "description": "Security, testing, git, and delegation discipline for Claude Code. Protocol skills that load on demand, safety hooks, and project-doc scaffolding.",
+  "version": "1.0.0",
+  "author": {
+    "name": "karakijihad"
+  },
+  "homepage": "https://github.com/karakijihad/my-claude-setup",
+  "repository": "https://github.com/karakijihad/my-claude-setup",
+  "license": "MIT",
+  "keywords": [
+    "security",
+    "testing",
+    "git",
+    "protocols",
+    "code-review",
+    "workflow"
+  ]
+}
