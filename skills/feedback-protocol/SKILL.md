@@ -38,7 +38,7 @@ This loop is the single highest-leverage practice for improving Claude's output 
 | Testing mistake (skipped tests, weak verification)                  | the `testing-protocol` skill                          |
 | Delegation mistake (bad task definition, missing report fields)     | the `agent-protocol` skill                            |
 | Git mistake (bad commit message, committed to main)                 | the `git-protocol` skill                              |
-| Context issue (lost track of plan, degraded quality)                | the `context-protocol` skill                          |
+| Sub-agent context issue (over-stuffed brief, vague report)          | the `agent-protocol` skill — §4                       |
 | Project-specific (wrong import style, misused library API)          | project `CLAUDE.md` — Gotchas section                                  |
 | Tool misuse (wrong skill invoked, skipped Context7)                 | the resident core, or the triggering skill's `description` |
 

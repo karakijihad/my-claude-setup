@@ -1,9 +1,9 @@
 ---
 name: agent-protocol
 description: >
-  Sub-agent delegation, the structured task-report format, and orchestration
-  responsibilities. Use before dispatching sub-agents, spawning parallel agents, or
-  delegating work, and when reviewing what an agent reported back.
+  Sub-agent delegation, the structured task-report format, sub-agent context budgeting,
+  and orchestration responsibilities. Use before dispatching sub-agents, spawning parallel
+  agents, or delegating work, and when reviewing what an agent reported back.
 ---
 
 # Agent Protocol
@@ -68,7 +68,15 @@ Every delegated task must return a structured report.
 
 ---
 
-## 4. Orchestrator Responsibilities
+## 4. Sub-Agent Context
+
+- **Prefer fresh sub-agent sessions** for exploration and analysis. Sub-agents get their own context window — use this to keep the main context lean.
+- **Don't pass unnecessary context to sub-agents.** Give them the specific task and the specific files they need, not a dump of everything.
+- **Sub-agents should return concise reports**, not raw output. The structured task report format (§3) is designed to carry maximum information in minimum tokens.
+
+---
+
+## 5. Orchestrator Responsibilities
 
 1. **Define clear tasks** with specific acceptance criteria.
 2. **Assign the right agent** — match task type to agent specialty.
@@ -79,7 +87,7 @@ Every delegated task must return a structured report.
 
 ---
 
-## 5. Common Delegation Patterns
+## 6. Common Delegation Patterns
 
 **Parallel Feature Implementation:** Define tasks with clear boundaries → dispatch parallel agents → review reports → verify integration → commit.
 
@@ -89,7 +97,7 @@ Every delegated task must return a structured report.
 
 ---
 
-## 6. Verification Checklist — Agent Gate
+## 7. Verification Checklist — Agent Gate
 
 - [ ] Each delegated task has specific acceptance criteria
 - [ ] Task report received from every agent with all required fields
