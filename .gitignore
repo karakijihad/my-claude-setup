@@ -19,3 +19,6 @@ __pycache__/
 
 # Trio raw audit artifacts — promoted copies live in Docs/Audit/
 .trio/
+
+# Local docs, including promoted audit runs — kept on disk, not in git
+Docs/
