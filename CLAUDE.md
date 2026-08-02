@@ -5,7 +5,7 @@
 
 ## Project
 
-A Claude Code plugin. It injects a small always-resident rule core, loads seven protocol
+A Claude Code plugin. It injects a small always-resident rule core, loads six protocol
 references on demand, and enforces four safety hooks. Published as its own marketplace.
 
 ## Key files
@@ -77,10 +77,12 @@ Add a case for anything you change. Traps worth knowing before you write one:
 
 ## Docs
 
-`Docs/Audit/` only. Trio promotes finished audit runs there — `codex/<date>/` is what Codex
-reported, `claude/<date>/` is the adjudication: verdict per finding, the disagreements, and what
-stayed open. Worth keeping because an audit's *refutations* are the part git history loses; a
-commit shows what changed, not which findings were argued down and why.
+`Docs/Audit/`, and **local only** — `Docs/` is gitignored, so nothing under it is committed.
+Trio promotes finished audit runs there — `codex/<date>/` is what Codex reported,
+`claude/<date>/` is the adjudication: verdict per finding, the disagreements, and what stayed
+open. Worth keeping on disk because an audit's *refutations* are the part git history loses; a
+commit shows what changed, not which findings were argued down and why. Keeping it out of git
+is deliberate: it is working evidence for the maintainer, not something the plugin ships.
 
 Two things to know when reading one. Trio's top-level `findings` array reads `0` on a
 `ceiling_reached` run even when that pass's lenses reported plenty — check

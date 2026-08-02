@@ -4,7 +4,7 @@ Security, testing, git, and delegation discipline for Claude Code, packaged as a
 
 Install it once and every repo you open gets the same rules: minimum-code discipline, a
 mandatory independent review at the end of any code-modifying task, safety hooks that block
-destructive commands and staged secrets, and seven protocol references that load only when
+destructive commands and staged secrets, and six protocol references that load only when
 they're relevant.
 
 ```
@@ -71,8 +71,8 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 ```
 .claude-plugin/     marketplace.json, plugin.json
 hooks/              hooks.json + scripts
-skills/             9 skills
-commands/           setup, bootstrap-project, unlink-legacy
+skills/             8 skills
+commands/           setup, bootstrap-project
 assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit README, Docs skeleton
 ```
 
@@ -105,8 +105,7 @@ Invoke by name, or let the description trigger them.
 | `security-protocol` | Threat model, input validation, auth, data, API, dependencies, AI/agent security — 10 references |
 | `testing-protocol` | When tests are required, quality rules, coverage, verification levels |
 | `git-protocol` | Conventional commits, safety rules, PR process — and asks before branching rather than assuming |
-| `agent-protocol` | Delegation, structured task reports, orchestration |
-| `context-protocol` | Compaction thresholds, session hygiene, sub-agent budgeting |
+| `agent-protocol` | Delegation, structured task reports, sub-agent context budgeting, orchestration |
 | `feedback-protocol` | Turning corrections into permanent rules |
 | `project-docs` | The `Docs/` convention, line budgets, templates |
 | `dependency-auditor` | Vulnerability scanning, license compliance, upgrade planning via each ecosystem's native tools |
@@ -122,7 +121,6 @@ hygiene.
 |-|-|
 | `/setup` | Merges the recommended `settings.json` keys. Shows a diff, asks first, idempotent |
 | `/bootstrap-project` | Scaffolds a project `CLAUDE.md` and the `Docs/` tree |
-| `/unlink-legacy` | Finds and removes an old symlink installation |
 
 ## Companion plugins
 
@@ -186,10 +184,14 @@ Decisions live in `Doclog/` and `Sessions/`; `Audit/` is evidence, never a decis
 ## Migrating from the symlink version
 
 1. `/plugin marketplace add karakijihad/my-claude-setup` and install.
-2. `/unlink-legacy` — it identifies every link before removing anything, and refuses to delete
-   real files or your `settings.json`.
-3. `/setup`.
-4. Restart Claude Code.
+2. `/setup`.
+3. Restart Claude Code.
+
+The first-run check reports whatever the old install left behind — `~/.claude/CLAUDE.md`, a
+linked `Docs/`, `hooks/` or `Templates/`, and any hook still naming this config's removed
+scripts — and offers to remove them, listing each path first. It never touches your
+`settings.json`, and only links into an old clone are candidates; real files are reported and
+left alone.
 
 ## Updating
 
