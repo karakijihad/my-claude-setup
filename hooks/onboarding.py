@@ -166,7 +166,10 @@ def _compose(missing: list, gaps: list, legacy: list) -> str:
     if legacy:
         lines.append("Leftovers from the old symlink install:")
         lines += [f"  - {x}" for x in legacy]
-        lines.append("  Offer /unlink-legacy, which identifies everything before removing anything.")
+        lines.append(
+            "  Offer to remove them, listing each path first. Never touch settings.json, "
+            "and never delete a real file or directory — only links into an old clone."
+        )
     return "\n".join(lines)
 
 
