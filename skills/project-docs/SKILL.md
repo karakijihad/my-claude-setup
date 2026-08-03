@@ -24,8 +24,8 @@ Docs/
 │   └── YYYY-MM-DD.md          # One file per day — work log
 ├── Audit/
 │   ├── README.md              # How audits are produced and reconciled
-│   ├── claude/YYYY-MM-DD/audit-{N}.md
-│   └── codex/YYYY-MM-DD/audit-{N}.md
+│   ├── claude/YYYY-MM-DD/audit-{N}.md   # the adjudication
+│   └── codex/YYYY-MM-DD/audit-{N}.md    # what the auditor reported
 ├── Plan/                      # Stage checklists for in-flight work
 ├── Logs/
 │   ├── CODEMAP.md             # File map — roles, data flows
@@ -37,6 +37,11 @@ Docs/
 
 **Decisions that were accepted** live in `Doclog/` and `Sessions/`. **What reviewers found**
 lives in `Audit/`. An audit is never a decision by itself.
+
+`trio:trio-audit` produces both halves of that tree — `codex/` is what its lenses reported,
+`claude/` is the verdict per finding — and promoting a finished run is what fills them. Record
+the same two halves by hand when the audit was manual; what matters is that the refutations
+survive, since a commit shows what changed, not which findings were argued down.
 
 `CODEMAP.md` updates after any structural change — files created, deleted, moved, restructured.
 

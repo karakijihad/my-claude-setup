@@ -128,6 +128,10 @@ Best use cases for Claude:
 3. Final decisions go into `Docs/Doclog/YYYY-MM-DD.md`
 4. Work updates go into `Docs/Sessions/YYYY-MM-DD.md`
 
+With the `trio` plugin installed, `trio:trio-audit` runs Option A end to end — Codex reviews
+read-only through parallel lenses, Claude adjudicates each finding against the code — and a
+promoted run lands in exactly the layout above.
+
 ### Option B — Claude first
 
 1. Claude reviews architecture/design intent

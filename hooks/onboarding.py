@@ -62,7 +62,7 @@ COMPANIONS = {
     "code-review": ("the git-protocol PR process", OFFICIAL, None),
     "code-simplifier": ("the simplify step", OFFICIAL, None),
     "playwright": ("the verification level for any UI change", OFFICIAL, None),
-    "trio": ("the independent Codex audit the review rule can use", "trio-cc", "karakijihad/trio-cc"),
+    "trio": ("the independent audit agent-protocol delegates to", "trio-cc", "karakijihad/trio-cc"),
 }
 
 # Scripts this config used to install into ~/.claude/hooks/. Only these are

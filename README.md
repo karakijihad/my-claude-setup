@@ -153,7 +153,7 @@ this one with them.
 | `code-review` | `git-protocol` §5 PR process |
 | `code-simplifier` | The simplify step, and `testing-protocol` §2.4 (re-run tests after it) |
 | `playwright` | `testing-protocol` §5 — the verification level for any UI change |
-| `trio` | The optional second opinion on the independent-review rule — Codex audits read-only, Claude adjudicates each finding against the code. Ships from its own marketplace, so it needs the `marketplace add` line above |
+| `trio` | `agent-protocol` §2 delegation table, `security-protocol` §9 as an accepted security review, and the `Audit/` tree `project-docs` describes — Codex reviews read-only through parallel lenses, Claude adjudicates each finding |
 
 ## Per-project docs
 

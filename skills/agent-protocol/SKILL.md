@@ -36,6 +36,8 @@ Claude is the **orchestrator**. The main context coordinates work, delegates to 
 | Implementation blueprint      | `feature-dev:code-architect`                               |
 | Post-implementation review    | `feature-dev:code-reviewer`                                |
 | Security-focused review       | `feature-dev:code-reviewer` (with explicit security brief) |
+| Independent audit of the diff | `trio:trio-audit` (Codex lenses read-only, Claude adjudicates) |
+| Second opinion on a decision  | `trio:trio-consult`                                        |
 | 2+ independent tasks          | `superpowers:dispatching-parallel-agents`                  |
 
 **Parallelization:** If tasks have no shared state or sequential dependency, launch them in one message with multiple `Agent` calls.
