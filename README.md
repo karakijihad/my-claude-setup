@@ -153,14 +153,7 @@ this one with them.
 | `code-review` | `git-protocol` §5 PR process |
 | `code-simplifier` | The simplify step, and `testing-protocol` §2.4 (re-run tests after it) |
 | `playwright` | `testing-protocol` §5 — the verification level for any UI change |
-
-Optional second opinion — an independent Codex audit that adjudicates its findings against the
-code, from a separate marketplace:
-
-```
-/plugin marketplace add karakijihad/trio-cc
-/plugin install trio@trio-cc
-```
+| `trio` | The optional second opinion on the independent-review rule — Codex audits read-only, Claude adjudicates each finding against the code. Ships from its own marketplace, so it needs the `marketplace add` line above |
 
 ## Per-project docs
 
