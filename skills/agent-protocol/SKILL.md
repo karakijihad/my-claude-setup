@@ -42,6 +42,16 @@ Claude is the **orchestrator**. The main context coordinates work, delegates to 
 
 **Parallelization:** If tasks have no shared state or sequential dependency, launch them in one message with multiple `Agent` calls.
 
+**When trio is worth it — your judgment, not a required step.** The default reviewer stays
+`feature-dev:code-reviewer`; trio is the escalation on top of it, weighed the same way the
+resident core decides whether a task needs a plan file. Escalate when the work is structural or
+hard to reverse — a refactor across modules, a migration, a new dependency or agent/MCP surface,
+anything touching auth or data access, or a change you already wrote a plan for. Don't escalate
+a rename, a doc edit, a config tweak, or a single-function change; the under-~50-lines path ends
+at implement → verify → review → commit, and an audit there costs a Codex round for nothing.
+Same for `trio:trio-consult` — it's for a decision with real branches, not a settled call. When
+you skip it on work that looks heavy, say so in one line rather than skipping silently.
+
 ---
 
 ## 3. Task Reporting
