@@ -37,6 +37,20 @@ Tests are **optional** for:
 
 If you're unsure whether a change needs tests, it needs tests.
 
+### Where this and `superpowers:test-driven-development` disagree
+
+They do disagree, deliberately, and the boundary is the review tier. That skill's Iron Law —
+*no production code without a failing test first* — is written to admit no exceptions, and it
+names "skip TDD just this once" as rationalization. It is right, **from Tier 2 upward**: once
+work earns an independent reviewer it earns a failing test first, and you do not negotiate with
+the Iron Law there.
+
+At **Tier 1** — under ~50 lines, clear linear intent, nothing sensitive — this protocol wins and
+TDD is not invoked at all. That is the whole point of a fast path.
+
+Resolve it by tier, never by argument in the moment. Two skills reaching opposite conclusions on
+the same change means you got the tier wrong, not that one of them is broken.
+
 ---
 
 ## 2. Testing Workflow

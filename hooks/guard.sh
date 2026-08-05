@@ -30,6 +30,27 @@ if [ -n "$CMD" ]; then
     exit 2
   fi
 
+  # Supply chain. A remote script piped straight into a shell runs code nobody
+  # read, from a URL that can serve something different the second time.
+  # security-protocol §06 argues this in prose; here it is enforceable.
+  if echo "$CMD" | grep -qiE "(curl|wget)[^|]*\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|k)?sh"; then
+    echo "BLOCKED: Pipes a remote script into a shell. Download it, read it, then run it." >&2
+    exit 2
+  fi
+
+  # Both of these defeat a control that exists on purpose. -f stages a file
+  # .gitignore was excluding, which is the usual way a .env reaches a remote;
+  # --no-verify skips the git hooks that would have caught it on the way out.
+  if echo "$CMD" | grep -qE "git[[:space:]]+add[[:space:]]+(-[a-zA-Z]*f|--force)"; then
+    echo "BLOCKED: 'git add -f' stages a file .gitignore excluded. Check what it is first." >&2
+    exit 2
+  fi
+
+  if echo "$CMD" | grep -qE "git[[:space:]]+commit[^|;&]*([[:space:]]-n([[:space:]]|$)|--no-verify|--no-gpg-sign)"; then
+    echo "BLOCKED: Commit skips git's own hooks. Fix what the hook objects to instead." >&2
+    exit 2
+  fi
+
   # Secret scan applies to commits only, and reads the staged diff — not the
   # command text — so "fix: handle expired tokens" is not a false positive.
   echo "$CMD" | grep -qE "(^|&&|;)\s*git\s+([a-z-]+\s+)*commit" || exit 0

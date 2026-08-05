@@ -10,7 +10,7 @@ description: >
 
 > Applies to all delegation — built-in sub-agents, custom agents, and parallel dispatch.
 > **Skip delegation** for tasks under ~50 lines with clear intent — do them directly. Sub-agents add overhead; use them when the gain outweighs the cost.
-> **Exception:** the end-of-task independent reviewer always fires after code-modifying work, regardless of size.
+> **Exception:** review still escalates by stakes — the ladder lives in the resident core. Tier 1 (own diff, small and non-sensitive) dispatches no agent at all; Tier 2 dispatches `feature-dev:code-reviewer`; Tier 3 adds `trio:trio-audit` on top.
 
 **Core principle: delegate with structure, report with evidence, verify before claiming done.**
 
@@ -42,15 +42,14 @@ Claude is the **orchestrator**. The main context coordinates work, delegates to 
 
 **Parallelization:** If tasks have no shared state or sequential dependency, launch them in one message with multiple `Agent` calls.
 
-**When trio is worth it — your judgment, not a required step.** The default reviewer stays
-`feature-dev:code-reviewer`; trio is the escalation on top of it, weighed the same way the
-resident core decides whether a task needs a plan file. Escalate when the work is structural or
-hard to reverse — a refactor across modules, a migration, a new dependency or agent/MCP surface,
-anything touching auth or data access, or a change you already wrote a plan for. Don't escalate
-a rename, a doc edit, a config tweak, or a single-function change; the under-~50-lines path ends
-at implement → verify → review → commit, and an audit there costs a Codex round for nothing.
-Same for `trio:trio-consult` — it's for a decision with real branches, not a settled call. When
-you skip it on work that looks heavy, say so in one line rather than skipping silently.
+**When trio is worth it.** `feature-dev:code-reviewer` is Tier 2 and stays the default; trio is
+Tier 3 on top of it. Escalate when the work is structural or hard to reverse — a refactor across
+modules, a migration, a new dependency or agent/MCP surface, anything touching auth or data
+access, a release, or a change you already wrote a plan for. Don't escalate a rename, a doc edit,
+a config tweak, or a single-function change — Tier 1 ends at implement → verify → own-diff review
+→ commit, and an audit there costs a Codex round for nothing. Same for `trio:trio-consult`: for a
+decision with real branches, not a settled call. Skipping it on work that looks heavy? Say so in
+one line rather than silently.
 
 ---
 

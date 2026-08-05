@@ -148,16 +148,19 @@ This list, the companion sentence at the end of `hooks/core.md`, and `COMPANIONS
 `hooks/onboarding.py` name the same set. `hooks/test-hooks.sh` asserts the last two agree; keep
 this one with them.
 
-| Plugin | Referenced by |
-|-|-|
-| `feature-dev` | The independent-review rule names `feature-dev:code-reviewer` as its default reviewer — **the one that matters most** |
-| `superpowers` | The larger-task sequence: brainstorming, writing-plans, test-driven-development, verification-before-completion |
-| `context7` | The resident rule to verify external library APIs against docs rather than model memory |
-| `security-guidance` | `security-protocol` §9 review gate |
-| `code-review` | `git-protocol` §5 PR process |
-| `code-simplifier` | The simplify step, and `testing-protocol` §2.4 (re-run tests after it) |
-| `playwright` | `testing-protocol` §5 — the verification level for any UI change |
-| `trio` | `agent-protocol` §2 delegation table, `security-protocol` §9 as an accepted security review, and the `Audit/` tree `project-docs` describes — Codex reviews read-only through parallel lenses, Claude adjudicates each finding. Escalation for structural work, weighed per task like a plan file — not a step on every change |
+Each has **exactly one job**, so no two contend for the same decision. That assignment is the
+point — the failure mode isn't tokens, it's four plugins that all think they own "review".
+
+| Plugin | Its one job | Fires when |
+|-|-|-|
+| `feature-dev` | **Tier 2 reviewer** — `code-reviewer`, the ladder's default. **The one that matters most** | Any real change |
+| `trio` | **Tier 3 audit** — Codex reviews read-only through parallel lenses, Claude adjudicates each finding. Also second opinions via `trio-consult` | Auth, secrets, payments, migrations, deletion; >5 files; a release; or reviewer-vs-diff disagreement |
+| `superpowers` | **Process** — brainstorming, writing-plans, test-driven-development, verification-before-completion | Larger tasks only — never the fast path |
+| `security-guidance` | **Tier 3 security pass** — not a general reviewer | `security-protocol` §9 gate |
+| `code-review` | **GitHub PR review** — a different artifact from a working diff | An actual PR exists |
+| `code-simplifier` | **Opt-in cleanup**, run before the reviewer sees the code | You ask, on larger tasks |
+| `context7` | **Unfamiliar or version-sensitive APIs** — not settled ones | Reaching for an API you can't verify from the repo |
+| `playwright` | **Changed interactive or rendering behaviour** | Not every CSS tweak |
 
 ## Per-project docs
 

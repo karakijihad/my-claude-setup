@@ -55,14 +55,14 @@ OFFICIAL = "claude-plugins-official"
 # with a real argument, so carry it rather than emitting a <url> placeholder the
 # user cannot act on.
 COMPANIONS = {
-    "feature-dev": ("the code-reviewer agent the independent-review rule names", OFFICIAL, None),
-    "superpowers": ("brainstorming, plans, TDD, verification", OFFICIAL, None),
-    "context7": ("live library docs instead of model memory", OFFICIAL, None),
-    "security-guidance": ("the security-protocol review gate", OFFICIAL, None),
-    "code-review": ("the git-protocol PR process", OFFICIAL, None),
-    "code-simplifier": ("the simplify step", OFFICIAL, None),
-    "playwright": ("the verification level for any UI change", OFFICIAL, None),
-    "trio": ("the independent audit agent-protocol delegates to", "trio-cc", "karakijihad/trio-cc"),
+    "feature-dev": ("the Tier-2 reviewer the escalation ladder names", OFFICIAL, None),
+    "superpowers": ("process on larger tasks — brainstorming, plans, TDD, verification", OFFICIAL, None),
+    "context7": ("unfamiliar or version-sensitive library APIs", OFFICIAL, None),
+    "security-guidance": ("the Tier-3 security pass", OFFICIAL, None),
+    "code-review": ("GitHub PR review", OFFICIAL, None),
+    "code-simplifier": ("opt-in cleanup before the reviewer", OFFICIAL, None),
+    "playwright": ("verifying changed interactive or rendering behaviour", OFFICIAL, None),
+    "trio": ("the Tier-3 independent audit", "trio-cc", "karakijihad/trio-cc"),
 }
 
 # Scripts this config used to install into ~/.claude/hooks/. Only these are

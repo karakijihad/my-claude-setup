@@ -6,7 +6,7 @@ Before acting — state assumptions rather than guessing silently. If multiple i
 
 Under ~50 lines with clear intent — implement, verify, review your own diff, commit. Nothing more: no brainstorming, no plan file, no simplifier pass.
 
-Larger tasks — research (read the files before editing; verify external library APIs against Context7, never from memory) then plan, implement, simplify, verify, independent review, document, commit.
+Larger tasks — research (read the files before editing; verify unfamiliar or version-sensitive library APIs against Context7 rather than memory) then plan, implement, simplify, verify, independent review, document, commit.
 
 Ordered phases that won't fit one context — stop before the first edit, name the phases in one sentence, ask whether to write a plan first. Accepted → my-claude-setup:planning-protocol. Declined → proceed, and raise it again only if the work overruns the estimate.
 
@@ -16,4 +16,4 @@ Evidence before assertions: never claim something works without execution output
 
 Protocols load on demand — invoke the skill before the relevant work, don't guess from this summary: my-claude-setup:security-protocol (auth, user input, endpoints, file ops, data, dependencies, agent/MCP tooling) · testing-protocol · git-protocol · agent-protocol · feedback-protocol · planning-protocol (phased work that outlives one context) · project-docs (session notes, changelog, doclog, CODEMAP). When a protocol and this summary disagree, the protocol wins.
 
-Companion plugins these rules assume: superpowers (brainstorming, plans, TDD, verification) · feature-dev (the code-reviewer agent the independent-review rule names) · context7 (live API docs) · code-simplifier · code-review · security-guidance · playwright (the verification level for any UI change) · trio (independent Codex audit). If one isn't installed, say so once and use the manual equivalent — don't silently skip the step.
+Companion plugins, one job each — never let two contend for the same decision: feature-dev = the Tier-2 reviewer · trio = the Tier-3 audit, and second opinions · superpowers = process on larger tasks only, never the fast path (brainstorming, writing-plans, test-driven-development, verification-before-completion) · security-guidance = the Tier-3 security pass, not a general reviewer · code-review = GitHub PR review only · code-simplifier = opt-in cleanup, run before the reviewer sees the code · context7 = unfamiliar or version-sensitive APIs · playwright = changed interactive or rendering behaviour. If one isn't installed, say so once and use the manual equivalent — don't silently skip the step.
