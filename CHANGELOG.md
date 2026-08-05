@@ -19,6 +19,11 @@ file — see `git log --grep="bump to"`.
   a remote script piped into a shell, `git add -f` staging a gitignored file, and a commit that
   skips git's own hooks.
 - `CHANGELOG.md` — this file, at the repo root, because that's what the convention now requires.
+- A resident brainstorm trigger. `core.md` triggered *planning* but never *brainstorming* —
+  it only named it by exclusion on the fast path, so the trigger came solely from superpowers'
+  own session injection. The two settle different questions: planning settles order,
+  brainstorming settles what is being built at all, and a plan laid over an unsettled
+  requirement is a confident plan for the wrong thing that phases make expensive to unwind.
 
 ### Changed
 
@@ -60,8 +65,12 @@ file — see `git log --grep="bump to"`.
 ### Removed
 
 - `Docs/Sessions/` and `Docs/Changelog/` from the convention — a daily "what I did" log is
-  `git log --since=yesterday` with worse fidelity. `Logs/CODEMAP.md` and `Docs/Protocols/`
-  remain documented but are no longer scaffolded; create them the day they're needed.
+  `git log --since=yesterday` with worse fidelity.
+- `Docs/Protocols/` and `Docs/Logs/CODEMAP.md` **entirely**, not merely unscaffolded.
+  `Protocols/` was a convention with no mechanism behind it: nothing in the plugin ever read
+  that folder, so a project override written there was loaded by nobody while looking like
+  governance. Project deviations go in the project's `CLAUDE.md`, which *is* loaded every
+  session. Three trees, and no reserved path for a fourth.
 - `assets/templates/session-note.md`.
 - `dependency-auditor`'s CI snippet and `skill-security-auditor`'s CI/batch snippets — CI
   config belongs in the project, not in a skill. Their command tables stay: `npm audit`,

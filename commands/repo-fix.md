@@ -34,8 +34,12 @@ with the survey — the point of this command is that you see the list before an
   `Gotchas` for the user — you cannot know those.
 - **Existing `CLAUDE.md`** → **never rewrite it.** Name the sections it lacks, show the exact
   text you'd append, and let the user accept per section. A project's instructions are theirs.
-- **Missing `Docs/` trees** → add only the missing ones from `Docs-skeleton/`. Never scaffold
-  `Logs/` or `Protocols/`; those are created the day they're needed.
+- **Missing `Docs/` trees** → add only the missing ones from `Docs-skeleton/`. Three is the
+  whole convention; don't add a fourth folder because the repo happens to have one.
+- **`Logs/` or `Protocols/`** → leave them exactly as they are, and don't recreate them
+  elsewhere. `Protocols/` in particular was dropped because nothing ever loaded it: a project
+  deviation belongs in that project's `CLAUDE.md`, which *is* loaded. If the folder holds real
+  content, say so and offer to move it into `CLAUDE.md` — don't delete someone's writing.
 - **`Doclog/`** → leave the folder name alone. It is the same tree as `Decisions/` under the
   older name, and renaming an append-only history buys nothing. Say it's recognised and move on.
 - **`Sessions/`** → don't delete it. Report how many files it holds and say that the convention

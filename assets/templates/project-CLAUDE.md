@@ -8,7 +8,7 @@
 
 ## Architecture
 
-[High-level architecture. For a large repo, generate `Docs/Logs/CODEMAP.md` on demand and point here.]
+[High-level architecture. Roles and data flows, not a file listing — a file listing goes stale and then misleads.]
 
 ## Key Files
 
@@ -66,8 +66,8 @@ Docs/
 CHANGELOG.md                           repo root, committed
 ```
 
-Only what git cannot reconstruct. Created on demand, not scaffolded: `Docs/Protocols/` for a
-project override, `Docs/Logs/CODEMAP.md` for a structural map.
+Only what git cannot reconstruct. There is no fourth folder — anything this project must do
+differently from a protocol belongs in **this file**, which is loaded every session.
 
 ## Optional Sections
 

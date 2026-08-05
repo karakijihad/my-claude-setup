@@ -43,19 +43,19 @@ CHANGELOG.md                    at the repo root, committed, release-facing
 by people who don't have your working copy, so a dated file inside a possibly-gitignored
 `Docs/` cannot do that job. Group by release, not by day.
 
-## What was removed, and why
+## Three, and only three
 
-`Sessions/` and `Docs/Changelog/` are gone. A daily "what I did" log is `git log
---since=yesterday` with worse fidelity. If a session produced something worth keeping it was
-a *decision* — write it in `Decisions/`, including the dead ends, so nobody re-walks them.
+There is no fourth tree, and no reserved path for one.
 
-Two trees are still available, just not scaffolded by default — create them only on the day
-you actually need one:
+**A project that must deviate from a protocol says so in its own `CLAUDE.md`.** That file is
+loaded every session; a folder of overrides is loaded by nobody. A convention with no
+mechanism behind it is decoration — it looks like governance and enforces nothing.
 
-- **`Docs/Protocols/`** — project-specific overrides of a protocol skill. Rare, and real:
-  use it when a project genuinely must deviate, and say which protocol it overrides.
-- **`Docs/Logs/CODEMAP.md`** — a structural file map. Generate it on demand rather than
-  maintaining it; a CODEMAP that lags a rename is worse than none, because it is believed.
+**A structural file map is generated when someone asks for one**, not maintained. For a large
+repo that's a reasonable thing to want; reserving it a permanent home is how it ends up stale,
+and a file map that lags a rename is worse than none, because it gets believed.
+
+If you find yourself wanting a new tree, the question to answer first is what reads it.
 
 ## Sizing — highlights, not monoliths
 

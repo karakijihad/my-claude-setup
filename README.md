@@ -205,14 +205,12 @@ findings *and* their refutations, which is the half a commit never preserves; it
 never a decision by itself. `Plan/` is the only forward-looking tree and exists so work survives
 a context reset.
 
-Cut in 1.5.0: `Sessions/` and `Docs/Changelog/` — a daily work log is `git log --since=yesterday`
-with worse fidelity. Still documented but no longer scaffolded: `Docs/Protocols/` for a genuine
-project override, and `Docs/Logs/CODEMAP.md`, which should be generated on demand because a
-CODEMAP that lags a rename is worse than none — it gets believed.
+There is no fourth tree. A project that must deviate from a protocol says so in its own
+`CLAUDE.md` — that file is loaded every session, and a folder of overrides is loaded by nobody.
+Anything else you want written down, ask what reads it first.
 
-`/bootstrap-project` creates this for a new repo; `/repo-fix` migrates an existing one. Projects
-still using the older `Doclog/` name keep it — it's the same tree, and renaming an append-only
-history buys nothing. See the `project-docs` skill for line budgets.
+`/bootstrap-project` creates this for a new repo; `/repo-fix` migrates an existing one. See the
+`project-docs` skill for line budgets.
 
 ## Downloading
 

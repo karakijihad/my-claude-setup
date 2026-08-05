@@ -12,10 +12,7 @@ records what changed and when, so anything restating that is cost without value.
 The release-facing changelog is `CHANGELOG.md` at the **repo root**, not here — it needs to
 be readable by people who don't have your working copy.
 
-Two more trees are available but not scaffolded. Create one the day you need it, not before:
-
-- `Protocols/` — project-specific overrides of a protocol skill. Rare. Name what it overrides.
-- `Logs/CODEMAP.md` — structural file map. Generate on demand; a stale CODEMAP is worse than
-  none, because it gets believed.
+There is no fourth folder. A project that must deviate from a protocol says so in its own
+`CLAUDE.md`, which is loaded every session — a folder of overrides is loaded by nobody.
 
 See the `project-docs` skill for rules and rationale.
