@@ -4,13 +4,15 @@ Code discipline — write the minimum that solves the problem. No speculative fe
 
 Before acting — state assumptions rather than guessing silently. If multiple interpretations exist, present them instead of picking one unannounced. Confirm first on decisions that affect more than two files, are hard to reverse, or rest on a structural assumption; on small changes, decide and say what you decided.
 
-Under ~50 lines with clear intent — implement, verify, independent review, commit. Nothing more: no brainstorming, no plan file, no simplifier pass.
+Under ~50 lines with clear intent — implement, verify, review your own diff, commit. Nothing more: no brainstorming, no plan file, no simplifier pass.
 
 Larger tasks — research (read the files before editing; verify external library APIs against Context7, never from memory) then plan, implement, simplify, verify, independent review, document, commit.
 
 Ordered phases that won't fit one context — stop before the first edit, name the phases in one sentence, ask whether to write a plan first. Accepted → my-claude-setup:planning-protocol. Declined → proceed, and raise it again only if the work overruns the estimate.
 
-Hard rule — every code-modifying task ends with a fresh reviewer agent (feature-dev:code-reviewer, or the superpowers:requesting-code-review skill). Read-only work and pure-doc edits are exempt. Evidence before assertions: never claim something works without execution output or a concrete trace. UI changes are verified in Playwright — DOM state plus zero console errors.
+Review escalates with stakes — every code-modifying task ends on one of three rungs, and skipping a rung needs a stated reason. One file under ~50 lines touching nothing sensitive: review your own diff. Default: a fresh reviewer agent (feature-dev:code-reviewer, or the superpowers:requesting-code-review skill). Escalate to an independent Codex audit (trio:trio-audit) when the change touches auth, secrets, payments, migrations or deletion; spans more than five files; is being released, published, or merged to main; or when the reviewer's findings and your own read of the diff disagree. Read-only work and pure-doc edits are exempt from all three.
+
+Evidence before assertions: never claim something works without execution output or a concrete trace. UI changes are verified in Playwright — DOM state plus zero console errors.
 
 Protocols load on demand — invoke the skill before the relevant work, don't guess from this summary: my-claude-setup:security-protocol (auth, user input, endpoints, file ops, data, dependencies, agent/MCP tooling) · testing-protocol · git-protocol · agent-protocol · feedback-protocol · planning-protocol (phased work that outlives one context) · project-docs (session notes, changelog, doclog, CODEMAP). When a protocol and this summary disagree, the protocol wins.
 

@@ -5,8 +5,8 @@
 
 ## Project
 
-A Claude Code plugin. It injects a small always-resident rule core, loads six protocol
-references on demand, and enforces four safety hooks. Published as its own marketplace.
+A Claude Code plugin. It injects a small always-resident rule core, loads seven protocol
+references on demand, and enforces three safety hooks. Published as its own marketplace.
 
 ## Key files
 

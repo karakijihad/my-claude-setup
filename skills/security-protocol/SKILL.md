@@ -1,16 +1,10 @@
 ---
 name: security-protocol
 description: >
-  Threat modelling and the full security review gate. Covers SQL and NoSQL injection,
-  sanitization, XSS, output encoding, path traversal, mass assignment, file uploads;
-  authentication, authorization, passwords, sessions, JWT, OAuth, MFA, API keys, IDOR and
-  privilege escalation; secrets, .env files, PII, encryption, hashing, TLS/HSTS, logging and
-  error handling; rate limiting, CORS, CSRF, CSP and security headers, GraphQL, WebSocket,
-  internal endpoints; dependency and supply-chain risk, lock files, vulnerability scanning,
-  typosquatting; and AI-agent security — prompt injection, tool authority, MCP server trust,
-  skill and plugin supply chain, subagent permissions, transcript and secret hygiene,
-  destructive operations. Use before writing or reviewing any code or configuration that
-  touches these.
+  Threat modelling and the full security review gate — input validation, authentication,
+  secrets and data handling, API exposure, dependency supply chain, and AI-agent security.
+  Use before writing or reviewing anything that touches user input, auth, credentials,
+  endpoints, file operations, dependencies, or agent/MCP tooling.
 ---
 
 # Security Protocol

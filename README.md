@@ -70,7 +70,7 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 
 ```
 .claude-plugin/     marketplace.json, plugin.json
-hooks/              hooks.json + 4 hooks and their shared helpers
+hooks/              hooks.json + 3 hooks and their shared helpers
 skills/             9 skills — 7 protocols, plus dependency-auditor and skill-security-auditor
 commands/           setup, bootstrap-project
 assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit README, Docs skeleton
@@ -81,8 +81,7 @@ assets/             ccstatusline-settings.json, the starting status-line config 
 
 | Hook | Event | What it does |
 |-|-|-|
-| `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the independent-review rule, the plan-first offer — plus the current branch and the one-time onboarding check. Commit subjects were deliberately dropped: they are arbitrary free text injected before the user has asked anything. If no Python is available it falls back to a reduced core rather than emitting nothing |
-| `brevity.sh` | UserPromptSubmit | Reinforces brevity, which decays over a long session. One `printf`, no stdin parse, no interpreter |
+| `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the review-escalation ladder, the plan-first offer — plus the current branch and the one-time onboarding check. Commit subjects were deliberately dropped: they are arbitrary free text injected before the user has asked anything. If no Python is available it falls back to a reduced core rather than emitting nothing |
 | `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `checkout -- `, `branch -D` (but not `-d`), `DROP TABLE`/`DROP DATABASE`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`, `.sample`, `.template`), lockfiles, and `.git/`; scans the **staged diff** on commit for value-shaped secrets and for credential material — AWS keys, private keys, `ghp_`/`sk-` tokens |
 | `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |
 
@@ -94,8 +93,11 @@ and discarded its own output, and a formatter that ran `npx prettier` after ever
 rewriting Markdown as it was authored and desyncing editor state.
 
 Hooks that need event fields parse stdin with `lib-parse.sh` (jq if present, otherwise a Python
-located by `py.sh`), so they work without `jq` installed. `brevity.sh` is the exception — it
-prints a fixed string and deliberately reads nothing.
+located by `py.sh`), so they work without `jq` installed.
+
+A third hook was removed in 1.4.0: a `UserPromptSubmit` hook that re-stated the brevity rule on
+every single turn. Brevity is already line 1 of `core.md`; re-injecting it each turn paid for the
+same instruction indefinitely to fix a compliance decay that current models don't exhibit.
 
 ### Skills
 

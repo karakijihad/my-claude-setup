@@ -59,9 +59,6 @@ if [ -n "$TMP" ] && [ -d "$TMP" ]; then
   rm -rf "$TMP"
 fi
 
-echo "brevity"
-json_ok "emits valid JSON" brevity.sh
-
 echo "guard — destructive commands"
 RMRF="rm -$(printf 'r')f /"
 exit_is 2 "blocks recursive force-delete of /"   "{\"tool_input\":{\"command\":\"$RMRF\"}}"
