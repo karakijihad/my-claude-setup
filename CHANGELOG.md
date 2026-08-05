@@ -5,6 +5,36 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.6.0] — 2026-08-05
+
+### Changed
+
+- **`Docs/` is gitignored by default — the whole tree, subfolders included.** It was already
+  this repo's practice, but the plugin only ever said "possibly-gitignored" (`project-docs`) and
+  surveyed "whether `Docs/` is deliberately ignored" (`/repo-fix`), which decides nothing. The
+  tree holds working evidence and some of it is private, so the rule names the **directory**
+  rather than its children — otherwise it protects only the folders someone remembered to list.
+  `project-docs` owns the rule; `/bootstrap-project` writes the line, `/repo-fix` offers it as a
+  choice, and `Docs-skeleton/README.md` and `project-CLAUDE.md` both state it.
+- **The opt-out has a mechanism.** Committing `Docs/` is a legitimate choice, but it is recorded
+  in the project's `CLAUDE.md` under a `Docs policy` heading, and both commands read that before
+  touching `.gitignore`. A note left inside `Docs/` is loaded by nobody, so without this the
+  next session helpfully re-adds the line — the same argument that killed `Protocols/` in 1.5.0.
+- **The pattern is root-anchored `/Docs/`**, including this repo's own `.gitignore`. Bare `Docs/`
+  also matches a nested `packages/*/Docs/`; a monorepo gets one explicit line per package
+  instead. Verified with `git check-ignore -v`, not from memory.
+
+### Fixed
+
+- **Two documented traps around the ignore line.** `.gitignore` does not untrack: files already
+  committed under `Docs/` keep going to the remote until `git rm --cached -r -- Docs/`, whose
+  next push *deletes them there* — so `/repo-fix` reports it and never runs it unprompted, and
+  says plainly that this is not a fix for something already pushed. And `core.ignorecase=true`
+  is the default on Windows and macOS, where `/Docs/` matches a lowercase `docs/` as well —
+  anchoring does not help — which would silently ignore a published mkdocs or Docusaurus site.
+
+---
+
 ## [1.5.0] — 2026-08-05
 
 ### Added
