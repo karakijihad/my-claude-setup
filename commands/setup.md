@@ -17,11 +17,26 @@ Plugins cannot set `settings.json` keys, so this command does it explicitly and 
 |-|-|-|
 | `env.CLAUDE_CODE_SUBAGENT_MODEL` | `"sonnet"` | Sub-agents run faster and cheaper on Sonnet |
 | `permissions.defaultMode` | `"auto"` | |
-| `permissions.allow` | union with `["Bash(git:*)", "Bash(ls:*)", "Bash(npm:*)", "Bash(pnpm:*)", "Bash(python:*)", "Bash(xargs grep:*)"]` | Least-privilege allowlist per `security-protocol` §7.2 |
+| `permissions.allow` | union with `["Bash(git:*)", "Bash(ls:*)", "Bash(npm:*)", "Bash(pnpm:*)", "Bash(python:*)", "Bash(xargs grep:*)"]` | Fewer confirmation prompts on the commands a normal session runs constantly. **Read the note below before accepting.** |
 | `effortLevel` | `"high"` | |
 | `statusLine.command` | `"ccstatusline"` | See the status line step below. The global binary — never an absolute path to a node script, which breaks on every other machine |
 
 Do **not** set `model` — leave the user's choice alone.
+
+### About `Bash(npm:*)` and `Bash(python:*)`
+
+Be straight with the user about these two rather than presenting the whole list as
+"least-privilege". `npm run <anything>` executes whatever the project's `package.json` defines,
+and `python:*` runs arbitrary code — so allowlisting them is a real widening, and it is worth
+the most in exactly the repo where it is riskiest: one whose scripts you did not write.
+
+They are in the default because a Node or Python session prompts constantly without them, and
+prompt fatigue causes worse decisions than the widening does. That is a judgment, not a
+security argument. If the user works mainly in untrusted or unfamiliar repos, tell them to drop
+those two entries and keep the rest — the merge is per-key, so removing them costs nothing else.
+
+`guard.sh` still blocks destructive commands regardless of this list; the allowlist controls
+confirmation prompts, not the safety hooks.
 
 Do **not** add `MAX_THINKING_TOKENS`, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`, or
 `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING`. They have no effect on Claude 5 models; shipping them

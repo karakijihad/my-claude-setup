@@ -145,24 +145,12 @@ CVE lookups are out of scope — this tool is offline pattern matching only (see
 $AUDIT https://github.com/user/skill-repo --skill my-skill --cleanup
 ```
 
-### CI/CD Integration
-
-```yaml
-# GitHub Actions step. `python3` is safe on the Linux runners — the Store-stub
-# problem is Windows-only — but use `py.sh` on a windows-latest runner.
-- name: "audit-skill-security"
-  run: |
-    python3 skill-security-auditor/scripts/skill_security_auditor.py ./skills/new-skill/ --strict --json > audit.json
-```
-
-### Batch Audit
-
-```bash
-# Audit all skills in a directory
-for skill in skills/*/; do
-  $AUDIT "$skill" --json >> audit-results.jsonl
-done
-```
+Both `--strict` (any WARN becomes FAIL) and `--json` compose with every invocation, so a CI
+step or a loop over `skills/*/` is the same command with a redirect. Write those in the
+project's own CI config rather than copying a snippet from here — and invoke the script through
+`py.sh`, never `python3`, even on a Linux runner. The Store-stub problem is Windows-only, but a
+snippet that hardcodes `python3` gets copied to a `windows-latest` runner eventually, and then
+it exits 9009 and reports nothing while looking like it passed.
 
 ## Threat Model Reference
 

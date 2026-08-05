@@ -59,23 +59,9 @@ Prioritize:
 
 ## When to Run
 
-- **Before adding a new dependency** — scan it first
-- **Before releases** — full vulnerability + license audit
-- **Weekly** — scheduled vulnerability scan in CI
-- **After incidents** — check if vulnerable deps were the vector
-- **When Security Protocol 06-Dependencies.md applies** — "audit dependencies before adding, pin versions, run vulnerability scans"
-
-## CI Integration
-
-```yaml
-# GitHub Actions step
-- name: Dependency Audit
-  run: |
-    npm audit --audit-level=high          # JS
-    pip-audit --strict                     # Python
-    # or, cross-ecosystem:
-    # osv-scanner --format table -r .
-```
+Before adding a dependency (scan it *first*), before a release, after an incident where a
+dependency could have been the vector, and on whatever schedule CI enforces. The policy behind
+this lives in `security-protocol` §06 — don't restate it here.
 
 ## Reporting Rules
 

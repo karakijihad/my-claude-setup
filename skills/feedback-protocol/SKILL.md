@@ -24,8 +24,11 @@ When Claude makes a mistake or produces suboptimal output:
    - **One-off** → capture in the session note under "Corrections" and move on.
    - **Pattern** → add a rule to the appropriate file (see §2) so it never happens again.
 4. **Verify** — in the next occurrence, check if the rule was followed.
+5. **Retire** — check whether the rule you just added made an older one redundant. See §5.
 
-This loop is the single highest-leverage practice for improving Claude's output over time. Every rule you add makes every future session better.
+Step 5 is not optional bookkeeping. Steps 1–4 only ever *add*, and a loop that can only grow
+ends as a rule set nobody reads — which is how instructions stop being followed. The point isn't
+that every rule is temporary; it's that this loop has no other exit.
 
 ---
 
@@ -33,7 +36,7 @@ This loop is the single highest-leverage practice for improving Claude's output 
 
 | Type of correction                                                  | Where to add it                                                        |
 | ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| General behavior (too verbose, wrong tone, asks too many questions) | the resident core in `hooks/core.md` |
+| General behavior (too verbose, wrong tone, asks too many questions) | project `CLAUDE.md`. The resident core lives in the installed plugin, so editing it locally is overwritten by the next `/plugin update` — a rule that belongs there is a PR to the plugin, not a local edit |
 | Security mistake (missed validation, exposed secret)                | the `security-protocol` skill — the relevant subfile            |
 | Testing mistake (skipped tests, weak verification)                  | the `testing-protocol` skill                          |
 | Delegation mistake (bad task definition, missing report fields)     | the `agent-protocol` skill                            |
@@ -55,25 +58,52 @@ This loop is the single highest-leverage practice for improving Claude's output 
 
 ---
 
-## 4. Session Note Correction Format
+## 4. Recording a correction
 
-In every session note, include a "Corrections → Protocol Updates" section:
+A correction that changed a rule **is a decision** — record it in `Docs/Decisions/YYYY-MM-DD.md`
+with the rest of them. A one-off that changed nothing needs no record at all; writing it down is
+how a decision log turns into a diary.
 
 ```markdown
-## Corrections → Protocol Updates
+## [HH:MM] — Verify library APIs against Context7
 
-- **Correction:** Claude used deprecated React API despite Context7 being available.
-  **Classification:** Pattern (third time this week).
-  **Rule added:** resident core — "Verify external library APIs against Context7, never from memory."
-
-- **Correction:** Agent report said "all tests pass" but didn't paste the output.
-  **Classification:** Pattern.
-  **Rule added:** the `agent-protocol` skill §3 — added "Paste the evidence" to the first reporting rule.
-
-- **Correction:** Claude created a utility function that already existed in src/utils.
-  **Classification:** One-off (unusual file structure).
-  **Action:** Noted in session log. No protocol change.
+**Status:** accepted
+**Decision** — Unfamiliar or version-sensitive library APIs get checked against Context7
+rather than recalled.
+**Why** — Third deprecated-React-API call this week, with Context7 installed and unused.
+**Rejected** — "Always check every API." Forces a lookup for `JSON.parse`; the cost lands on
+every call to buy accuracy on a few.
+**Mechanism** — Resident core, research step.
 ```
+
+If a correction is genuinely one-off — unusual context, an edge case that won't recur — fix it
+and move on. Not every mistake is a rule waiting to be written, and treating them that way is
+what produces instruction sets nobody can hold in their head.
+
+---
+
+## 5. Retiring rules
+
+Adding is easy and feels productive; nothing else in this loop ever removes anything. So when
+you add a rule, check whether it just obsoleted an older one.
+
+Retire a rule when **any** of these is demonstrably true — not on a schedule, and never as a
+quota to balance an addition:
+
+- **Superseded** — the new rule covers the old one's case and more. Delete the old one.
+- **Obsolete** — it corrected a model behaviour that no longer occurs. Rules written for a
+  weaker model are the largest source of this, and they are invisible: they cost tokens every
+  session and never fire.
+- **Duplicated elsewhere** — the same instruction now lives in a skill that owns the topic.
+  Keep one copy, in the place that owns it.
+- **Never fired** — it has been in place for months and you cannot name an occasion it changed
+  an outcome.
+
+**Do not retire a rule merely because an unrelated one was added.** A one-in-one-out quota
+deletes working guardrails to satisfy arithmetic. The trigger is evidence about *that* rule.
+
+When you can't decide, keep it and note the doubt in the decision entry. A rule you're unsure
+about costs tokens; a guardrail deleted on a hunch costs an incident.
 
 ---
 
