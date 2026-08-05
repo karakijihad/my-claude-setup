@@ -20,5 +20,6 @@ __pycache__/
 # Trio raw audit artifacts — promoted copies live in Docs/Audit/
 .trio/
 
-# Local docs, including promoted audit runs — kept on disk, not in git
-Docs/
+# Project docs — local by default, whole tree including any subfolder added later.
+# Root-anchored on purpose: bare `Docs/` also matches a nested `packages/*/Docs/`.
+/Docs/

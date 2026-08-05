@@ -64,10 +64,12 @@ bash hooks/test-hooks.sh   # exit 0 means every assertion passed
 Covers both hook outputs as JSON; every guard block and allow, including backslash paths and
 `notebook_path`; the commit secret scan against a real staged diff; the notify sanitizer, driven
 through a stub backend on `PATH`; both fallback branches; the Windows interpreter layout (jq and
-`python`/`python3` stubbed to fail, only `py -3` real); and two consistency invariants — the
-`hooks.json` matcher matches what `guard.sh` claims, and every companion in `onboarding.py` is
-named in `core.md`. Slow on Windows: roughly 4s per assertion, since each spawns bash plus an
-interpreter.
+`python`/`python3` stubbed to fail, only `py -3` real); and four consistency invariants — the
+`hooks.json` matcher matches what `guard.sh` claims, every companion in `onboarding.py` is
+named in `core.md`, this repo's `.gitignore` carries the anchored `/Docs/` the convention ships,
+and every surface stating the Docs rule also names its `Docs policy` opt-out. Slow on Windows:
+roughly 4s per assertion, since each spawns bash plus an interpreter. The last two are prose
+invariants — they exist because that rule is stated in six files and drift there is silent.
 
 Add a case for anything you change. Traps worth knowing before you write one:
 
@@ -87,14 +89,29 @@ Add a case for anything you change. Traps worth knowing before you write one:
 
 ## Docs
 
-`Docs/Audit/`, and **local only** — `Docs/` is gitignored, so nothing under it is committed.
-Trio promotes finished audit runs there — `codex/<date>/` is what Codex reported,
-`claude/<date>/` is the adjudication: verdict per finding, the disagreements, and what stayed
-open. Worth keeping on disk because an audit's *refutations* are the part git history loses; a
-commit shows what changed, not which findings were argued down and why. Keeping it out of git
-is deliberate: it is working evidence for the maintainer, not something the plugin ships.
+**The whole `Docs/` tree is gitignored — `/Docs/`, root-anchored, subfolders included.** Nothing
+under it is committed, and that holds for folders nobody has created yet: the rule names the
+directory precisely so a subfolder invented later is covered without anyone remembering a
+`.gitignore` edit. The tree is working evidence, and some of it is private. Committing it is a
+legitimate choice for a project, but it must be written into *that* project's `CLAUDE.md` under
+a `Docs policy` heading, or the next session re-adds the line. This is the shipped default, not
+just this repo's habit: `project-docs` owns the rule, `/bootstrap-project` writes it, `/repo-fix`
+offers it as a choice, and both templates repeat it.
 
-Two things to know when reading one. Trio's top-level `findings` array reads `0` on a
+Two traps that cost real time, both verified with `git check-ignore -v`. The anchor matters:
+bare `Docs/` also swallows a nested `packages/*/Docs/`. And `core.ignorecase=true` is the
+default on Windows and macOS, so `/Docs/` matches a lowercase `docs/` as well — anchoring does
+**not** save you — which silently ignores a published mkdocs/Docusaurus site. That is also why
+`assets/templates/Docs-skeleton/` carries that name: call it `Docs/` and the plugin stops
+shipping its own templates.
+
+This repo's tree is `Docs/Audit/`. Trio promotes finished audit runs there — `codex/<date>/` is
+what Codex reported, `claude/<date>/` is the adjudication: verdict per finding, the
+disagreements, and what stayed open. Worth keeping on disk because an audit's *refutations* are
+the part git history loses; a commit shows what changed, not which findings were argued down
+and why.
+
+Two quirks when reading one. Trio's top-level `findings` array reads `0` on a
 `ceiling_reached` run even when that pass's lenses reported plenty — check
 `.trio/runs/<id>/pass-N/reconcile.json`, not the summary. And a `response.json` written after the
 run has ended is never ingested, so the generated `claude/` file will list everything as open;

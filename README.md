@@ -209,6 +209,12 @@ There is no fourth tree. A project that must deviate from a protocol says so in 
 `CLAUDE.md` — that file is loaded every session, and a folder of overrides is loaded by nobody.
 Anything else you want written down, ask what reads it first.
 
+**`Docs/` is gitignored by default** — the whole tree, including subfolders you add later. It
+holds working evidence, and some of it is nobody else's business; `CHANGELOG.md` sits at the
+repo root because a release note has to reach people who don't have your working copy. Want it
+versioned instead? Say so, and the commands write that into your `CLAUDE.md` under a `Docs
+policy` heading so a later session doesn't re-add the line.
+
 `/bootstrap-project` creates this for a new repo; `/repo-fix` migrates an existing one. See the
 `project-docs` skill for line budgets.
 

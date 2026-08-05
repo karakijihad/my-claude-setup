@@ -266,5 +266,24 @@ sys.exit(0 if not missing else 1)
 ' >/dev/null 2>&1 && ok "every onboarding companion is named in core.md" \
   || bad "every onboarding companion is named in core.md"
 
+# The Docs rule is prose in five places and one line in .gitignore. Prose drifts;
+# these two assertions are what notice. Anchored matters: a bare Docs/ also
+# matches a nested packages/*/Docs/.
+bash py.sh -c '
+import sys
+lines=[l.strip() for l in open("../.gitignore",encoding="utf-8").read().splitlines()]
+sys.exit(0 if "/Docs/" in lines and "Docs/" not in lines else 1)
+' >/dev/null 2>&1 && ok "this repo ignores Docs/ root-anchored, as the convention ships it" \
+  || bad "this repo ignores Docs/ root-anchored, as the convention ships it"
+bash py.sh -c '
+import sys
+need=["../skills/project-docs/SKILL.md","../commands/bootstrap-project.md",
+      "../commands/repo-fix.md","../assets/templates/project-CLAUDE.md",
+      "../assets/templates/Docs-skeleton/README.md"]
+missing=[p for p in need if "Docs policy" not in open(p,encoding="utf-8").read()]
+sys.exit(0 if not missing else 1)
+' >/dev/null 2>&1 && ok "every surface stating the Docs rule names its opt-out" \
+  || bad "every surface stating the Docs rule names its opt-out"
+
 printf '\n%s passed, %s failed\n' "$PASS" "$FAIL"
 [ "$FAIL" = 0 ]

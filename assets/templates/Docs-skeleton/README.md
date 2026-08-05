@@ -9,8 +9,13 @@ records what changed and when, so anything restating that is cost without value.
 | [Audit/](./Audit/)         | Review findings **and** their adjudication — `claude/`, `codex/` |
 | [Plan/](./Plan/)           | In-flight work only; delete a plan when its work lands       |
 
+**This tree is gitignored by default** — all of it, including any subfolder added later. It is
+working evidence, and some of it is private. To version it instead, say so in the project's
+`CLAUDE.md` under a `Docs policy` heading; a note left in here is read by nobody.
+
 The release-facing changelog is `CHANGELOG.md` at the **repo root**, not here — it needs to
-be readable by people who don't have your working copy.
+be readable by people who don't have your working copy, which a tree that ships to no one
+cannot do.
 
 There is no fourth folder. A project that must deviate from a protocol says so in its own
 `CLAUDE.md`, which is loaded every session — a folder of overrides is loaded by nobody.

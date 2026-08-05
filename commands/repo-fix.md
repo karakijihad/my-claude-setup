@@ -17,7 +17,7 @@ Check each of these against the current directory. Report what you find, not wha
 | `Docs/` | Which of `Decisions/ Audit/ Plan/` exist |
 | Old layout | `Doclog/`, `Sessions/`, `Docs/Changelog/`, `Logs/`, `Protocols/` |
 | `CHANGELOG.md` | At the **repo root**, committed |
-| `.gitignore` | Covers `.env*`, and whether `Docs/` is deliberately ignored |
+| `.gitignore` | Covers `.env*`; whether `/Docs/` is ignored; whether `git ls-files -- Docs` shows tracked files; whether a `Docs policy` section in `CLAUDE.md` opts out |
 | `.env.example` | Exists if the project reads env vars — `security-protocol` §04 requires it |
 | Stale plans | Anything in `Docs/Plan/` whose work already landed |
 
@@ -36,6 +36,21 @@ with the survey — the point of this command is that you see the list before an
   text you'd append, and let the user accept per section. A project's instructions are theirs.
 - **Missing `Docs/` trees** → add only the missing ones from `Docs-skeleton/`. Three is the
   whole convention; don't add a fourth folder because the repo happens to have one.
+- **`Docs/` not ignored** → it is local by default (see `project-docs`). This is the one check
+  that is a *decision point*, not a gap, so present it as a choice and let the user pick:
+  - **Keep it versioned** → change nothing, and append a `Docs policy` section to `CLAUDE.md`
+    saying so. Without that, the next session re-adds the line.
+  - **Local from here on** → append `/Docs/` to `.gitignore`. Anchored — bare `Docs/` also
+    catches nested `packages/*/Docs/`. If the repo has a lowercase `docs/`, check
+    `git check-ignore -v docs/<file>` afterwards: `core.ignorecase=true` is the default on
+    Windows and macOS, so the pattern matches `docs/` too, anchor or no anchor. A published
+    docs site wins that collision.
+  - **Files already tracked under `Docs/`** → say plainly that the ignore line alone changes
+    nothing for them, that `git rm --cached -r -- Docs/` is what untracks them, and that its
+    next push **removes them from the remote**. Run it only on an explicit yes. And if the
+    worry is that something private was already pushed: this is not a remediation. It is in
+    history and in every clone — that needs rotation and a deliberate history rewrite, which is
+    outside this command.
 - **`Logs/` or `Protocols/`** → leave them exactly as they are, and don't recreate them
   elsewhere. `Protocols/` in particular was dropped because nothing ever loaded it: a project
   deviation belongs in that project's `CLAUDE.md`, which *is* loaded. If the folder holds real

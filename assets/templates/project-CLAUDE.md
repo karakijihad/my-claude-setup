@@ -69,6 +69,16 @@ CHANGELOG.md                           repo root, committed
 Only what git cannot reconstruct. There is no fourth folder — anything this project must do
 differently from a protocol belongs in **this file**, which is loaded every session.
 
+`Docs/` is gitignored (`/Docs/`), whole tree, subfolders included: it holds working evidence,
+some of it private. To version it instead, delete the ignore line and replace this paragraph
+with the section below — it is what stops a later session helpfully re-adding the line.
+
+```md
+## Docs policy
+
+`Docs/` is versioned in this repo on purpose. Do not add `/Docs/` to `.gitignore`.
+```
+
 ## Optional Sections
 
 Add if relevant:
