@@ -4,7 +4,7 @@ Security, testing, git, and delegation discipline for Claude Code, packaged as a
 
 Install it once and every repo you open gets the same rules: minimum-code discipline, a
 mandatory independent review at the end of any code-modifying task, safety hooks that block
-destructive commands and staged secrets, and six protocol references that load only when
+destructive commands and staged secrets, and seven protocol references that load only when
 they're relevant.
 
 ```
