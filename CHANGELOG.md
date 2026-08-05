@@ -39,12 +39,34 @@ file — see `git log --grep="bump to"`.
 - `security-protocol`'s description halved. Skill descriptions are resident every session, and
   it enumerated ~30 topics its own index already lists.
 
+- **`feedback-protocol` has an exit.** Steps 1–4 only ever added rules; a loop with no removal
+  ends as a rule set nobody reads. §5 retires on evidence about the rule itself — superseded,
+  obsolete, duplicated, or never once fired — explicitly **not** a one-in-one-out quota, which
+  would delete working guardrails to satisfy arithmetic.
+- `setup.md` states plainly that `Bash(npm:*)` and `Bash(python:*)` are a real widening rather
+  than filing them under "least-privilege". They stay in the default because prompt fatigue
+  causes worse decisions than the widening does — but that's a judgment, now labelled as one.
+
+### Fixed
+
+- `feedback-protocol` routed general-behaviour corrections to `hooks/core.md`, which lives in
+  the installed plugin — a local edit there is overwritten by the next `/plugin update`, so the
+  rule silently evaporated. Those go to the project `CLAUDE.md`; changing the resident core is
+  a PR.
+- `skill-security-auditor` documented a CI step invoking `python3` directly, the one thing this
+  repo's gotchas forbid. A comment excused it for Linux runners, but it doesn't survive being
+  copied to `windows-latest`, where it exits 9009 and reports nothing while looking green.
+
 ### Removed
 
 - `Docs/Sessions/` and `Docs/Changelog/` from the convention — a daily "what I did" log is
   `git log --since=yesterday` with worse fidelity. `Logs/CODEMAP.md` and `Docs/Protocols/`
   remain documented but are no longer scaffolded; create them the day they're needed.
 - `assets/templates/session-note.md`.
+- `dependency-auditor`'s CI snippet and `skill-security-auditor`'s CI/batch snippets — CI
+  config belongs in the project, not in a skill. Their command tables stay: `npm audit`,
+  `pip-audit`, `govulncheck` and `cargo audit` have been stable for years, and without them
+  the skill guesses.
 
 ---
 
