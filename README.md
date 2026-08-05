@@ -29,7 +29,7 @@ be lost for good. It stops as soon as nothing is missing. Delete that file to se
 | Requirement | Needed by | Check |
 |-|-|-|
 | Git | everything | `git --version` |
-| Python 3 | `session-start` hook, `skill-security-auditor` | `python -c "import sys; print(sys.version_info[:2])"` |
+| Python 3 | `session-start` hook, `skill-security-auditor`, and stdin parsing in `guard.sh`/`notify.sh` when `jq` is absent | `python -c "import sys; print(sys.version_info[:2])"` |
 | Node.js | `ccstatusline` status line (optional) | `node --version` |
 
 Every Python entry point in this plugin runs through `hooks/py.sh`, which *executes* each of
@@ -70,10 +70,11 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 
 ```
 .claude-plugin/     marketplace.json, plugin.json
-hooks/              hooks.json + scripts
-skills/             9 skills
+hooks/              hooks.json + 4 hooks and their shared helpers
+skills/             9 skills — 7 protocols, plus dependency-auditor and skill-security-auditor
 commands/           setup, bootstrap-project
 assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit README, Docs skeleton
+assets/             ccstatusline-settings.json, the starting status-line config /setup offers
 ```
 
 ### Hooks
@@ -82,7 +83,7 @@ assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit RE
 |-|-|-|
 | `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the independent-review rule, the plan-first offer — plus the current branch and the one-time onboarding check. Commit subjects were deliberately dropped: they are arbitrary free text injected before the user has asked anything. If no Python is available it falls back to a reduced core rather than emitting nothing |
 | `brevity.sh` | UserPromptSubmit | Reinforces brevity, which decays over a long session. One `printf`, no stdin parse, no interpreter |
-| `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `branch -D` (but not `-d`), `DROP`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`), lockfiles, and `.git/`; scans the **staged diff** for value-shaped secrets on commit |
+| `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `checkout -- `, `branch -D` (but not `-d`), `DROP TABLE`/`DROP DATABASE`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`, `.sample`, `.template`), lockfiles, and `.git/`; scans the **staged diff** on commit for value-shaped secrets and for credential material — AWS keys, private keys, `ghp_`/`sk-` tokens |
 | `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |
 
 `guard.sh` is one script doing what three used to. The old ones each spawned a shell and a JSON
@@ -178,8 +179,8 @@ Decisions live in `Doclog/` and `Sessions/`; `Audit/` is evidence, never a decis
 ## Downloading
 
 1. `/plugin marketplace add karakijihad/my-claude-setup` and install.
-2. `/setup`.
-3. Restart Claude Code.
+2. Restart Claude Code — the hooks and commands only register once the plugin loads.
+3. `/setup`.
 
 The first-run check reports whatever the old install left behind — `~/.claude/CLAUDE.md`, a
 linked `Docs/`, `hooks/` or `Templates/`, and any hook still naming this config's removed
