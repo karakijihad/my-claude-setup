@@ -71,7 +71,7 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 ```
 .claude-plugin/     marketplace.json, plugin.json
 hooks/              hooks.json + scripts
-skills/             8 skills
+skills/             9 skills
 commands/           setup, bootstrap-project
 assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit README, Docs skeleton
 ```
@@ -80,7 +80,7 @@ assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit RE
 
 | Hook | Event | What it does |
 |-|-|-|
-| `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the independent-review rule — plus current branch and recent commits, and the one-time onboarding check. If no Python is available it falls back to a reduced core rather than emitting nothing |
+| `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the independent-review rule, the plan-first offer — plus the current branch and the one-time onboarding check. Commit subjects were deliberately dropped: they are arbitrary free text injected before the user has asked anything. If no Python is available it falls back to a reduced core rather than emitting nothing |
 | `brevity.sh` | UserPromptSubmit | Reinforces brevity, which decays over a long session. One `printf`, no stdin parse, no interpreter |
 | `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `branch -D` (but not `-d`), `DROP`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`), lockfiles, and `.git/`; scans the **staged diff** for value-shaped secrets on commit |
 | `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |
@@ -107,6 +107,7 @@ Invoke by name, or let the description trigger them.
 | `git-protocol` | Conventional commits, safety rules, PR process — and asks before branching rather than assuming |
 | `agent-protocol` | Delegation, structured task reports, sub-agent context budgeting, orchestration |
 | `feedback-protocol` | Turning corrections into permanent rules |
+| `planning-protocol` | When phased work earns a plan file, and what the file needs to survive a context reset |
 | `project-docs` | The `Docs/` convention, line budgets, templates |
 | `dependency-auditor` | Vulnerability scanning, license compliance, upgrade planning via each ecosystem's native tools |
 | `skill-security-auditor` | Static audit of a skill before you install it |
