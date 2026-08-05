@@ -8,7 +8,7 @@
 
 ## Architecture
 
-[High-level architecture, or pointer: "See `Docs/Logs/CODEMAP.md` for the authoritative file map."]
+[High-level architecture. For a large repo, generate `Docs/Logs/CODEMAP.md` on demand and point here.]
 
 ## Key Files
 
@@ -60,14 +60,14 @@ This project follows the global `Docs/` convention (see the `project-docs` skill
 
 ```
 Docs/
-├── Changelog/YYYY-MM-DD.md
-├── Doclog/YYYY-MM-DD.md
-├── Sessions/YYYY-MM-DD.md
+├── Decisions/YYYY-MM-DD.md            why, and what was rejected
 ├── Audit/{agent}/YYYY-MM-DD/audit-{N}.md
-├── Plan/
-├── Logs/CODEMAP.md
-└── Protocols/    # project-specific overrides, rare
+└── Plan/                              in-flight work only
+CHANGELOG.md                           repo root, committed
 ```
+
+Only what git cannot reconstruct. Created on demand, not scaffolded: `Docs/Protocols/` for a
+project override, `Docs/Logs/CODEMAP.md` for a structural map.
 
 ## Optional Sections
 

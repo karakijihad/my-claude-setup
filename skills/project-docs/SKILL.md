@@ -1,78 +1,80 @@
 ---
 name: project-docs
 description: >
-  The per-project Docs/ convention — session notes, changelog, doclog decision records,
-  audit folders, CODEMAP — with line budgets and templates. Use when writing a session
-  note, changelog entry, or architecture decision record, when recording what an audit
-  found, when updating CODEMAP after a structural change, or when bootstrapping a new
-  project's Docs folder.
+  The per-project Docs/ convention — decision records, audit evidence, and in-flight plans,
+  with line budgets and templates. Use when recording why a decision was made, when writing
+  down what an audit found and how it was adjudicated, when opening or updating a plan file,
+  or when bootstrapping a new project's Docs folder.
 ---
 
 # Per-Project Docs
 
-**Newest first in every append-only file. Dated files are one per day. Folder-based to prevent bloat.**
+**Write down what git cannot reconstruct. Nothing else.**
+
+Git already records what changed, when, by whom, and in what order. Documentation that
+restates it is pure cost: written once, read many times, stale within a month, and
+misleading once stale. Three things survive that test.
 
 ```
 Docs/
-├── Changelog/
-│   ├── README.md              # Index: version bumps, links by date
-│   └── YYYY-MM-DD.md          # One file per day
-├── Doclog/
-│   ├── README.md              # Index: decision titles by date
-│   └── YYYY-MM-DD.md          # One file per day
-├── Sessions/
-│   └── YYYY-MM-DD.md          # One file per day — work log
+├── Decisions/YYYY-MM-DD.md     why, and what was rejected
 ├── Audit/
-│   ├── README.md              # How audits are produced and reconciled
-│   ├── claude/YYYY-MM-DD/audit-{N}.md   # the adjudication
-│   └── codex/YYYY-MM-DD/audit-{N}.md    # what the auditor reported
-├── Plan/                      # Stage checklists for in-flight work
-├── Logs/
-│   ├── CODEMAP.md             # File map — roles, data flows
-│   └── …                      # Build logs, benchmarks
-└── Protocols/                 # Project-specific overrides only (rare)
+│   ├── claude/YYYY-MM-DD/      the adjudication — verdict per finding
+│   └── codex/YYYY-MM-DD/       what the auditor reported
+└── Plan/                       in-flight only; delete when the work lands
+CHANGELOG.md                    at the repo root, committed, release-facing
 ```
 
-## What is authoritative
+## Why these three
 
-**Decisions that were accepted** live in `Doclog/` and `Sessions/`. **What reviewers found**
-lives in `Audit/`. An audit is never a decision by itself.
+- **`Decisions/`** — the accepted decision, the constraint that forced it, and *the option
+  you rejected*. A diff shows the road taken; nothing in git shows the road refused, and
+  that is the thing you re-litigate six months later.
+- **`Audit/`** — findings **plus** adjudication. The refutations are the point: a commit
+  shows what changed, never which findings were argued down and why. `trio:trio-audit`
+  fills both halves — `codex/` is what its lenses reported, `claude/` the verdict per
+  finding. Record both by hand when the audit was manual. **An audit is never a decision
+  by itself.**
+- **`Plan/`** — the only forward-looking tree. It exists so work survives a context reset;
+  see `planning-protocol` for its structure. Delete a plan when its work lands — a
+  completed plan is history, and git holds history.
 
-`trio:trio-audit` produces both halves of that tree — `codex/` is what its lenses reported,
-`claude/` is the verdict per finding — and promoting a finished run is what fills them. Record
-the same two halves by hand when the audit was manual; what matters is that the refutations
-survive, since a commit shows what changed, not which findings were argued down.
+**`CHANGELOG.md` lives at the repo root and is committed.** A changelog exists to be read
+by people who don't have your working copy, so a dated file inside a possibly-gitignored
+`Docs/` cannot do that job. Group by release, not by day.
 
-`CODEMAP.md` updates after any structural change — files created, deleted, moved, restructured.
+## What was removed, and why
+
+`Sessions/` and `Docs/Changelog/` are gone. A daily "what I did" log is `git log
+--since=yesterday` with worse fidelity. If a session produced something worth keeping it was
+a *decision* — write it in `Decisions/`, including the dead ends, so nobody re-walks them.
+
+Two trees are still available, just not scaffolded by default — create them only on the day
+you actually need one:
+
+- **`Docs/Protocols/`** — project-specific overrides of a protocol skill. Rare, and real:
+  use it when a project genuinely must deviate, and say which protocol it overrides.
+- **`Docs/Logs/CODEMAP.md`** — a structural file map. Generate it on demand rather than
+  maintaining it; a CODEMAP that lags a rename is worse than none, because it is believed.
 
 ## Sizing — highlights, not monoliths
 
 These files exist for *trackability*, not reconstruction. Evidence lives in commits, diffs,
-audits, and plan folders; docs link to it rather than duplicating it.
+and audits; docs link to it rather than duplicating it.
 
-- **Line budgets live in each template's header** — that header is the single source of truth,
-  so don't restate the numbers anywhere else.
-- **Session note** — one-line headline plus 3–5 bullets per workstream: what changed, why,
-  where the evidence lives. Link audits and plan files; don't inline their prose.
-- **Changelog entry** — `Added/Changed/Fixed/Removed` lists, one line per item with a file path.
-  No paragraphs, no narrative, no "review process" sections.
-- **Doclog entry** — Decision (1–2 sentences) · Why (1–2 sentences, including the triggering
-  incident) · Mechanism (1–2 sentences, file and function, not code). Longer than that means it
-  belongs in a plan or audit, linked.
-- **CODEMAP** — structural map only. Roles, not histories.
+- **Line budgets live in each template's header** — that header is the single source of
+  truth, so don't restate the numbers anywhere else.
+- **Decision entry** — Decision (1–2 sentences) · Why, including the triggering incident
+  (1–2) · Rejected alternative and what ruled it out (1–2) · Mechanism, file and function
+  rather than code (1–2). Longer than that belongs in a plan or audit, linked.
+- **Changelog entry** — `Added/Changed/Fixed/Removed`, one line per item. No narrative.
 
-**Reject these:** pasting commit messages verbatim, embedding whole audit findings, a paragraph
-per file touched, restating the same change under Done *and* Files Changed *and* Commits, and
-line-count bookkeeping that rots.
+**Reject these:** pasting commit messages verbatim, embedding whole audit findings, a
+paragraph per file touched, restating a change under three headings, and line-count
+bookkeeping that rots.
 
-If a reader needs the full story they open the commit, the audit, or the plan file. The daily
-doc's job is to help them find it.
-
-## Session note sections
-
-`Done · Decisions · Security Review · Files Changed · Commits · Next · Corrections → Protocol Updates`
-
-Write it before committing.
+If a reader needs the full story they open the commit, the audit, or the plan. These files
+exist to help them find it.
 
 ## Templates
 
@@ -81,9 +83,11 @@ In `${CLAUDE_PLUGIN_ROOT}/assets/templates/`:
 | Template | Destination |
 |-|-|
 | `project-CLAUDE.md` | `<project>/CLAUDE.md` |
-| `session-note.md` | `Docs/Sessions/YYYY-MM-DD.md` |
-| `doclog-entry.md` | `Docs/Doclog/YYYY-MM-DD.md` |
-| `changelog-entry.md` | `Docs/Changelog/YYYY-MM-DD.md` |
+| `decision-entry.md` | `Docs/Decisions/YYYY-MM-DD.md` |
+| `changelog-entry.md` | `<project>/CHANGELOG.md` |
 | `Docs-skeleton/` | `<project>/Docs/` — copy wholesale, includes `Audit/README.md` |
 
 `/bootstrap-project` places all of these for you.
+
+**Already have `Doclog/`?** It's the same tree under the older name. Keep it — renaming an
+append-only history buys nothing. New projects get `Decisions/`.

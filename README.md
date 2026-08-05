@@ -72,7 +72,7 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 .claude-plugin/     marketplace.json, plugin.json
 hooks/              hooks.json + 3 hooks and their shared helpers
 skills/             9 skills — 7 protocols, plus dependency-auditor and skill-security-auditor
-commands/           setup, bootstrap-project
+commands/           setup, bootstrap-project, repo-fix
 assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit README, Docs skeleton
 assets/             ccstatusline-settings.json, the starting status-line config /setup offers
 ```
@@ -81,7 +81,7 @@ assets/             ccstatusline-settings.json, the starting status-line config 
 
 | Hook | Event | What it does |
 |-|-|-|
-| `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the review-escalation ladder, the plan-first offer — plus the current branch and the one-time onboarding check. Commit subjects were deliberately dropped: they are arbitrary free text injected before the user has asked anything. If no Python is available it falls back to a reduced core rather than emitting nothing |
+| `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the review-escalation ladder, the plan-first offer — plus the current branch, the Tier-2 reviewer notice, and the one-time onboarding check. Commit subjects were deliberately dropped: they are arbitrary free text injected before the user has asked anything. If no Python is available it falls back to a reduced core rather than emitting nothing |
 | `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `checkout -- `, `branch -D` (but not `-d`), `DROP TABLE`/`DROP DATABASE`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`, `.sample`, `.template`), lockfiles, and `.git/`; scans the **staged diff** on commit for value-shaped secrets and for credential material — AWS keys, private keys, `ghp_`/`sk-` tokens |
 | `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |
 
@@ -123,8 +123,31 @@ hygiene.
 
 | Command | Does |
 |-|-|
-| `/setup` | Merges the recommended `settings.json` keys. Shows a diff, asks first, idempotent |
-| `/bootstrap-project` | Scaffolds a project `CLAUDE.md` and the `Docs/` tree |
+| `/setup` | Merges the recommended `settings.json` keys. Shows a diff, asks first, idempotent. Also offers `ccstatusline` and the status-line config in `assets/` |
+| `/bootstrap-project` | Scaffolds a project `CLAUDE.md` and the `Docs/` tree — assumes a blank slate |
+| `/repo-fix` | Surveys an **existing** repo against these conventions and reports before writing. Never rewrites a `CLAUDE.md` you already have; migrates the older seven-folder `Docs/` layout |
+
+## The review ladder
+
+Every code-modifying task ends on one of three rungs, and skipping one needs a stated reason.
+The variable isn't effort — it's **independence**.
+
+| Tier | Reviewer | Independence | Fires when |
+|-|-|-|-|
+| **1** | Claude re-reads its own diff | None — same context, same assumptions | One file, <50 lines, nothing sensitive |
+| **2** | `feature-dev:code-reviewer`, a fresh agent | Fresh context, same model — it never saw the conversation, so it can't inherit an assumption | **Default** for any real change |
+| **3** | `trio` — Codex audits, Claude adjudicates | Fresh context **and** a different vendor | Auth, secrets, payments, migrations, deletion; >5 files; a release; a cross-module refactor; a new dependency or MCP surface; or reviewer-vs-diff disagreement |
+
+Tier 3 exists because a second Claude shares the first Claude's blind spots and a different
+model does not. Read-only work and pure-doc edits are exempt from all three.
+
+**Tier 2 is announced at session start.** `trio` ships its own SessionStart hook and
+`superpowers` injects a block, so both are in context whether or not anything asks for them.
+`feature-dev` ships *agents*, and an agent is passive — nothing dispatches one unless something
+decides to. That made the default rung the one that could fail silently: no error, just a review
+that quietly didn't happen. So `session-start.py` names it every session — and when feature-dev
+isn't enabled, says *that* instead, because a review that never happened must not read like one
+that did.
 
 ## Companion plugins
 
@@ -164,22 +187,32 @@ point — the failure mode isn't tokens, it's four plugins that all think they o
 
 ## Per-project docs
 
-Projects following this setup keep an append-only `Docs/` tree — newest first, one file per day,
-folder-based so nothing grows unbounded:
+Append-only, newest first. The rule is **only what git cannot reconstruct** — it already records
+what changed and when, so anything restating that is written once, read often, stale in a month,
+and misleading once stale.
 
 ```
 Docs/
-├── Changelog/YYYY-MM-DD.md
-├── Doclog/YYYY-MM-DD.md          decisions
-├── Sessions/YYYY-MM-DD.md        work log
-├── Audit/{agent}/YYYY-MM-DD/     review evidence
-├── Plan/                         in-flight stage checklists
-├── Logs/CODEMAP.md
-└── Protocols/                    project overrides, rare
+├── Decisions/YYYY-MM-DD.md       why, and what was rejected
+├── Audit/{agent}/YYYY-MM-DD/     findings and their adjudication
+└── Plan/                         in-flight only; deleted when the work lands
+CHANGELOG.md                      repo root, committed, grouped by release
 ```
 
-Decisions live in `Doclog/` and `Sessions/`; `Audit/` is evidence, never a decision by itself.
-`/bootstrap-project` creates all of it. See the `project-docs` skill for line budgets.
+Three things pass that test. `Decisions/` holds the road **not** taken — a diff shows the road
+taken, and the rejected option is what gets re-litigated six months later. `Audit/` keeps
+findings *and* their refutations, which is the half a commit never preserves; it is evidence,
+never a decision by itself. `Plan/` is the only forward-looking tree and exists so work survives
+a context reset.
+
+Cut in 1.5.0: `Sessions/` and `Docs/Changelog/` — a daily work log is `git log --since=yesterday`
+with worse fidelity. Still documented but no longer scaffolded: `Docs/Protocols/` for a genuine
+project override, and `Docs/Logs/CODEMAP.md`, which should be generated on demand because a
+CODEMAP that lags a rename is worse than none — it gets believed.
+
+`/bootstrap-project` creates this for a new repo; `/repo-fix` migrates an existing one. Projects
+still using the older `Doclog/` name keep it — it's the same tree, and renaming an append-only
+history buys nothing. See the `project-docs` skill for line budgets.
 
 ## Downloading
 

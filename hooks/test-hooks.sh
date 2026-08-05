@@ -219,6 +219,36 @@ assert o._shown() == o.MAX_SHOWS
 ' >/dev/null 2>&1 && ok "notice repeats up to MAX_SHOWS, respects legacy marker, silent when set up" \
   || bad "notice repeats up to MAX_SHOWS, respects legacy marker, silent when set up"
 
+echo "tier-2 reviewer notice"
+bash py.sh -c '
+import importlib.util, json, pathlib, tempfile
+# Loaded by path, not by name: the filename is hyphenated, so it is not a legal
+# module identifier and a plain import would fail.
+_spec = importlib.util.spec_from_file_location("ss", "session-start.py")
+s = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(s)
+tmp = pathlib.Path(tempfile.mkdtemp())
+
+# Enabled: announce it. feature-dev ships passive agents and no hook of its own,
+# so if this line goes missing the default review rung fails silently.
+cfg = tmp / "on.json"
+cfg.write_text(json.dumps({"enabledPlugins": {"feature-dev@claude-plugins-official": True}}))
+s.read_settings = lambda: json.loads(cfg.read_text())
+out = s.reviewer_notice()
+assert "feature-dev:code-reviewer" in out, out
+assert "MISSING" not in out, out
+
+# Absent: say so loudly. A silent skip here is the whole failure mode.
+s.read_settings = lambda: {}
+out = s.reviewer_notice()
+assert "MISSING" in out, out
+
+# Unreadable settings must not cost the session its core.
+def boom(): raise OSError("nope")
+s.read_settings = boom
+assert s.reviewer_notice() == ""
+' >/dev/null 2>&1 && ok "announces Tier 2, flags it when feature-dev is absent, fails open" \
+  || bad "announces Tier 2, flags it when feature-dev is absent, fails open"
+
 echo "consistency"
 M=$(bash py.sh -c 'import json;print(json.load(open("hooks.json"))["hooks"]["PreToolUse"][0]["matcher"])' 2>/dev/null)
 case "$M" in

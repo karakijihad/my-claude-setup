@@ -98,13 +98,20 @@ Every delegated task must return a structured report.
 
 ---
 
-## 6. Common Delegation Patterns
+## 6. Running the loop
 
-**Parallel Feature Implementation:** Define tasks with clear boundaries → dispatch parallel agents → review reports → verify integration → commit.
+Once tasks are defined and assigned, `superpowers:subagent-driven-development` owns the
+execution loop — per-task briefs, the implementer/reviewer cycle, and integration verification.
+It is far more detailed than a summary here would be, and a second copy would only drift.
 
-**Research Then Implement:** Dispatch `Explore` → review findings → plan → dispatch implementation → dispatch `code-reviewer` for review.
+Without superpowers: dispatch one agent per task with its own acceptance criteria, review each
+report against §3 before starting the next dependent task, and verify the integration yourself
+rather than trusting that separately-green tasks compose.
 
-**Fix With Regression Test:** Write failing test → dispatch fix agent → verify test passes → simplify → re-run tests.
+**This section is the only part of delegation that is delegated.** Everything above — when to
+delegate at all, which agent, the trio threshold, the report schema — is decided here, because
+superpowers' loop assumes an existing plan and has nothing to say about exploratory, advisory,
+or review-only dispatch.
 
 ---
 

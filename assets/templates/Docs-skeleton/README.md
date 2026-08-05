@@ -1,15 +1,21 @@
 # Docs — Project Records
 
-Append-only project records. Newest first in every file. One file per day for Sessions, Doclog, and Changelog.
+Append-only. Newest first in every file. **Only what git cannot reconstruct** — it already
+records what changed and when, so anything restating that is cost without value.
 
-| Folder                     | Contents                                                 |
-| -------------------------- | -------------------------------------------------------- |
-| [Changelog/](./Changelog/) | Semver changelog, one file per day                       |
-| [Doclog/](./Doclog/)       | Architecture decisions, one file per day                 |
-| [Sessions/](./Sessions/)   | Work logs, one file per day                              |
-| [Audit/](./Audit/)         | Review artifacts — claude/ and codex/ subfolders per day |
-| [Plan/](./Plan/)           | Stage checklists for in-flight work                      |
-| [Logs/](./Logs/)           | CODEMAP and build / benchmark logs                       |
-| [Protocols/](./Protocols/) | Project-specific protocol overrides (rare)               |
+| Folder                     | Contents                                                    |
+| -------------------------- | ----------------------------------------------------------- |
+| [Decisions/](./Decisions/) | Why, and what was rejected — one file per day                |
+| [Audit/](./Audit/)         | Review findings **and** their adjudication — `claude/`, `codex/` |
+| [Plan/](./Plan/)           | In-flight work only; delete a plan when its work lands       |
+
+The release-facing changelog is `CHANGELOG.md` at the **repo root**, not here — it needs to
+be readable by people who don't have your working copy.
+
+Two more trees are available but not scaffolded. Create one the day you need it, not before:
+
+- `Protocols/` — project-specific overrides of a protocol skill. Rare. Name what it overrides.
+- `Logs/CODEMAP.md` — structural file map. Generate on demand; a stale CODEMAP is worse than
+  none, because it gets believed.
 
 See the `project-docs` skill for rules and rationale.

@@ -15,7 +15,12 @@ references on demand, and enforces three safety hooks. Published as its own mark
   source: `session-start.py` reads it, and `session-start.sh` re-emits it via jq when Python is
   missing. Only the last-resort branch in `session-start.sh` (no Python *and* no jq) restates
   policy, and it is deliberately reduced rather than a mirror.
-- `hooks/session-start.py` — wraps `core.md` with git context and the onboarding notice.
+- `hooks/session-start.py` — wraps `core.md` with git context, the Tier-2 reviewer notice, and
+  the onboarding notice. The reviewer notice exists because `feature-dev` ships *agents*, and an
+  agent is passive — trio and superpowers both announce themselves from their own SessionStart
+  injection, so Tier 2 was the only rung of the ladder that could fail silently. It is
+  conditional on `enabledPlugins`: when feature-dev is absent it says so rather than staying
+  quiet, since a review that never happened must not read like one that did.
 - `hooks/session-start.sh` — dispatcher with the two fallback branches.
 - `hooks/test-hooks.sh` — the hook test suite. See Verifying a change.
 - `hooks/guard.sh` — all PreToolUse blocking. One script, dispatches on which field is present.
@@ -23,8 +28,13 @@ references on demand, and enforces three safety hooks. Published as its own mark
   state; must never nag a user who is already set up. Reads settings as **`utf-8-sig`**, because
   Windows tooling writes a BOM and plain `utf-8` would make a healthy config look absent.
 - `hooks/py.sh` — interpreter resolver. Every Python entry point goes through it.
-- `skills/*/SKILL.md` — the `description:` field is the router. See Gotchas.
-- `.claude-plugin/` — `plugin.json` and `marketplace.json`. Bump `version` in the former on release.
+- `skills/*/SKILL.md` — the `description:` field is the router. See Gotchas. Descriptions are
+  resident in the system prompt for **every** session, so they are budgeted like `core.md`: name
+  the trigger situations, not the topic vocabulary, and keep each near 30–70 tokens.
+- `commands/` — `setup`, `bootstrap-project` (blank slate), `repo-fix` (existing repo, surveys
+  before it writes).
+- `.claude-plugin/` — `plugin.json` and `marketplace.json`. Bump `version` in the former on
+  release, and add the section to `CHANGELOG.md` in the same commit.
 
 ## Gotchas
 
@@ -90,6 +100,12 @@ Two things to know when reading one. Trio's top-level `findings` array reads `0`
 run has ended is never ingested, so the generated `claude/` file will list everything as open;
 correct it by hand before promoting.
 
-No other `Docs/` subtree. The repo is small enough that git history is the record, and
-`Docs/Plan/` is for in-flight work — nothing here stays in flight. The `project-docs` skill and
-`assets/templates/` describe the convention for *consuming* projects, not for this one.
+No other `Docs/` subtree — and as of 1.5.0 that is the shipped convention rather than an
+exemption from it. `project-docs` went from seven trees to three (`Decisions/`, `Audit/`,
+`Plan/`) because this repo had already voted with its feet: the folders it never bothered to
+create were exactly the ones git already covered. If the maintainer won't run his own
+convention, it was the convention that was wrong.
+
+`CHANGELOG.md` is the exception that proves it — a changelog is read by people who don't have
+your working copy, so it lives at the **repo root** and is committed, never under the gitignored
+`Docs/`. Add its section in the same commit as the `plugin.json` version bump.

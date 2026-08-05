@@ -80,7 +80,7 @@ LEGACY_HOOK_SCRIPTS = (
 LEGACY_DIRS = ("Docs", "hooks", "Templates")
 
 
-def _settings() -> dict:
+def read_settings() -> dict:
     # utf-8-sig, not utf-8: Windows tooling writes a BOM (PowerShell's
     # Set-Content -Encoding utf8 always does), and json.loads rejects it.
     # Reading it as plain utf-8 makes a healthy config look entirely absent,
@@ -179,7 +179,7 @@ def notice() -> str:
         seen = _shown()
         if seen >= MAX_SHOWS:
             return ""
-        cfg = _settings()
+        cfg = read_settings()
         missing, gaps, legacy = _missing_companions(cfg), _unapplied_settings(cfg), _legacy_artifacts(cfg)
         if not (missing or gaps or legacy):
             # Fully set up. Stop permanently, not just this session.
