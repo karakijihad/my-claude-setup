@@ -174,7 +174,7 @@ Docs/
 Decisions live in `Doclog/` and `Sessions/`; `Audit/` is evidence, never a decision by itself.
 `/bootstrap-project` creates all of it. See the `project-docs` skill for line budgets.
 
-## Migrating from the symlink version
+## Downloading
 
 1. `/plugin marketplace add karakijihad/my-claude-setup` and install.
 2. `/setup`.
