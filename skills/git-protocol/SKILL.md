@@ -1,9 +1,9 @@
 ---
 name: git-protocol
 description: >
-  Branching strategy, conventional commit format, safety rules, and PR/merge process.
-  Use before creating a branch, staging, committing, pushing, merging, rebasing,
-  cherry-picking, force-pushing, opening a PR, or any other git interaction.
+  Branching strategy, conventional commit format, safety rules, the post-push CI check, and
+  PR/merge process. Use before creating a branch, staging, committing, pushing, merging,
+  rebasing, cherry-picking, force-pushing, opening a PR, or any other git interaction.
 ---
 
 # Git Workflow Protocol
@@ -72,6 +72,8 @@ Before every commit:
 
 - [ ] All tests passing
 - [ ] Lint/format clean — **run the project's own command**; no hook does this for you
+- [ ] If the repo has CI, **run what it runs** — its steps are often stricter than the local
+      defaults, and one command here saves a red run and a follow-up commit
 - [ ] No secrets in the diff — check with `git diff --staged | grep -iE 'api_key|secret|token|password'`
 - [ ] Commit message follows conventional format
 - [ ] Changes are scoped to one logical unit
@@ -84,6 +86,18 @@ Before every commit:
 - **Request review** for changes touching auth, data access, or security. Use `feature-dev:code-reviewer` for automated first-pass.
 - **Squash merge** feature branches to keep main history clean. Preserve individual commits only when the intermediate steps have standalone value.
 - **Don't merge with failing tests.** Nothing enforces this locally — the pre-commit test-runner hook was removed for cost. Run the suite yourself and read the output before merging.
+
+---
+
+## 6. After the Push
+
+**No CI in the repo → nothing to do here.** `post-push.sh` stays silent and so should you;
+setting one up is `/bootstrap-project`'s question or the user's request, not a mid-task suggestion.
+
+With CI: match the run by **commit SHA, never the branch** — a push returns before its run is
+created, so a branch query answers with the previous commit's run, often green. Report one of
+green / red / cancelled / skipped / queued / unavailable; only green passes. Don't poll — finish
+the remaining work and check once more. Record the repo's CI once in its `CLAUDE.md` under `## CI`.
 
 ---
 

@@ -32,10 +32,16 @@ Set up this project to follow the `project-docs` convention.
    Anchored, because bare `Docs/` also matches a nested `packages/*/Docs/`. This is a fresh-repo
    command, so nothing under `Docs/` should be tracked yet — if `git ls-files -- Docs` returns
    anything, you are in `/repo-fix` territory: report it and don't untrack anything here.
-5. Fill in the parts of `./CLAUDE.md` you can determine by reading the repo: project name and
+5. **Settle CI** and record it in `./CLAUDE.md` under `## CI`. Look for `.github/workflows/`,
+   `.gitlab-ci.yml`, `Jenkinsfile`, `azure-pipelines.yml`, `.circleci/config.yml`, `.travis.yml`,
+   `bitbucket-pipelines.yml`, `appveyor.yml`, `.buildkite/`. Found → record provider, trigger,
+   the commands it runs, the check command. None → ask once whether the project wants CI and
+   record either answer; `none, confirmed <today>` is what stops a later session re-asking.
+   Never write a workflow file unless asked — this command scaffolds docs.
+6. Fill in the parts of `./CLAUDE.md` you can determine by reading the repo: project name and
    one-line purpose, tech stack, the real commands from `package.json` / `pyproject.toml` /
    `Makefile`, and key directories. Leave `Gotchas` for the user — you can't know those yet.
-6. Report what you created and what still needs the user's input.
+7. Report what you created and what still needs the user's input.
 
 The global protocols cover security, testing, git, delegation, and context. The project file
 should carry only what is specific to this repo: architecture, key files, stack, commands,

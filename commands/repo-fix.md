@@ -19,6 +19,7 @@ Check each of these against the current directory. Report what you find, not wha
 | `CHANGELOG.md` | At the **repo root**, committed |
 | `.gitignore` | Covers `.env*`; whether `/Docs/` is ignored; whether `git ls-files -- Docs` shows tracked files; whether a `Docs policy` section in `CLAUDE.md` opts out |
 | `.env.example` | Exists if the project reads env vars — `security-protocol` §04 requires it |
+| CI | Any of `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `azure-pipelines.yml`, `.circleci/config.yml`, `.travis.yml`, `bitbucket-pipelines.yml`, `appveyor.yml`, `.buildkite/`; and whether `CLAUDE.md` has a `## CI` section recording it |
 | Stale plans | Anything in `Docs/Plan/` whose work already landed |
 
 ## 2. Report
@@ -61,6 +62,10 @@ with the survey — the point of this command is that you see the list before an
   dropped it because `git log` covers the same ground. Removing it is the user's call.
 - **`Docs/Changelog/`** → offer to consolidate into a root `CHANGELOG.md` grouped by release,
   using `changelog-entry.md`. Keep the originals until the user confirms the merge reads right.
+- **CI** → found but unrecorded: propose a `## CI` section (provider, trigger, the commands it
+  runs, the check command) and let the user accept it, per the rule above. None found: ask once
+  whether the project wants CI and record either answer — `none, confirmed <today>` stops the
+  re-ask. Never write a workflow file here.
 - **Stale plan files** → list them, propose deletion, delete nothing unprompted.
 
 ## 4. Report what changed

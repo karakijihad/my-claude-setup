@@ -24,6 +24,11 @@ references on demand, and enforces three safety hooks. Published as its own mark
 - `hooks/session-start.sh` — dispatcher with the two fallback branches.
 - `hooks/test-hooks.sh` — the hook test suite. See Verifying a change.
 - `hooks/guard.sh` — all PreToolUse blocking. One script, dispatches on which field is present.
+- `hooks/post-push.sh` — the only PostToolUse hook, and the whole of the CI feature. Fires on
+  every Bash call, so its rejections are ordered cheapest-first; prints nothing unless a push
+  actually landed *and* the repo has CI config. Exit 0 on every path — PostToolUse runs after
+  the call and cannot block it. The docs around it are deliberately thin: the hook is the
+  mechanism, and the `.md` files carry only what it can't say at the moment it fires.
 - `hooks/onboarding.py` — one-time first-run check, imported by `session-start.py`. Detects real
   state; must never nag a user who is already set up. Reads settings as **`utf-8-sig`**, because
   Windows tooling writes a BOM and plain `utf-8` would make a healthy config look absent.
@@ -61,6 +66,9 @@ references on demand, and enforces three safety hooks. Published as its own mark
 bash hooks/test-hooks.sh   # exit 0 means every assertion passed
 ```
 
+`CI: none, confirmed 2026-08-10` — this suite, run locally, is the whole gate. Recorded in the
+form `/bootstrap-project` writes so `post-push.sh` and a later session both stay quiet about it.
+
 Covers both hook outputs as JSON; every guard block and allow, including backslash paths and
 `notebook_path`; the commit secret scan against a real staged diff; the notify sanitizer, driven
 through a stub backend on `PATH`; both fallback branches; the Windows interpreter layout (jq and
@@ -84,8 +92,10 @@ Add a case for anything you change. Traps worth knowing before you write one:
 - **Don't assert against a reimplementation of the thing you're testing.** An assertion that
   recomputes `notify.sh`'s sanitizer stays green after the sanitizer is deleted. Drive the
   script and inspect what it actually produced.
-- **Guard `mktemp`.** `TMP=$(mktemp -d) && cp ...` does not stop the script; a later
-  `> "$TMP/x"` with an empty `TMP` writes to `/x`.
+- **Guard `mktemp`, and stay inside it.** `TMP=$(mktemp -d) && cp ...` does not stop the script;
+  a later `> "$TMP/x"` with an empty `TMP` writes to `/x`. And `$TMP/../thing` is the shared temp
+  root, not a private path — two suites running at once collide there. The post-push fixture put
+  its bare remote exactly there and failed intermittently for a reason unrelated to the hook.
 
 ## Docs
 

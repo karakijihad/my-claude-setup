@@ -191,6 +191,110 @@ if [ -n "$WT" ] && [ -d "$WT" ]; then
   rm -rf "$WT"
 fi
 
+echo "post-push"
+# pp <quiet|speaks> <name> <command-json> <dir> — post-push.sh must always exit 0
+# (PostToolUse cannot block a call that already ran) and must print nothing at
+# all unless it has something to say. A stray byte here is injected context on
+# every Bash call in the session.
+pp() {
+  local mode="$1" name="$2" json="$3" dir="$4" out got
+  out=$(printf '%s' "$json" | (cd "$dir" && bash "$HOOKS/post-push.sh") 2>/dev/null)
+  got=$?
+  if [ "$got" != 0 ]; then
+    bad "$name" "exit $got — this hook must never block"
+  elif [ "$mode" = quiet ] && [ -n "$out" ]; then
+    bad "$name" "expected silence, got: ${out:0:90}"
+  elif [ "$mode" = speaks ] && [ -z "$out" ]; then
+    bad "$name" "expected a reminder, got nothing"
+  else
+    ok "$name"
+  fi
+}
+
+PP=$(mktemp -d) || { bad "post-push fixtures" "mktemp -d failed"; PP=; }
+if [ -n "$PP" ] && [ -d "$PP" ]; then
+  (
+    cd "$PP" || exit 1
+    git init -q .
+    git config user.email t@t
+    git config user.name t
+    printf 'x\n' > a.txt
+    git add a.txt
+    git commit -q -m "init"
+  ) >/dev/null 2>&1
+
+  # No CI config in the tree: silence. Absence of config is not absence of CI,
+  # but guessing is the setup commands' job — the hook has nothing to point at.
+  pp quiet  "silent in a repo with no CI config" '{"tool_input":{"command":"git push"}}' "$PP"
+
+  mkdir -p "$PP/.github/workflows" && printf 'on: push\n' > "$PP/.github/workflows/ci.yml"
+
+  pp speaks "speaks after a push when CI config exists" '{"tool_input":{"command":"git push"}}' "$PP"
+  pp speaks "matches a push chained after a commit" \
+     '{"tool_input":{"command":"git commit -m ok && git push -u origin main"}}' "$PP"
+  pp speaks "matches git -C <dir> push" '{"tool_input":{"command":"git -C /srv/app push"}}' "$PP"
+
+  # The false-positive that matters: `push` as an argument is not a push. A
+  # reminder on every log search is noise, and noise gets the hook disabled.
+  pp quiet  "ignores 'push' as an argument to another git command" \
+     '{"tool_input":{"command":"git log --grep push"}}' "$PP"
+  pp quiet  "ignores a non-git command"    '{"tool_input":{"command":"npm run push"}}' "$PP"
+  pp quiet  "ignores an Edit payload"      '{"tool_input":{"file_path":"/x/a.ts"}}' "$PP"
+  pp quiet  "fails open on an unparseable payload" 'not json at all' "$PP"
+
+  # The reminder must name the pushed SHA. Keying on the branch is the false-green
+  # bug this hook exists to prevent: a push returns before its run is created, so
+  # a branch query answers with the *previous* commit's run, often green.
+  SHA=$( (cd "$PP" && git rev-parse HEAD) 2>/dev/null)
+  OUT=$(printf '%s' '{"tool_input":{"command":"git push"}}' \
+    | (cd "$PP" && bash "$HOOKS/post-push.sh") 2>/dev/null)
+  case "$OUT" in
+    *"$SHA"*) ok "names the pushed commit SHA, not just the branch" ;;
+    *) bad "names the pushed commit SHA, not just the branch" "sha $SHA absent from: ${OUT:0:90}" ;;
+  esac
+  # PostToolUse output is ignored outright unless hookEventName is present, so a
+  # hook that emits valid JSON without it is silently dead.
+  printf '%s' "$OUT" | bash py.sh -c '
+import json,sys
+d=json.load(sys.stdin)["hookSpecificOutput"]
+assert d["hookEventName"]=="PostToolUse", d
+assert d["additionalContext"]
+' >/dev/null 2>&1 && ok "emits hookSpecificOutput with hookEventName PostToolUse" \
+    || bad "emits hookSpecificOutput with hookEventName PostToolUse" "got: ${OUT:0:90}"
+
+  # A rejected push leaves the branch ahead of its upstream. Pointing the session
+  # at CI for a commit the remote never received is worse than silence: the run it
+  # finds belongs to someone else's commit.
+  # The bare remote gets its own mktemp dir. `$PP/../remote.git` resolves to the
+  # shared temp root, so two suites running at once collide there: the second
+  # push is rejected, no upstream is set, and the assertion below fails for a
+  # reason that has nothing to do with the hook. Nothing may be written outside
+  # the directory the test created.
+  RB=$(mktemp -d)
+  if [ -n "$RB" ] && [ -d "$RB" ]; then
+    (
+      cd "$PP" || exit 1
+      git init -q --bare "$RB/remote.git"
+      git remote add origin "$RB/remote.git"
+      git add -A && git commit -q -m "ci config"
+      git push -q -u origin HEAD
+      printf 'y\n' > b.txt && git add b.txt && git commit -q -m "unpushed"
+    ) >/dev/null 2>&1
+    # Assert the fixture before asserting the hook: with no upstream set, this
+    # case passes vacuously for the wrong reason.
+    if [ "$( (cd "$PP" && git rev-list --count '@{u}..HEAD') 2>/dev/null)" = 1 ]; then
+      pp quiet "silent when the branch is still ahead of upstream (push did not land)" \
+         '{"tool_input":{"command":"git push"}}' "$PP"
+    else
+      bad "silent when the branch is still ahead of upstream (push did not land)" \
+          "fixture did not leave the branch exactly 1 ahead of its upstream"
+    fi
+    rm -rf "$RB"
+  fi
+
+  rm -rf "$PP"
+fi
+
 echo "onboarding"
 bash py.sh -c '
 import sys, tempfile, pathlib
@@ -254,6 +358,11 @@ M=$(bash py.sh -c 'import json;print(json.load(open("hooks.json"))["hooks"]["Pre
 case "$M" in
   *NotebookEdit*) ok "hooks.json matcher covers NotebookEdit, as guard.sh claims" ;;
   *) bad "hooks.json matcher covers NotebookEdit, as guard.sh claims" "matcher: $M" ;;
+esac
+P=$(bash py.sh -c 'import json;print(json.load(open("hooks.json"))["hooks"]["PostToolUse"][0]["matcher"])' 2>/dev/null)
+case "$P" in
+  *Bash*) ok "hooks.json registers post-push.sh on Bash, as that script claims" ;;
+  *) bad "hooks.json registers post-push.sh on Bash, as that script claims" "matcher: $P" ;;
 esac
 bash py.sh -c '
 import re,sys

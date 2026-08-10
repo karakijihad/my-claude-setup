@@ -42,6 +42,13 @@ npm run build
 npm run lint
 ```
 
+## CI
+
+- Provider: [GitHub Actions / GitLab CI / none, confirmed YYYY-MM-DD]
+- Triggers on: [push to main / every PR / tags]
+- Runs: [the exact commands — run these locally before pushing]
+- Check a run: [`gh run list -c $(git rev-parse HEAD)` — by SHA, not branch]
+
 ## Environment
 
 - Copy `.env.example` to `.env`

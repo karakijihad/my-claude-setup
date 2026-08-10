@@ -5,6 +5,41 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.7.0] — 2026-08-10
+
+### Added
+
+- **`post-push.sh`, a PostToolUse hook — and with it the first rule about CI anywhere.** The word
+  appeared nowhere: nothing said to find a repo's CI, run it, or check whether the run passed.
+  `git-protocol` ended at the commit, so nothing owned the interval after `git push` — the only
+  place CI exists. The hook fires on a push that actually landed and states the obligation at the
+  one moment it is cheap to act on. A prompt, not a gate: it verifies nothing and exits 0 on every
+  path, since PostToolUse cannot block a call that already ran. Deliberately, the hook is the
+  whole mechanism — the prose around it stayed thin.
+- **Keynotes only, in four places**: `git-protocol` §6 and one §4 line (if the repo has CI, run
+  what it runs *before* pushing — preventing a red run beats detecting one), a `## CI` block in
+  `project-CLAUDE.md`, and detection in `/bootstrap-project` and `/repo-fix`. Those two ask
+  **once**, at setup, and record either answer — `none, confirmed <date>` included, since an
+  unrecorded "no" gets re-asked forever. Nothing volunteers the question mid-task, and no command
+  ever writes a workflow file.
+
+### Fixed
+
+- **The false green this nearly shipped with.** `git push` returns before CI creates the run, so
+  the obvious `gh run list --branch <b> -L 1` answers with the *previous* commit's run — often
+  green, for a commit that isn't yours. Everything keys on the SHA instead
+  (`gh run list -c $(git rev-parse HEAD)`; `-c` confirmed in gh 2.94.0). A stale pass is worse
+  than no check: it retires the question.
+- **Four outcomes that read as success and aren't.** The reminder demands one of six — green,
+  red, cancelled, skipped, queued, unavailable — and only green passes. A skipped job ran nothing;
+  a check that couldn't run is `unavailable`. Where no CLI exists the hook emits a pointer, not a
+  command that would fail, since a failing command reads as "unavailable" and gets waved past.
+- **No CI means silence**, and so does a branch still ahead of its upstream — a rejected push must
+  not send anyone to read someone else's run. Absence of config isn't absence of CI (external
+  Jenkins, hosted checks), which is why that case is the setup commands' question, not a guess.
+
+---
+
 ## [1.6.0] — 2026-08-05
 
 ### Changed
