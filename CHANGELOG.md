@@ -5,6 +5,24 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.11.2] — 2026-08-12
+
+### Added
+
+- **A way to tell "nothing to do" from "it crashed".** `selfheal.heal()` swallows every failure,
+  which is correct — a repair must never break the session it was meant to improve — but from
+  outside, a silent success and a silent crash are the same thing. `touch
+  ~/.claude/.my-claude-setup-debug` and the next failure is appended to
+  `.my-claude-setup-debug.log` instead of vanishing. Off by default, and it never changes what
+  `heal()` returns.
+
+  Worth noting where this came from: the plugin has now been bitten three times by failures that
+  looked like nothing — a status line rendering from an abandoned release, a `.env` guard that
+  worked on one OS and not the other, and an SVG that read as valid and rendered as an empty box.
+  Silence is the failure mode this codebase produces, so it gets an escape hatch.
+
+---
+
 ## [1.11.1] — 2026-08-12
 
 ### Removed

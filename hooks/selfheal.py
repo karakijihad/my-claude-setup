@@ -30,6 +30,7 @@ import json
 import os
 import re
 import shutil
+import traceback
 from pathlib import Path
 
 PLUGIN = "my-claude-setup"
@@ -41,6 +42,22 @@ LAUNCHER_DEST = CLAUDE / "statusline.mjs"
 VERSION_DIR = re.compile(r"^\d+\.\d+\.\d+")
 # Enough to say what moved without pasting a release into the context window.
 MAX_LISTED = 12
+
+
+# Swallowing every failure is right — a repair must never break the session it
+# was meant to improve — but it leaves "nothing to do" and "it crashed" looking
+# identical from outside, which is the ambiguity this plugin keeps being bitten
+# by. `touch ~/.claude/.my-claude-setup-debug` and the next failure is written
+# beside it instead of vanishing.
+DEBUG_FLAG = CLAUDE / ".my-claude-setup-debug"
+
+
+def _debug(text: str) -> None:
+    try:
+        if DEBUG_FLAG.exists():
+            io.open(str(DEBUG_FLAG) + ".log", "a", encoding="utf-8").write(text + "\n")
+    except Exception:
+        pass
 
 
 def _read_json(path):
@@ -257,4 +274,5 @@ def heal() -> str:
         ]
         return "\n".join(block)
     except Exception:
+        _debug(traceback.format_exc())
         return ""
