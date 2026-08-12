@@ -5,6 +5,41 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.10.0] — 2026-08-12
+
+An update that requires the user to run a command afterwards is broken on most machines most of
+the time: nobody remembers, and nothing complains. This release makes the plugin repair its own
+wiring and say so.
+
+### Added
+
+- **`assets/statusline-launcher.mjs`** — one file, copied once to `~/.claude/statusline.mjs`,
+  whose only job is to read `installed_plugins.json` and hand off to whichever release is
+  installed. `settings.json` points at that stable path and never needs rewriting again. The
+  indirection costs nothing measurable: 186 ms against 194 ms direct, inside the noise, because
+  it is a path lookup inside the same node process rather than a second one.
+- **`hooks/selfheal.py`** — runs on every session start, and does nothing at all on the ones
+  where the version has not moved. When it has, it refreshes the launcher, repoints `statusLine`
+  if it is still pinned to a versioned path, stamps the version, and returns a notice saying
+  exactly what it changed. Scoped deliberately: it rewrites one key this plugin wrote, to a value
+  this plugin owns. A status line pointing at somebody else's script is left alone, other keys
+  are untouched, and every failure is swallowed — a repair that breaks the session it meant to
+  improve is a net loss.
+
+### Fixed
+
+- **The status line silently ran a stale release.** Its path carried the plugin version, so every
+  update orphaned it — and Claude Code keeps every previously installed version in the cache, so
+  the old path still resolved and still ran. Nothing looked wrong. Found on the author's own
+  machine mid-session: `settings.json` pointing at 1.7.0, 1.8.0 installed, **ten** versions on
+  disk, and a bar that had been rendering from a release abandoned two versions earlier. A blank
+  bar would have been the kinder failure.
+- **Documentation that told users to re-run `/setup` after upgrading.** It was accurate advice
+  for a design that should not have existed. Removed from `/setup`, and the 1.8.0 changelog entry
+  now records what actually happened rather than the workaround it recommended.
+
+---
+
 ## [1.9.0] — 2026-08-12
 
 Everything below was found by looking at 1.8.0 again rather than by building anything new: an
@@ -149,8 +184,9 @@ The cost was entirely **process spawns** — which on Windows run 90-200ms each,
   Ink/React application and boots React even in hook mode: 1665ms per render with the shipped
   four-line config, and still 1189ms stripped to two fields, against 148ms for the replacement.
   Claude Code re-runs the status line as the session updates, so that sat on the render path and
-  was the measured cause of the lag. `/setup` should be re-run after any upgrade — the status
-  line path contains the plugin version, and a stale one renders nothing.
+  was the measured cause of the lag. As shipped in 1.8.0 the status-line path carried the plugin
+  version, so an upgrade silently orphaned it; 1.10.0 replaced that with a launcher and a
+  self-heal, and no longer asks anyone to re-run anything.
 
 ### Fixed
 

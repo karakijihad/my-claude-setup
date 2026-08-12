@@ -36,6 +36,13 @@ references on demand, and enforces three safety hooks. Published as its own mark
 - `hooks/onboarding.py` — one-time first-run check, imported by `session-start.py`. Detects real
   state; must never nag a user who is already set up. Reads settings as **`utf-8-sig`**, because
   Windows tooling writes a BOM and plain `utf-8` would make a healthy config look absent.
+- `hooks/selfheal.py` — repairs the plugin's own wiring after an update, imported by
+  `session-start.py`. Runs on every session start and is silent on all but the first after a
+  version change. It rewrites exactly one key it wrote itself; anything the user chose is left
+  alone, because a hook that edits settings nobody delegated is worse than a stale path.
+- `assets/statusline-launcher.mjs` — the stable path `settings.json` points at. The plugin's own
+  directory is version-pinned, and pointing at it directly fails *quietly*: old versions stay in
+  the cache, so the stale path keeps resolving and the bar renders from a release nobody uses.
 - `hooks/py.sh` — interpreter resolver. Every Python entry point goes through it.
 - `skills/*/SKILL.md` — the `description:` field is the router. See Gotchas. Descriptions are
   resident in the system prompt for **every** session, so they are budgeted like `core.md`: name

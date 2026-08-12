@@ -140,20 +140,29 @@ section — it is a preference, not a correctness fix.
 
 ## 1.6 Status line
 
-`${CLAUDE_PLUGIN_ROOT}/assets/statusline.mjs` prints three lines: model and effort, then what
-the session has spent; context against the real window, cache hit rate, memory and the skill in
-play; then branch and lines written. No dependencies, no `npm install` and no subprocess — a
-plain node script that ships with the plugin. `STATUSLINE_GIT_CHANGES=1` adds a dirty-file count
-at the cost of one `git` spawn per render.
+Three lines: model and effort, then what the session has spent; context against the real window,
+cache hit rate, memory and the skill in play; then branch and lines written. No dependencies, no
+`npm install` and no subprocess — a plain node script that ships with the plugin.
+`STATUSLINE_GIT_CHANGES=1` adds a dirty-file count at the cost of one `git` spawn per render.
 
-Set `statusLine` to `{"type": "command", "command": "node \"<abs>\"", "padding": 0}`, where
-`<abs>` is `${CLAUDE_PLUGIN_ROOT}/assets/statusline.mjs` resolved to a real absolute path with
-forward slashes.
+Two steps, and the first is what makes it survive updates:
 
-**That path contains the plugin's version, so it changes on every release.** Re-run this command
-after upgrading the plugin; otherwise the status line silently renders nothing. Say this to the
-user when you write the key — a status bar that vanishes after an update looks like a Claude
-Code bug and will be debugged as one.
+1. Copy `${CLAUDE_PLUGIN_ROOT}/assets/statusline-launcher.mjs` to `~/.claude/statusline.mjs`.
+2. Set `statusLine` to
+   `{"type": "command", "command": "node \"<home>/.claude/statusline.mjs\"", "padding": 0}`,
+   with `<home>` an absolute path using forward slashes.
+
+Never point `statusLine` inside the plugin's own directory. That path carries the version, so it
+stops matching on the next release — and it fails *quietly*, because Claude Code keeps every
+previously installed version on disk: the stale path still resolves, still runs, and the bar goes
+on rendering from a release nobody is using. The launcher is one file whose only job is to read
+`installed_plugins.json` and hand off to whichever release is current.
+
+**After this, updates take care of themselves.** `hooks/selfheal.py` runs on every session start,
+notices when the installed version has moved, refreshes the launcher, repoints `statusLine` if it
+is still pinned to a versioned path, and states what it did. It repairs only keys this plugin
+wrote, leaves a status line pointing at anything else alone, and says nothing on the sessions
+where nothing changed.
 
 ---
 

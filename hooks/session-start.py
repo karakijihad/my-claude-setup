@@ -25,6 +25,12 @@ except Exception:  # onboarding is a convenience; never let it cost the core
     def read_settings() -> dict:
         return {}
 
+try:
+    from selfheal import heal
+except Exception:  # same rule: a repair must never cost the core
+    def heal() -> str:
+        return ""
+
 REVIEWER = "feature-dev"
 
 # The policy text itself lives in core.md, not here, so the no-Python fallback in
@@ -91,7 +97,7 @@ def main() -> None:
     sys.stdin.read()  # drain payload; nothing in it is needed
     with open(CORE_FILE, encoding="utf-8") as fh:
         core = fh.read().strip()
-    context = core + git_context() + reviewer_notice() + notice()
+    context = core + git_context() + reviewer_notice() + heal() + notice()
     print(json.dumps({"additionalContext": context}, ensure_ascii=False))
 
 
