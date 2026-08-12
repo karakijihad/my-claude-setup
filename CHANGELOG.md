@@ -50,6 +50,10 @@ file — see `git log --grep="bump to"`.
   every value is wrapped in its own, so a label and its number are never adjacent in the raw
   bytes.
 
+- **`assets/statusline.svg` regenerated**, so the README's picture shows the layout above rather
+  than the one it replaced. Produced by running the script, as before. One colour moved with it:
+  the time hue is 256-index 109, which is `#87afaf` — the previous file had `#87afd7`, index 110.
+
 ---
 
 ## [1.11.3] — 2026-08-12

@@ -129,7 +129,7 @@ hygiene.
 
 ## The status line
 
-![The status line: model and effort, session spend, context and cache-hit rate, memory, the active skill, branch and lines edited](assets/statusline.svg)
+![The status line: model and effort, machine memory, session spend, context, session input and output tokens, cache-hit rate, the active skill, branch and lines edited](assets/statusline.svg)
 
 Three lines. Identity and spend; what the session and the machine are carrying; the repo. `/setup`
 installs it and `node` is the only requirement — no `npm install`, no dependencies.
