@@ -97,7 +97,11 @@ def main() -> None:
     sys.stdin.read()  # drain payload; nothing in it is needed
     with open(CORE_FILE, encoding="utf-8") as fh:
         core = fh.read().strip()
-    context = core + git_context() + reviewer_notice() + heal() + notice()
+    # heal() goes first, ahead of the resident core. It is empty on all but the
+    # one session after an update, and on that session it is the most
+    # time-sensitive thing here — burying it behind ~800 tokens of standing
+    # rules is how it got read as background and never mentioned to the user.
+    context = heal() + core + git_context() + reviewer_notice() + notice()
     print(json.dumps({"additionalContext": context}, ensure_ascii=False))
 
 

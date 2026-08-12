@@ -267,12 +267,29 @@ def heal() -> str:
             "**ask before installing a companion**: repairing a path this plugin wrote is the "
             "plugin's business, putting new software on someone's machine is theirs.",
             "",
-            "Then tell the user, in a few lines: what changed, what was repaired, what was "
-            "pruned, and anything still needing their decision. If nothing needs deciding, say "
-            "that plainly and move on to what they actually asked for.",
+            "**Say all of this to the user before anything else.** An update they were not told "
+            "about is indistinguishable from one that did not happen — they watched files change "
+            "and heard nothing, which is the failure this whole mechanism exists to remove. Lead "
+            "with what changed, what was repaired, what was pruned, and anything still needing "
+            "their decision. Then get on with what they actually asked for. A full copy is at "
+            "`~/.claude/.my-claude-setup-last-update.md` if this gets lost.",
             "</my-claude-setup-updated>",
         ]
-        return "\n".join(block)
+        text = "\n".join(block)
+
+        # Written to disk as well as injected, because everything above is an
+        # instruction and an instruction can be ignored. The file is the part
+        # that does not depend on anyone choosing to speak: whatever happened,
+        # it is on disk and the user can read it.
+        try:
+            io.open(CLAUDE / ".my-claude-setup-last-update.md", "w", encoding="utf-8").write(
+                text.replace("<my-claude-setup-updated>", "# Plugin update\n")
+                    .replace("</my-claude-setup-updated>", "")
+                    .strip() + "\n"
+            )
+        except Exception:
+            pass
+        return text
     except Exception:
         _debug(traceback.format_exc())
         return ""

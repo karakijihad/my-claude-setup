@@ -5,6 +5,27 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.11.3] — 2026-08-12
+
+### Fixed
+
+- **The update ran and said nothing.** Reported from a second machine: versions pruned, stamp
+  advanced, wiring repaired — and no word to the user about any of it. The mechanism worked
+  perfectly and was, from where they sat, indistinguishable from nothing happening.
+
+  The cause is structural. The hook injects an *instruction* to report the update; whether that
+  gets said is the session's decision, and it was competing with roughly 800 tokens of resident
+  rules ahead of it. Two changes, one improving the odds and one removing the dependency:
+
+  - **The update block is now injected first**, ahead of `core.md`. It is empty on every session
+    but the one after an update, and on that session it is the most time-sensitive thing in the
+    payload.
+  - **The summary is written to `~/.claude/.my-claude-setup-last-update.md`.** Everything else
+    here is an instruction, and an instruction can be ignored. The file cannot: whatever
+    happened, it is on disk and readable without anyone choosing to speak.
+
+---
+
 ## [1.11.2] — 2026-08-12
 
 ### Added

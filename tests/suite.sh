@@ -577,6 +577,7 @@ ok = all([
     cfg.get('model') == 'user-chose-this',    # user's own keys untouched
     not old.exists() and new.exists(),        # pruned the superseded release only
     'setup.md' in first and 'Part 1' in first,# hands the rest to the session
+    (home / '.claude/.my-claude-setup-last-update.md').is_file(),  # on disk, not only injected
     first.strip() and not second.strip(),     # says it once
 ])
 shutil.rmtree(home, ignore_errors=True)
