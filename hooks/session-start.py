@@ -102,7 +102,19 @@ def main() -> None:
     # time-sensitive thing here — burying it behind ~800 tokens of standing
     # rules is how it got read as background and never mentioned to the user.
     context = heal() + core + git_context() + reviewer_notice() + notice()
-    print(json.dumps({"additionalContext": context}, ensure_ascii=False))
+    # The nesting is load-bearing. A bare top-level {"additionalContext": ...}
+    # is the SDK/Copilot shape; Claude Code reads hookSpecificOutput and ignores
+    # anything it does not recognise, so the wrong shape is not an error — it is
+    # valid JSON, exit 0, and a core that silently never loads. Emit exactly one
+    # shape: Claude Code consumes hookSpecificOutput *and* snake_case
+    # additional_context without deduplicating, so carrying both to be portable
+    # would inject the core twice.
+    print(json.dumps({
+        "hookSpecificOutput": {
+            "hookEventName": "SessionStart",
+            "additionalContext": context,
+        }
+    }, ensure_ascii=False))
 
 
 if __name__ == "__main__":

@@ -1,11 +1,15 @@
 // Status line — three lines.
 //
-//   Opus 5 (1M context) · high | Session $15.75 - 1h 29m
-//   Context 277k/1.0M (28%) | Cache Hit 99% | mem 27.1/31.8G | Skill artifact-design
+//   Opus 5 (1M context) · high | mem 27.1/31.8G | Session $15.75 - 1h 29m
+//   Context 277k/1.0M (28%) | in 277k · out 12.4k | Cache Hit 99% | Skill artifact-design
 //   branch main | +1523/-393
 //
-// Line 1 is identity and what the session has spent. Line 2 is what the session
-// and the machine are carrying right now. Line 3 is the repo.
+// Line 1 is identity, the machine, and what the session has spent. Line 2 is
+// what the session is carrying right now. Line 3 is the repo.
+//
+// Memory sits on line 1 because it is a property of the machine, not of the
+// session — grouping it with the context and cache figures invited reading it
+// as another per-session meter.
 //
 // Claude Code pipes a JSON snapshot of session state to stdin on every status
 // refresh and prints whatever this writes to stdout. That puts it on the render
@@ -187,6 +191,19 @@ process.stdin.on("end", () => {
         .filter(Boolean).join(c(RULE, " · ")),
     );
   }
+  // Used-of-total, because free-of-total reads backwards next to every other
+  // ratio on the bar, all of which fill up rather than drain.
+  //
+  // One caveat this cannot express: node only knows *free*, so "used" here is
+  // total - free. On Windows that counts the standby cache — memory the OS
+  // hands back on demand — as used, so this reads a few GB higher than Task
+  // Manager's figure. Directionally right, deliberately pessimistic, and the
+  // thresholds are set with that in mind rather than against a truer number
+  // node has no way to obtain.
+  const gb = (b) => (b / 1024 ** 3).toFixed(1);
+  const useM = totalmem() - freemem();
+  l1.push(`${lab("mem")} ${c(up((useM / totalmem()) * 100, 80, 92), `${gb(useM)}/${gb(totalmem())}G`)}`);
+
   const usd = j.cost?.total_cost_usd;
   const ms = j.cost?.total_duration_ms; // wall clock; total_api_duration_ms is the API share
   const spent = [];
@@ -206,6 +223,16 @@ process.stdin.on("end", () => {
     const used = win.total_input_tokens ?? 0;
     const size = win.context_window_size ?? 0;
     l2.push(`${lab("Context")} ${c(up(pct, 60, 85), `${k(used)}/${k(size)}`)} ${c(RULE, `(${pct}%)`)}`);
+    // Session totals, not the last turn's. `in` is the same figure the Context
+    // widget uses as its numerator — kept because the pair only reads as a pair
+    // with both halves present, and `out` is the number nothing else surfaces:
+    // output is the expensive side and the one that never shrinks.
+    const tin = win.total_input_tokens, tout = win.total_output_tokens;
+    if (typeof tin === "number" || typeof tout === "number") {
+      l2.push(
+        `${lab("in")} ${c(TIME, k(tin ?? 0))}${c(RULE, " · ")}${lab("out")} ${c(MONEY, k(tout ?? 0))}`,
+      );
+    }
   }
   if (cur) {
     // Floor, never round. A steady session sits around 99.6% — the newest turn
@@ -218,18 +245,6 @@ process.stdin.on("end", () => {
       l2.push(`${lab("Cache Hit")} ${c(down(hit, 90, 70), `${hit}%`)}`);
     }
   }
-  // Used-of-total, because free-of-total reads backwards next to every other
-  // ratio on this line, all of which fill up rather than drain.
-  //
-  // One caveat this cannot express: node only knows *free*, so "used" here is
-  // total - free. On Windows that counts the standby cache — memory the OS
-  // hands back on demand — as used, so this reads a few GB higher than Task
-  // Manager's figure. Directionally right, deliberately pessimistic, and the
-  // thresholds are set with that in mind rather than against a truer number
-  // node has no way to obtain.
-  const gb = (b) => (b / 1024 ** 3).toFixed(1);
-  const useM = totalmem() - freemem();
-  l2.push(`${lab("mem")} ${c(up((useM / totalmem()) * 100, 80, 92), `${gb(useM)}/${gb(totalmem())}G`)}`);
   const skill = j.transcript_path ? activeSkill(j.transcript_path) : null;
   if (skill) l2.push(`${lab("Skill")} ${c(SKILL, skill)}`);
 

@@ -5,6 +5,53 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.12.0] — 2026-08-12
+
+### Fixed
+
+- **The resident core has never loaded.** Not a regression — the wrong shape has been emitted
+  for as long as the hook has existed. `session-start.py` printed `{"additionalContext": ...}`
+  at the top level. Claude Code reads `hookSpecificOutput.additionalContext`; the bare key is
+  the SDK/Copilot shape, and the harness discards what it does not recognise. Valid JSON,
+  exit 0, nothing injected, nothing logged. Every session since has run without the rule core,
+  and the only symptom was behaviour that quietly did not match the rules.
+
+  Found by comparing against `superpowers`, whose own hook carries the decisive note: Claude
+  Code reads both `hookSpecificOutput` and snake_case `additional_context` *without
+  deduplicating*, so a hook must emit exactly one shape. Emitting both to be portable would
+  inject the core twice. This is a Claude Code plugin — `hooks.json` is already
+  `${CLAUDE_PLUGIN_ROOT}`-specific — so it now emits the nested form only, in all three places:
+  `session-start.py`, the jq fallback, and the last-resort literal.
+
+  **Why the suite stayed green.** It asserted `d.get("additionalContext")` — the shape the code
+  produced, not the shape the harness consumes. The test encoded the bug as the specification,
+  which is the documented "don't assert against a reimplementation" trap one level up: it is not
+  enough to drive the real script if you then check it against your own belief about the
+  contract. `json_ok` now requires `hookEventName` *and* rejects a bare top-level
+  `additionalContext` outright, so the old output fails loudly rather than passing.
+
+  The lesson was already on the books. `post-push.sh` gets this right, and the assertion beside
+  it reads: "PostToolUse output is ignored outright unless hookEventName is present, so a hook
+  that emits valid JSON without it is silently dead." It was learned once for PostToolUse and
+  never carried across to SessionStart.
+
+### Changed
+
+- **Status line: memory moved to line 1, between effort and Session.** It is a property of the
+  machine, not of the session; sitting among Context and Cache Hit invited reading it as another
+  per-session meter.
+- **Status line: session input and output tokens now render after Context** — `in 250k · out
+  12k`, from `context_window.total_input_tokens` and `total_output_tokens`. Output is the
+  expensive side and the figure nothing else on the bar reported. `in` repeats the Context
+  numerator by design: the pair only reads as a pair with both halves present.
+
+  Both are asserted per line rather than by substring over the whole bar, since which line a
+  widget lands on is the entirety of the change. The assertions strip the colour escapes first —
+  every value is wrapped in its own, so a label and its number are never adjacent in the raw
+  bytes.
+
+---
+
 ## [1.11.3] — 2026-08-12
 
 ### Fixed

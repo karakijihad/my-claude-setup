@@ -29,9 +29,15 @@ exit_is() {
   [ "$got" = "$want" ] && ok "$name" || bad "$name" "expected exit $want, got $got"
 }
 
-# json_ok <name> <script> — running <script> must print one JSON object with a
-# non-empty additionalContext. Takes the script rather than a pipe: `| json_ok`
-# would run the counters in a subshell, losing both the tally and any failure.
+# json_ok <name> <script> — running <script> must print one JSON object whose
+# hookSpecificOutput carries hookEventName SessionStart and a non-empty
+# additionalContext. Takes the script rather than a pipe: `| json_ok` would run
+# the counters in a subshell, losing both the tally and any failure.
+#
+# Assert the nested shape, never a bare top-level additionalContext. That is the
+# SDK/Copilot shape, and Claude Code ignores it — valid JSON, exit 0, core never
+# injected. An assertion written against the shape the script happens to emit
+# rather than the one the harness consumes is how that shipped unnoticed.
 json_ok() {
   local name="$1" out
   # </dev/null matters: session-start.py drains stdin, so without an EOF the
@@ -40,8 +46,12 @@ json_ok() {
   printf '%s' "$out" | bash py.sh -c '
 import json,sys
 d=json.load(sys.stdin)
-assert isinstance(d,dict) and d.get("additionalContext"), "missing additionalContext"
-' >/dev/null 2>&1 && ok "$name" || bad "$name" "not valid JSON with additionalContext"
+assert isinstance(d,dict), "not a JSON object"
+assert "additionalContext" not in d, "bare top-level additionalContext; Claude Code ignores it"
+h=d["hookSpecificOutput"]
+assert h["hookEventName"]=="SessionStart", h
+assert h["additionalContext"], "empty additionalContext"
+' >/dev/null 2>&1 && ok "$name" || bad "$name" "not valid JSON with hookSpecificOutput.additionalContext"
 }
 
 echo "session-start"
@@ -59,7 +69,7 @@ if [ -n "$TMP" ] && [ -d "$TMP" ]; then
   # exists for, there is no JSON parser to validate it with.
   out=$(PATH=/usr/bin:/bin bash -c 'jq() { return 127; }; export -f jq 2>/dev/null; exec bash '"$TMP"'/session-start.sh' 2>/dev/null </dev/null)
   case "$out" in
-    *'"additionalContext"'*Brevity*) ok "reduced core when neither Python nor jq is present" ;;
+    *'"hookEventName":"SessionStart"'*'"additionalContext"'*Brevity*) ok "reduced core when neither Python nor jq is present" ;;
     *) bad "reduced core when neither Python nor jq is present" "got: ${out:0:80}" ;;
   esac
   rm -rf "$TMP"
@@ -602,7 +612,7 @@ if command -v node >/dev/null 2>&1 && [ -f "$SL" ]; then
   # breaks or quietly stops testing anything the next time naming changes.
   # Nothing in the script branches on the model any more: the context window
   # size arrives in the payload rather than being inferred from the id.
-  FULL='{"cwd":"'"$PWD"'","effort":{"level":"EFFORTVAL"},"model":{"id":"test-model","display_name":"TESTMODEL"},"context_window":{"total_input_tokens":250000,"context_window_size":1000000,"used_percentage":25,"current_usage":{"input_tokens":2,"cache_read_input_tokens":248000,"cache_creation_input_tokens":1998}},"cost":{"total_cost_usd":1.5,"total_duration_ms":600000,"total_lines_added":10,"total_lines_removed":2}}'
+  FULL='{"cwd":"'"$PWD"'","effort":{"level":"EFFORTVAL"},"model":{"id":"test-model","display_name":"TESTMODEL"},"context_window":{"total_input_tokens":250000,"total_output_tokens":12400,"context_window_size":1000000,"used_percentage":25,"current_usage":{"input_tokens":2,"cache_read_input_tokens":248000,"cache_creation_input_tokens":1998}},"cost":{"total_cost_usd":1.5,"total_duration_ms":600000,"total_lines_added":10,"total_lines_removed":2}}'
 
   [ "$(sl_exit "$FULL")" = 0 ] && ok "exits 0 on a full payload" || bad "exits 0 on a full payload"
   [ "$(sl_exit '{}')" = 0 ]    && ok "exits 0 on an empty payload" || bad "exits 0 on an empty payload"
@@ -618,9 +628,35 @@ if command -v node >/dev/null 2>&1 && [ -f "$SL" ]; then
     *"99%"*) ok "floors the cache ratio rather than rounding to 100%" ;;
     *) bad "floors the cache ratio rather than rounding to 100%" "got: ${OUT:0:120}" ;;
   esac
+  # Every value is wrapped in its own colour escape, so a label and its number
+  # are never adjacent in the raw bytes. Strip the escapes before asserting on
+  # anything that spans the two.
+  ESC=$(printf '\033')
+  PLAIN=$(printf '%s' "$OUT" | sed "s/${ESC}\[[0-9;]*m//g")
+
+  # Session in/out totals sit beside Context. `out` is the half nothing else on
+  # the bar reports, so assert it by value rather than trusting the pair.
+  case "$PLAIN" in
+    *"Context"*"in 250k"*"out 12k"*) ok "reports session input and output tokens after Context" ;;
+    *) bad "reports session input and output tokens after Context" "got: ${PLAIN:0:160}" ;;
+  esac
+  # Which *line* a widget lands on is the whole of the last layout change, and a
+  # substring match over the whole output cannot tell. Read line 1 alone: memory
+  # belongs with the machine, between effort and Session, not among the
+  # per-session meters on line 2.
+  L1=$(printf '%s' "$PLAIN" | sed -n 1p)
+  case "$L1" in
+    *EFFORTVAL*mem*Session*) ok "memory renders on line 1, between effort and Session" ;;
+    *) bad "memory renders on line 1, between effort and Session" "line 1: ${L1:0:120}" ;;
+  esac
+  case "$(printf '%s' "$PLAIN" | sed -n 2p)" in
+    *mem*) bad "memory no longer renders on line 2" "still on line 2" ;;
+    *) ok "memory no longer renders on line 2" ;;
+  esac
+
   # A field the payload omitted must produce no widget at all, not a zero.
   case "$(sl '{"model":{"display_name":"TESTMODEL"}}')" in
-    *Session*|*Context*|*"Cache Hit"*) bad "omits widgets whose payload fields are absent" ;;
+    *Session*|*Context*|*"Cache Hit"*|*" out "*) bad "omits widgets whose payload fields are absent" ;;
     *) ok "omits widgets whose payload fields are absent" ;;
   esac
 else
