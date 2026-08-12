@@ -29,6 +29,11 @@ had. Each of the three found something the other two missed.
 
 ### Changed
 
+- **The README shows the status line and what the plugin costs.** `assets/statusline.svg` is
+  generated from the script's real ANSI output rather than screenshotted, so it cannot drift from
+  the code the way a cropped image silently would, and a measured-cost table records the hot-path
+  figures with the machine they came from stated — Windows spawn costs are several times Linux's,
+  and a benchmark without its platform is a number pretending to be a fact.
 - **The suite moved to `tests/suite.sh`.** `hooks/` now holds only what ships and runs. It still
   `cd`s into `hooks/`, because the hooks resolve their siblings relative to themselves and
   running from anywhere else would test a path no hook uses.

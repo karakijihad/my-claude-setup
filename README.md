@@ -127,6 +127,59 @@ hygiene.
 | `/setup` **Part 1** | Sets up a machine: adds the marketplaces, installs the companion plugins, reports anything installed that isn't in the roster, merges the recommended `settings.json` keys, tunes the companions so their triggers don't double-fire, and installs the status line. Shows a diff, asks first, idempotent |
 | `/setup` **Part 2** | Sets up a project: scaffolds `CLAUDE.md` and the `Docs/` tree on a blank slate, or surveys an existing repo and reports before writing. Never rewrites a `CLAUDE.md` you already have; migrates the older seven-folder `Docs/` layout |
 
+## The status line
+
+![The status line: model and effort, session spend, context and cache-hit rate, memory, the active skill, branch and lines edited](assets/statusline.svg)
+
+Three lines. Identity and spend; what the session and the machine are carrying; the repo. `/setup`
+installs it and `node` is the only requirement — no `npm install`, no dependencies.
+
+Colour is a signal rather than decoration. Context, cache-hit rate and memory are scaled
+green → amber → red, so the bar can be read without parsing a number, and anything that cannot
+meaningfully be "bad" stays neutral. The cache ratio **floors rather than rounds**: a healthy
+session sits around 99.6%, and rounding that to "100%" would claim a perfect hit that did not
+happen.
+
+It shows **effort** but not the model name — Claude Code already prints the model, and a status
+line should add what the harness doesn't. Effort is the opposite case: set in `settings.json`,
+paid on every message, and surfaced nowhere else. `STATUSLINE_GIT_CHANGES=1` adds a dirty-file
+count, at the cost of the one subprocess this script otherwise avoids.
+
+The image above is generated from the script's real ANSI output rather than screenshotted, so it
+cannot quietly drift from the code.
+
+## Measured cost
+
+Every hook and the status line are on hot paths, so this plugin's own overhead is the thing most
+worth measuring about it. All figures below are **one machine — Windows 11, Node 24, Python
+3.12** — and are the median of repeated runs. Treat them as the shape of the problem, not as a
+benchmark: Linux and macOS spawn processes several times faster, so the absolute numbers there
+are much smaller and the *ratios* are what carry over.
+
+| Path | Fires | Before | After |
+|-|-|-|-|
+| `guard.sh` | every Bash, Edit, Write | 928 ms | **239 ms** |
+| Status line | every render, ~7.7/min | 1665 ms | **106 ms** |
+| Status line, per minute of work | — | 12.8 s | **0.85 s** |
+| `post-push.sh` | every Bash | 588 ms | **379 ms** |
+| `session-start.sh` | once per session | 536 ms | **400 ms** |
+
+Two findings from that profiling are worth stating plainly, because both contradict the obvious
+guess:
+
+- **Context was never the problem.** The resident core plus every skill description is ~1.3k
+  tokens, well under 1% of a 1M window, and the measured prompt-cache hit rate is 99.6%. The cost
+  was **process spawns** — 45–200 ms each on Windows against roughly 5–30 ms elsewhere, so
+  anything that shells out pays about ten times what its author expected.
+- **The engine, not the logic.** `guard.sh` got 3.9× faster without changing a single rule it
+  enforces: six `grep` pipelines and three interpreter calls became bash's own `[[ =~ ]]` and one
+  JSON read. The old version spent most of its time discovering it had nothing to do.
+
+The suite is 78 assertions on **ubuntu-latest and windows-latest**. Both platforms deliberately —
+the first CI run this repo ever had came back 78/0 on Windows and 77/1 on ubuntu, and that
+asymmetry was a real bug: `guard.sh` protected `.env` on one OS and not the other, from an
+identical payload, because `basename` only splits on backslashes under MSYS.
+
 ## The review ladder
 
 Every code-modifying task ends on one of three rungs, and skipping one needs a stated reason.
