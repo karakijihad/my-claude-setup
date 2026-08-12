@@ -36,8 +36,9 @@ references on demand, and enforces three safety hooks. Published as its own mark
 - `skills/*/SKILL.md` — the `description:` field is the router. See Gotchas. Descriptions are
   resident in the system prompt for **every** session, so they are budgeted like `core.md`: name
   the trigger situations, not the topic vocabulary, and keep each near 30–70 tokens.
-- `commands/` — `setup`, `bootstrap-project` (blank slate), `repo-fix` (existing repo, surveys
-  before it writes).
+- `commands/` — `setup`, and it is the only one. Part 1 sets up a machine (marketplaces,
+  companion plugins, `settings.json`, companion tuning); Part 2 sets up a project, scaffolding a
+  blank slate or surveying an existing repo before it writes.
 - `.claude-plugin/` — `plugin.json` and `marketplace.json`. Bump `version` in the former on
   release, and add the section to `CHANGELOG.md` in the same commit.
 
@@ -67,7 +68,7 @@ bash hooks/test-hooks.sh   # exit 0 means every assertion passed
 ```
 
 `CI: none, confirmed 2026-08-10` — this suite, run locally, is the whole gate. Recorded in the
-form `/bootstrap-project` writes so `post-push.sh` and a later session both stay quiet about it.
+form `/setup` writes so `post-push.sh` and a later session both stay quiet about it.
 
 Covers both hook outputs as JSON; every guard block and allow, including backslash paths and
 `notebook_path`; the commit secret scan against a real staged diff; the notify sanitizer, driven
@@ -105,8 +106,8 @@ directory precisely so a subfolder invented later is covered without anyone reme
 `.gitignore` edit. The tree is working evidence, and some of it is private. Committing it is a
 legitimate choice for a project, but it must be written into *that* project's `CLAUDE.md` under
 a `Docs policy` heading, or the next session re-adds the line. This is the shipped default, not
-just this repo's habit: `project-docs` owns the rule, `/bootstrap-project` writes it, `/repo-fix`
-offers it as a choice, and both templates repeat it.
+just this repo's habit: `project-docs` owns the rule, `/setup` writes it on a blank
+slate and offers it as a choice on an existing repo, and both templates repeat it.
 
 Two traps that cost real time, both verified with `git check-ignore -v`. The anchor matters:
 bare `Docs/` also swallows a nested `packages/*/Docs/`. And `core.ignorecase=true` is the
@@ -129,9 +130,9 @@ correct it by hand before promoting.
 
 No other `Docs/` subtree — and as of 1.5.0 that is the shipped convention rather than an
 exemption from it. `project-docs` went from seven trees to three (`Decisions/`, `Audit/`,
-`Plan/`) because this repo had already voted with its feet: the folders it never bothered to
-create were exactly the ones git already covered. If the maintainer won't run his own
-convention, it was the convention that was wrong.
+`Plan/`): the four that were dropped recorded what `git log` and `CHANGELOG.md` already record,
+and in practice went uncreated. A convention that goes unfollowed is a convention that was
+wrong, not a discipline problem.
 
 `CHANGELOG.md` is the exception that proves it — a changelog is read by people who don't have
 your working copy, so it lives at the **repo root** and is committed, never under the gitignored

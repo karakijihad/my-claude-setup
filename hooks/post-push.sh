@@ -37,7 +37,7 @@ BRANCH=$(git branch --show-current 2>/dev/null)
 
 # Absence of these files is not absence of CI — external Jenkins, hosted checks
 # and required status checks leave nothing in the tree. That case belongs to
-# /bootstrap-project and /repo-fix, which ask once and record the answer; this
+# /setup, which asks once and records the answer; this
 # hook stays quiet rather than guessing.
 if [ -n "$(ls -A "$ROOT/.github/workflows" 2>/dev/null)" ]; then
   PROVIDER="GitHub Actions"

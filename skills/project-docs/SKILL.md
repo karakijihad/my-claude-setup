@@ -86,7 +86,7 @@ the anchor would catch them all in one go — and also anything vendored under t
 ```
 
 A note inside `Docs/` or a comment where the `.gitignore` line *isn't* is read by nobody, and
-the next session helpfully re-adds the rule. `/bootstrap-project` and `/repo-fix` both look for
+the next session helpfully re-adds the rule. `/setup` looks for
 that section before they touch `.gitignore`.
 
 ## Three, and only three
@@ -133,7 +133,7 @@ In `${CLAUDE_PLUGIN_ROOT}/assets/templates/`:
 | `changelog-entry.md` | `<project>/CHANGELOG.md` |
 | `Docs-skeleton/` | `<project>/Docs/` — copy wholesale, includes `Audit/README.md` |
 
-`/bootstrap-project` places all of these for you.
+`/setup` places all of these for you.
 
 **Already have `Doclog/`?** It's the same tree under the older name. Keep it — renaming an
 append-only history buys nothing. New projects get `Decisions/`.

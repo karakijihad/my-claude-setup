@@ -23,11 +23,10 @@ description: >
 - **One concern per branch.** If you discover a separate issue while working, note it — don't fix it in the same branch.
 - **Delete branches after merging**, and confirm the merge landed. Use `git branch -d`, which refuses an unmerged branch; reach for `-D` only when the user has said to discard the work.
 
-> This rule used to read "always branch for multi-file changes." It was wrong for
-> this repo and every repo like it, and following it produced exactly the mess it
-> was meant to prevent — a second branch and a self-approved PR on a solo plugin.
-> Rules that manufacture ceremony get ignored, and a rule the maintainer ignores
-> is worse than no rule.
+> This rule used to read "always branch for multi-file changes." On a repo with one
+> committer it produces exactly the mess it was meant to prevent: a throwaway branch
+> and a self-approved PR for a change no second person will ever review. Rules that
+> manufacture ceremony get ignored, and an ignored rule is worse than no rule.
 
 ---
 
@@ -92,7 +91,7 @@ Before every commit:
 ## 6. After the Push
 
 **No CI in the repo → nothing to do here.** `post-push.sh` stays silent and so should you;
-setting one up is `/bootstrap-project`'s question or the user's request, not a mid-task suggestion.
+setting one up is `/setup`'s question or the user's request, not a mid-task suggestion.
 
 With CI: match the run by **commit SHA, never the branch** — a push returns before its run is
 created, so a branch query answers with the previous commit's run, often green. Report one of

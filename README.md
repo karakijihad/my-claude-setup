@@ -30,7 +30,7 @@ be lost for good. It stops as soon as nothing is missing. Delete that file to se
 |-|-|-|
 | Git | everything | `git --version` |
 | Python 3 | `session-start` hook, `skill-security-auditor`, and stdin parsing in `guard.sh`/`notify.sh` when `jq` is absent | `python -c "import sys; print(sys.version_info[:2])"` |
-| Node.js | `ccstatusline` status line (optional) | `node --version` |
+| Node.js | the status line in `assets/statusline.mjs` (optional) | `node --version` |
 
 Every Python entry point in this plugin runs through `hooks/py.sh`, which *executes* each of
 `python3`, `python`, and `py -3` and uses the first that actually works.
@@ -72,9 +72,9 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 .claude-plugin/     marketplace.json, plugin.json
 hooks/              hooks.json + 3 hooks and their shared helpers
 skills/             9 skills — 7 protocols, plus dependency-auditor and skill-security-auditor
-commands/           setup, bootstrap-project, repo-fix
+commands/           setup — machine setup (Part 1), project setup (Part 2)
 assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit README, Docs skeleton
-assets/             ccstatusline-settings.json, the starting status-line config /setup offers
+assets/             statusline.mjs, the status line /setup installs
 ```
 
 ### Hooks
@@ -123,9 +123,8 @@ hygiene.
 
 | Command | Does |
 |-|-|
-| `/setup` | Merges the recommended `settings.json` keys. Shows a diff, asks first, idempotent. Also offers `ccstatusline` and the status-line config in `assets/` |
-| `/bootstrap-project` | Scaffolds a project `CLAUDE.md` and the `Docs/` tree — assumes a blank slate |
-| `/repo-fix` | Surveys an **existing** repo against these conventions and reports before writing. Never rewrites a `CLAUDE.md` you already have; migrates the older seven-folder `Docs/` layout |
+| `/setup` **Part 1** | Sets up a machine: adds the marketplaces, installs the companion plugins, reconciles anything installed that isn't in the roster, merges the recommended `settings.json` keys, tunes the companions so their triggers don't double-fire, and installs the status line. Shows a diff, asks first, idempotent |
+| `/setup` **Part 2** | Sets up a project: scaffolds `CLAUDE.md` and the `Docs/` tree on a blank slate, or surveys an existing repo and reports before writing. Never rewrites a `CLAUDE.md` you already have; migrates the older seven-folder `Docs/` layout |
 
 ## The review ladder
 
@@ -215,7 +214,7 @@ repo root because a release note has to reach people who don't have your working
 versioned instead? Say so, and the commands write that into your `CLAUDE.md` under a `Docs
 policy` heading so a later session doesn't re-add the line.
 
-`/bootstrap-project` creates this for a new repo; `/repo-fix` migrates an existing one. See the
+`/setup` creates this for a new repo and migrates an existing one. See the
 `project-docs` skill for line budgets.
 
 ## Downloading

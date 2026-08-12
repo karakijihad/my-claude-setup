@@ -5,6 +5,77 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.8.0] — 2026-08-12
+
+Driven by a profiling pass rather than a feature idea: sessions had grown slow to launch and
+laggy to type in, and the assumption that this was context bloat turned out to be wrong. Resident
+context is ~1.3k tokens, well under 1% of the window, and the measured cache hit rate is 99.6%.
+The cost was entirely **process spawns** — which on Windows run 90-200ms each, against roughly
+5-30ms elsewhere, so anything that shells out pays about ten times what its author expected.
+
+### Changed
+
+- **`guard.sh` no longer shells out to decide it has nothing to do.** It ran six `grep`
+  pipelines and three interpreter calls on every Bash tool call, which measured ~930ms on a
+  plain `git status`. The patterns are unchanged; the engine is now bash's own `[[ =~ ]]`, and
+  the three JSON reads collapsed into one `parse_all`. **655ms → 287ms**, all 54 assertions
+  still green. The greps in the secret-scan branch stayed: that path only runs on a commit,
+  already pays for a `git diff`, and scanning a whole diff line-by-line in bash would be slower.
+- **`lib-parse.sh` gained `parse_all`**, which returns command, file path and notebook path from
+  a single call. NUL-delimited and read through a process substitution, because a bash variable
+  cannot hold a NUL and `$(...)` would eat the delimiters — tabs and newlines survive, which
+  matters since a heredoc in `tool_input.command` is ordinary. `parse_field` is untouched for the
+  hooks that want one field.
+- **`commands/` is one command.** `setup`, `bootstrap-project` and `repo-fix` became a single
+  `/setup` with two halves: Part 1 sets up a machine, Part 2 sets up a project. They were always
+  three doors into the same convention, and the split meant a new machine needed someone to
+  remember which door to use in which order.
+
+### Added
+
+- **`assets/statusline.mjs`** — a status line in three. Line 1 is the main thread, point-in-time:
+  effort level, context used against the model's real window, cache hit ratio, branch. Line 2 is
+  the sub-agent lane, cumulative: calls and their token usage. Line 3 is what the session has
+  spent, across both lanes. Point-in-time and cumulative are different measures on purpose — you
+  steer the main thread by how full it is now, and judge delegation by what it has cost in total.
+  It prints no model name: Claude Code shows that itself, and a status line should add what the
+  harness doesn't. Effort is the opposite case — set in settings, paid on every message, surfaced
+  nowhere else. No dependencies, no `git` subprocess, every failure degrades to a shorter line.
+  The cache ratio floors rather than rounds: a healthy session sits at 99.6%, and rounding that
+  to "100%" claims a perfect hit that did not happen.
+- **`/setup` Part 1 now installs the companions**, not just settings keys: it adds the
+  marketplaces, installs each plugin in the roster, and writes `enabledPlugins`. A plugin
+  carrying its author's opinions is the point of this one; what it must never do is write them
+  silently, so every step shows a diff and asks.
+- **A reconcile step**, which is what makes a second machine converge rather than accumulate. It
+  lists installed plugins that aren't in the roster alongside `claude plugin prune --dry-run`,
+  then asks **once** over the whole list. Never defaults to yes, never removes anything outside
+  the list it showed, and says up front that every removal is one `install` away.
+- **Companion tuning** in `/setup`. `security-guidance` runs four automatic checks and two of
+  them re-do work `core.md` already routes — its Stop review fires on top of the review ladder,
+  using `asyncRewake`, so every turn got reviewed twice. `ENABLE_STOP_REVIEW=0` and
+  `ENABLE_SECURITY_REMINDER=0` drop the duplicates; `ENABLE_COMMIT_REVIEW` and
+  `ENABLE_PATTERN_RULES` stay, because nothing else does what those two do. Keeping a plugin and
+  turning off its duplicates beats disabling it.
+
+### Removed
+
+- **`ccstatusline`**, and the `assets/ccstatusline-settings.json` that configured it. It is an
+  Ink/React application and boots React even in hook mode: 1665ms per render with the shipped
+  four-line config, and still 1189ms stripped to two fields, against 148ms for the replacement.
+  Claude Code re-runs the status line as the session updates, so that sat on the render path and
+  was the measured cause of the lag. `/setup` should be re-run after any upgrade — the status
+  line path contains the plugin version, and a stale one renders nothing.
+
+### Fixed
+
+- **Prose that generalised from one person's setup.** The repo is public; rationale that reads
+  "this is how two of the author's machines drift apart" is a story, not a reason. Screened every
+  shipped `.md` and rewrote four places in general terms — one of which also assumed a real
+  person's pronouns.
+
+---
+
 ## [1.7.0] — 2026-08-10
 
 ### Added

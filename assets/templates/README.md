@@ -9,9 +9,9 @@ Copy these into a new project to bootstrap the conventions described in the `pro
 | `changelog-entry.md` | `<project>/CHANGELOG.md` | Release-facing changelog, grouped by version |
 | `Docs-skeleton/` | `<project>/Docs/` | Folder tree — copy wholesale. Includes `Audit/README.md`, which explains how audits are produced and reconciled |
 
-## Bootstrap a new project
+## Set up a new project
 
-From the project root, run `/bootstrap-project`. It places `CLAUDE.md` and the `Docs/` tree,
+From the project root, run `/setup`. It places `CLAUDE.md` and the `Docs/` tree,
 fills in what it can read from the repo, and tells you what still needs your input. Edit
 `Docs/Audit/README.md` only if the project needs its own audit conventions.
 
