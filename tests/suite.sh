@@ -1,14 +1,20 @@
 #!/bin/bash
-# Behavioural tests for every hook. No framework — run it, read the last line:
+# Behavioural tests for the whole plugin. No framework — run it, read the last
+# line:
 #
-#   bash hooks/test-hooks.sh
+#   bash tests/suite.sh
 #
 # Destructive fixtures are assembled at runtime instead of being written out
 # literally, because guard.sh inspects the text of the command that invokes it:
 # a literal destructive string in this file blocks the test run itself. That is
 # not paranoia, it is how the previous verification snippet in CLAUDE.md broke.
 
-cd "$(dirname "$0")" || exit 1
+# The suite lives in tests/ but runs from hooks/, and deliberately so: it drives
+# the hooks as scripts, and they resolve their own siblings — lib-parse.sh,
+# py.sh, core.md — relative to themselves. Running from anywhere else would test
+# a resolution path no hook ever uses. Everything reached outside hooks/ is
+# addressed as ../, which is the repo root.
+cd "$(dirname "$0")/../hooks" || exit 1
 HOOKS=$PWD
 PASS=0; FAIL=0
 
@@ -73,6 +79,34 @@ FORCE_D=$(printf 'D')
 exit_is 2 "blocks branch force-delete"           "{\"tool_input\":{\"command\":\"git branch -$FORCE_D old\"}}"
 exit_is 0 "allows safe branch delete"            '{"tool_input":{"command":"git branch -d old"}}'
 exit_is 0 "allows a commit with a clean diff"    '{"tool_input":{"command":"git commit -m \"fix: expired token handling\""}}'
+# The short force-push flag ends on a word character, so the original grep used
+# \b after it. ERE has no \b, and rendering it as ([[:space:]]|$) during the
+# 1.8.0 rewrite silently un-blocked every chained form — `;ls`, `&&ls` — while
+# the spaced and end-of-string forms kept passing, so nothing noticed. These
+# three are the shapes that regression allowed through.
+PUSH_F="git pu$(printf 's')h -$(printf 'f')"
+exit_is 2 "blocks short force-push, end of string" "{\"tool_input\":{\"command\":\"$PUSH_F\"}}"
+exit_is 2 "blocks short force-push before ;"       "{\"tool_input\":{\"command\":\"$PUSH_F;ls\"}}"
+exit_is 2 "blocks short force-push before &&"      "{\"tool_input\":{\"command\":\"$PUSH_F&&ls\"}}"
+# The long spelling gets the same boundary. It did not in the grep original, so
+# the clearer way to write the command was the way that evaded the guard.
+PUSH_FORCE="git pu$(printf 's')h --for$(printf 'c')e"
+exit_is 2 "blocks long force-push before ;"        "{\"tool_input\":{\"command\":\"$PUSH_FORCE;ls\"}}"
+exit_is 2 "blocks long force-push before &&"       "{\"tool_input\":{\"command\":\"$PUSH_FORCE&&ls\"}}"
+# --force-with-lease is caught too, and on purpose: the lease protects
+# collaborators but the push still rewrites published history. Both spellings
+# block, so nothing nudges anyone from the safe variant to the blunt one.
+exit_is 2 "blocks force-with-lease as well"        "{\"tool_input\":{\"command\":\"$PUSH_FORCE-with-lease origin main\"}}"
+# Four alternatives in RE_DESTRUCTIVE had no case at all until 1.8.0 — the regex
+# listed them and nothing proved they still fired.
+CLEAN_F="git cl$(printf 'e')an -fd"
+CHECKOUT="git check$(printf 'o')ut -- src/"
+DROP_DB="psql -c \\\"DR$(printf 'O')P DATABASE app\\\""
+TRUNC="psql -c \\\"TRUNC$(printf 'A')TE TABLE users\\\""
+exit_is 2 "blocks git clean -f"                    "{\"tool_input\":{\"command\":\"$CLEAN_F\"}}"
+exit_is 2 "blocks git checkout -- <path>"          "{\"tool_input\":{\"command\":\"$CHECKOUT\"}}"
+exit_is 2 "blocks DROP DATABASE"                   "{\"tool_input\":{\"command\":\"$DROP_DB\"}}"
+exit_is 2 "blocks TRUNCATE TABLE"                  "{\"tool_input\":{\"command\":\"$TRUNC\"}}"
 
 echo "guard — supply chain and control bypass"
 # Assembled at runtime: a literal pipe-to-shell in this file would trip the guard
@@ -121,6 +155,69 @@ if [ -n "$NT" ] && [ -d "$NT" ]; then
   printf '%s' '{"message":"x\" & (do shell script \"id\") & \"$(whoami)`hostname`"}' \
     | PATH="$NT:$PATH" bash "$HOOKS/notify.sh" >/dev/null 2>&1
   ARGV=$(cat "$NT/argv" 2>/dev/null)
+
+  # notify.sh tries notify-send first, so on Linux the osascript branch below is
+  # never reached and this section used to record a pass having tested nothing.
+  # This assertion always runs: it stubs notify-send, and checks the property
+  # that branch actually relies on — the message goes as a separate argv element,
+  # never interpolated into a command string, so metacharacters cannot re-enter.
+  printf '#!/bin/bash\nprintf "%%s\\n" "$#" > "%s/nsargc"\nprintf "%%s" "$2" > "%s/nsarg2"\n' \
+    "$NT" "$NT" > "$NT/notify-send"
+  chmod +x "$NT/notify-send"
+  NS_MSG='x" & (do shell script "id") & "`hostname`'
+  printf '%s' "{\"message\":\"x\\\" & (do shell script \\\"id\\\") & \\\"\`hostname\`\"}" \
+    | PATH="$NT:$PATH" bash "$HOOKS/notify.sh" >/dev/null 2>&1
+  NSARGC=$(cat "$NT/nsargc" 2>/dev/null)
+  NSARG2=$(cat "$NT/nsarg2" 2>/dev/null)
+  if [ "$NSARGC" = 2 ] && [ "$NSARG2" = "$NS_MSG" ]; then
+    ok "notify-send receives the message as one argv element, not as source"
+  else
+    bad "notify-send receives the message as one argv element, not as source" \
+        "argc=$NSARGC arg2=$NSARG2"
+  fi
+  rm -f "$NT/notify-send"
+
+  # The PowerShell branch interpolates SAFE_MSG into a -Command source string,
+  # exactly like the osascript one, and on Windows it is the branch that
+  # actually runs. It had no stub at all: the only source-interpolating backend
+  # on the plugin's primary platform was the one nothing tested. Reached by
+  # removing both earlier stubs so powershell.exe is the first backend found.
+  # The osascript stub has to go first or it shadows this one — notify.sh tries
+  # notify-send, then osascript, then powershell.exe. ARGV was already captured
+  # above, so removing it now costs the earlier assertion nothing. PATH keeps
+  # the system entries because notify.sh needs tr and cut to build SAFE_MSG at
+  # all; stripping PATH to the stub dir makes it exit before any backend runs.
+  rm -f "$NT/osascript"
+  printf '#!/bin/bash\nprintf "%%s" "$*" > "%s/psargv"\n' "$NT" > "$NT/powershell.exe"
+  chmod +x "$NT/powershell.exe"
+  printf '%s' "{\"message\":\"x'; iex(whoami) #\`hostname\`\$(id)\"}" \
+    | PATH="$NT:$PATH" bash "$HOOKS/notify.sh" >/dev/null 2>&1
+  # That branch backgrounds its call, so give it a moment to land.
+  for _ in 1 2 3 4 5; do [ -s "$NT/psargv" ] && break; sleep 1; done
+  PSARGV=$(cat "$NT/psargv" 2>/dev/null)
+  if [ -z "$PSARGV" ]; then
+    ok "powershell.exe backend not reached on this platform (an earlier backend won)"
+  else
+    # Only the interpolated message is under test. The surrounding -Command
+    # template legitimately contains $n, $true and its own single quotes, so
+    # scanning the whole argv fails on notify.sh's own source — which is what
+    # the first version of this assertion did. Cut to the ShowBalloonTip
+    # argument and check that.
+    PSMSG=${PSARGV#*\'Claude Code\', \'}
+    PSMSG=${PSMSG%%\', \'Info\'*}
+    if [ "$PSMSG" = "$PSARGV" ]; then
+      bad "powershell.exe backend receives a sanitized message" \
+          "could not locate the message inside the -Command template"
+    else
+      case "$PSMSG" in
+        *\'*|*\`*|*\$*|*\\*|*\"*)
+          bad "powershell.exe backend receives a sanitized message" "message: $PSMSG" ;;
+        *) ok "powershell.exe backend receives a sanitized message" ;;
+      esac
+    fi
+  fi
+  rm -f "$NT/powershell.exe"
+
   if [ -z "$ARGV" ]; then
     # notify-send is tried first and wins on Linux; it takes argv, not source.
     ok "osascript backend not reached on this platform (notify-send preferred)"
@@ -227,9 +324,37 @@ if [ -n "$PP" ] && [ -d "$PP" ]; then
   # but guessing is the setup commands' job — the hook has nothing to point at.
   pp quiet  "silent in a repo with no CI config" '{"tool_input":{"command":"git push"}}' "$PP"
 
+  # Each provider gets its own fixture, in its own scratch repo. Every positive
+  # assertion here used to be set up with .github/workflows alone, so the GitLab
+  # branch and the seven-entry fallback loop were never once executed — the
+  # hook's provider detection was two-thirds untested while reading as covered.
+  for prov in .gitlab-ci.yml Jenkinsfile .circleci/config.yml .buildkite; do
+    # A `continue` here would drop the assertion entirely — no ok, no FAIL — so
+    # the suite would quietly test four fewer things and still print 0 failed.
+    # A gate that can shrink without saying so is worse than one that is red.
+    PROV=$(mktemp -d)
+    case "$PROV" in
+      ""|/) bad "speaks for $prov" "mktemp -d gave an unusable path; fixture skipped"; continue ;;
+    esac
+    ( cd "$PROV" && git init -q && git config user.email t@t && git config user.name t \
+      && printf 'x\n' > a.txt && git add a.txt && git commit -q -m init ) >/dev/null 2>&1
+    mkdir -p "$PROV/$(dirname "$prov")" 2>/dev/null
+    printf 'ci\n' > "$PROV/$prov"
+    pp speaks "speaks for $prov" '{"tool_input":{"command":"git push"}}' "$PROV"
+    rm -rf "$PROV"
+  done
+
   mkdir -p "$PP/.github/workflows" && printf 'on: push\n' > "$PP/.github/workflows/ci.yml"
 
   pp speaks "speaks after a push when CI config exists" '{"tool_input":{"command":"git push"}}' "$PP"
+  # No upstream is configured in this scratch repo, so the hook cannot know the
+  # push landed. It must not claim it did.
+  case "$(printf '%s' '{"tool_input":{"command":"git push"}}' \
+          | (cd "$PP" && bash "$HOOKS/post-push.sh") 2>/dev/null)" in
+    *"Push landed"*) bad "does not claim a push landed when there is no upstream" ;;
+    *unverified*)    ok  "does not claim a push landed when there is no upstream" ;;
+    *)               bad "does not claim a push landed when there is no upstream" "no verdict in output" ;;
+  esac
   pp speaks "matches a push chained after a commit" \
      '{"tool_input":{"command":"git commit -m ok && git push -u origin main"}}' "$PP"
   pp speaks "matches git -C <dir> push" '{"tool_input":{"command":"git -C /srv/app push"}}' "$PP"
@@ -374,6 +499,79 @@ missing=listed-named
 sys.exit(0 if not missing else 1)
 ' >/dev/null 2>&1 && ok "every onboarding companion is named in core.md" \
   || bad "every onboarding companion is named in core.md"
+# The companion roster is stated in four places — setup.md installs it, core.md
+# routes to it, onboarding.py checks it, README.md documents it — and each one
+# needs its own wording, so none can be generated from another. What can be
+# enforced is that they name the same set.
+#
+# Set equality, not containment, in every direction. An earlier version of this
+# assertion only checked that setup.md's entries appeared in core.md, which
+# passes happily when a companion is *dropped* from setup.md — the exact drift
+# it was added to catch, in the direction nobody thought to test. And the drift
+# that prompted it was real: setup.md shipped 14 against core.md's 8.
+#
+# Only the **Companions** block of setup.md counts. The tools block below it is
+# deliberately in none of the other three, because nothing routes to those.
+bash py.sh -c '
+import re,sys
+def companions_setup(t):
+    m=re.search(r"\*\*Companions\*\*.*?```bash\n(.*?)```", t, re.S)
+    return set(re.findall(r"claude plugin install ([a-z0-9-]+)@", m.group(1))) if m else set()
+def companions_core(t):
+    for l in t.splitlines():
+        if "Companion plugins" in l: return set(re.findall(r"([a-z0-9-]+) = ", l))
+    return set()
+src={
+ "setup.md":     companions_setup(open("../commands/setup.md",encoding="utf-8").read()),
+ "core.md":      companions_core(open("core.md",encoding="utf-8").read()),
+ "onboarding.py":set(re.findall(r"^    \"([a-z0-9-]+)\": \(", open("onboarding.py",encoding="utf-8").read(), re.M)),
+ "README.md":    set(re.findall(r"^\| `([a-z0-9-]+)` \| \*\*", open("../README.md",encoding="utf-8").read(), re.M)),
+}
+if not all(src.values()): sys.exit(1)          # a parser that found nothing is a failure, not a pass
+sys.exit(0 if len(set(map(frozenset, src.values())))==1 else 1)
+' >/dev/null 2>&1 && ok "setup.md, core.md, onboarding.py and README name the same companions" \
+  || bad "setup.md, core.md, onboarding.py and README name the same companions"
+
+echo "status line"
+# It sits on the render path of every session, so a throw here blanks the bar
+# with nothing surfaced — which happened twice during development and was
+# invisible until checked by hand. These assertions drive the real script and
+# read what it produced; they never recompute its logic.
+SL="../assets/statusline.mjs"
+if command -v node >/dev/null 2>&1 && [ -f "$SL" ]; then
+  sl() { printf '%s' "$1" | node "$SL" 2>/dev/null; }
+  sl_exit() { printf '%s' "$1" | node "$SL" >/dev/null 2>&1; echo $?; }
+
+  # Deliberately synthetic values. The script echoes whatever the payload names,
+  # so a real model id here would prove nothing the placeholder doesn't — and a
+  # fixture carrying a real one reads as a claim about which models exist, then
+  # breaks or quietly stops testing anything the next time naming changes.
+  # Nothing in the script branches on the model any more: the context window
+  # size arrives in the payload rather than being inferred from the id.
+  FULL='{"cwd":"'"$PWD"'","effort":{"level":"EFFORTVAL"},"model":{"id":"test-model","display_name":"TESTMODEL"},"context_window":{"total_input_tokens":250000,"context_window_size":1000000,"used_percentage":25,"current_usage":{"input_tokens":2,"cache_read_input_tokens":248000,"cache_creation_input_tokens":1998}},"cost":{"total_cost_usd":1.5,"total_duration_ms":600000,"total_lines_added":10,"total_lines_removed":2}}'
+
+  [ "$(sl_exit "$FULL")" = 0 ] && ok "exits 0 on a full payload" || bad "exits 0 on a full payload"
+  [ "$(sl_exit '{}')" = 0 ]    && ok "exits 0 on an empty payload" || bad "exits 0 on an empty payload"
+  [ "$(sl_exit 'not json')" = 0 ] && ok "exits 0 on non-JSON input" || bad "exits 0 on non-JSON input"
+
+  OUT=$(sl "$FULL")
+  case "$OUT" in
+    *TESTMODEL*EFFORTVAL*) ok "passes model and effort through from the payload" ;;
+    *) bad "passes model and effort through from the payload" "got: ${OUT:0:70}" ;;
+  esac
+  # The cache ratio floors: 248000/250000 is 99.2%, which must not read as 100%.
+  case "$OUT" in
+    *"99%"*) ok "floors the cache ratio rather than rounding to 100%" ;;
+    *) bad "floors the cache ratio rather than rounding to 100%" "got: ${OUT:0:120}" ;;
+  esac
+  # A field the payload omitted must produce no widget at all, not a zero.
+  case "$(sl '{"model":{"display_name":"TESTMODEL"}}')" in
+    *Session*|*Context*|*"Cache Hit"*) bad "omits widgets whose payload fields are absent" ;;
+    *) ok "omits widgets whose payload fields are absent" ;;
+  esac
+else
+  ok "status line assertions skipped (no node on PATH)"
+fi
 
 # The Docs rule is prose in four places and one line in .gitignore. Prose drifts;
 # these two assertions are what notice. Anchored matters: a bare Docs/ also

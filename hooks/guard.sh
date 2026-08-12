@@ -29,7 +29,28 @@ parse_all
 
 if [ -n "$CMD" ]; then
   # --- Bash ---------------------------------------------------------------
-  RE_DESTRUCTIVE='rm[[:space:]]+-[a-z]*r[a-z]*f[a-z]*[[:space:]]+(/|~|\*|"?\$HOME)|rm[[:space:]]+-[a-z]*f[a-z]*r[a-z]*[[:space:]]+(/|~|\*)|DROP[[:space:]]+(TABLE|DATABASE)|TRUNCATE[[:space:]]+TABLE|push[[:space:]]+--force([[:space:]]|$)|push[[:space:]]+-f([[:space:]]|$)|git[[:space:]]+reset[[:space:]]+--hard|git[[:space:]]+clean[[:space:]]+-[a-z]*f|git[[:space:]]+checkout[[:space:]]+--[[:space:]]'
+  # `\b` has no ERE equivalent, and the obvious substitution is wrong. An
+  # earlier version of this rewrite rendered `-f\b` as `-f([[:space:]]|$)`,
+  # which stops matching the moment the flag is followed by anything that is
+  # not a space — so a force-push chained as `;ls` or `&&ls` was silently
+  # ALLOWED where the grep original blocked it. `\b` after a word character
+  # means "next character is a non-word character, or end of string", and that
+  # is what [^a-zA-Z0-9_] spells out.
+  RE_WORD_END='([^a-zA-Z0-9_]|$)'
+  # `--force` gets the same boundary, which the grep original did NOT give it —
+  # it used (\s|$) there, so `push --force;ls` was already getting through
+  # before this rewrite existed. Widening it is a deliberate behaviour change:
+  # leaving the explicit spelling weaker than the abbreviation would mean the
+  # clearer way to write a destructive command is the way that evades the guard.
+  #
+  # It also newly catches `--force-with-lease`, and that is intended rather than
+  # collateral. The lease makes the push safer for *collaborators* — it refuses
+  # when the remote moved — but it still rewrites published history, which is
+  # what this block asks a human to confirm. Both spellings are blocked, so
+  # nothing here nudges anyone from the safe variant toward the blunt one; the
+  # user is asked to run either by hand. Pinned by a test, because a reader who
+  # assumed it was collateral would "fix" it back.
+  RE_DESTRUCTIVE='rm[[:space:]]+-[a-z]*r[a-z]*f[a-z]*[[:space:]]+(/|~|\*|"?\$HOME)|rm[[:space:]]+-[a-z]*f[a-z]*r[a-z]*[[:space:]]+(/|~|\*)|DROP[[:space:]]+(TABLE|DATABASE)|TRUNCATE[[:space:]]+TABLE|push[[:space:]]+--force'"$RE_WORD_END"'|push[[:space:]]+-f'"$RE_WORD_END"'|git[[:space:]]+reset[[:space:]]+--hard|git[[:space:]]+clean[[:space:]]+-[a-z]*f|git[[:space:]]+checkout[[:space:]]+--[[:space:]]'
 
   shopt -s nocasematch
   if [[ $CMD =~ $RE_DESTRUCTIVE ]]; then

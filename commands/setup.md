@@ -36,64 +36,49 @@ the plugin is a separate thing and is not part of this setup.
 
 ## 1.2 Companion plugins
 
-Install each, skipping any already installed (`claude plugin list`). One job each — the roster
-and its division of labour are stated in `hooks/core.md`, which is the authority. If you change
-this list, change that line too, or the resident core starts naming tools that aren't there.
+Install each, skipping any already installed (`claude plugin list`).
+
+Two groups, and the split is the point.
+
+**Companions** — `core.md` routes work to these by name, one job each. That list and this one
+must agree, and `tests/suite.sh` asserts they do, so drift fails the suite instead of
+shipping.
 
 ```bash
-claude plugin install superpowers@claude-plugins-official      # process on larger tasks
-claude plugin install feature-dev@claude-plugins-official      # the Tier-2 reviewer
+claude plugin install feature-dev@claude-plugins-official       # the Tier-2 reviewer
+claude plugin install trio@trio-cc                              # Tier-3 audit, second opinions
 claude plugin install security-guidance@claude-plugins-official # Tier-3 security pass
-claude plugin install code-review@claude-plugins-official      # GitHub PR review only
-claude plugin install code-simplifier@claude-plugins-official  # opt-in cleanup
-claude plugin install commit-commands@claude-plugins-official
+claude plugin install superpowers@claude-plugins-official       # process on larger tasks only
+claude plugin install context7@claude-plugins-official          # version-sensitive APIs
+claude plugin install playwright@claude-plugins-official        # interactive/rendering changes
+```
+
+**Tools** — useful, but they contend for no decision, so `core.md` neither names them nor needs
+to. Nothing routes to them; the operator invokes them directly. Add or drop freely.
+
+```bash
 claude plugin install claude-md-management@claude-plugins-official
 claude plugin install frontend-design@claude-plugins-official
 claude plugin install skill-creator@claude-plugins-official
 claude plugin install ralph-loop@claude-plugins-official
-claude plugin install context7@claude-plugins-official         # version-sensitive APIs
-claude plugin install playwright@claude-plugins-official       # interactive/rendering changes
 claude plugin install firecrawl@claude-plugins-official
-claude plugin install trio@trio-cc                             # Tier-3 audit, second opinions
 ```
 
 Report anything that fails rather than continuing silently. A companion that failed to install
 is worse than one that was never in the list, because `core.md` will keep routing work to it.
 
-## 1.3 Reconcile — what's installed that isn't in the roster
+## 1.3 What's installed that isn't in the roster
 
-The roster above is a *desired state*, not a starting point. Any machine that has been used for
-a while accumulates plugins installed to try something once and never removed, and each one
-still costs launch time, hook spawns and resident context whether or not it is ever used.
-Reconciling is also what makes this command idempotent across machines: the same `/setup`
-converges to the same result anywhere, instead of layering onto whatever happened to be there.
+Report it, and stop there. List every installed plugin that is not in 1.2, one per line, with a
+one-line note on what it does if you can tell. Then say that removing any of them is
+`claude plugin uninstall <name>`, and move on to 1.4.
 
-So after 1.2, compare `claude plugin list` against the roster and **report the difference before
-touching anything**:
-
-1. List every installed plugin *not* in 1.2, one per line, with a one-line note on what it does
-   if you can tell. Do the same for user-level skills in `~/.claude/skills/` that this plugin
-   did not put there.
-2. Run `claude plugin prune --dry-run` and show its output too — those are auto-installed
-   dependencies nothing still needs.
-3. Then ask **once**, as a single yes/no over the whole list: remove these, or keep them?
-   - **Yes** → `claude plugin uninstall <plugin>` for each, then `claude plugin prune`. The
-     machine now matches the roster exactly, which is the one-shot outcome.
-   - **No** → change nothing and continue to 1.4. The extras are additive; nothing later in this
-     command depends on their absence.
-
-Three rules, and they are not negotiable:
-
-- **Never default to yes, and never remove anything not on the list you showed.** Uninstalling a
-  plugin the user picked on purpose, during a step they understood as "install some things", is
-  the worst thing this command could do.
-- **Ask once, over the whole list.** Prompting per plugin turns a one-shot convergence into
-  twenty questions, which is the "custom made fixing" this is meant to replace.
-- **Say that it's reversible.** Every removal here is a `claude plugin install` away, and saying
-  so up front is what makes "yes" a reasonable answer rather than a gamble.
-
-This step is also what makes upgrading an existing machine safe: run `/setup` on a PC that
-already has an older copy of all this, answer yes, and it converges instead of accumulating.
+**This command does not remove anything.** An earlier version offered to, behind a batched
+yes/no with reassurances about reversibility — and the reassurance turned out to be false for
+one class of item, which is how a convenience became the only irreversible step in a command
+whose whole premise is that it is safe to run. Removing the feature removed the problem. A user
+who wants a plugin gone can run one command; they do not need this one to do it for them, and
+the cost of getting it wrong on someone else's machine is not worth the keystroke it saves.
 
 ## 1.4 `settings.json`
 
@@ -155,9 +140,11 @@ section — it is a preference, not a correctness fix.
 
 ## 1.6 Status line
 
-`${CLAUDE_PLUGIN_ROOT}/assets/statusline.mjs` prints model, context use, cached tokens and
-branch. No dependencies and no `npm install` — it is a plain node script that ships with the
-plugin.
+`${CLAUDE_PLUGIN_ROOT}/assets/statusline.mjs` prints three lines: model and effort, then what
+the session has spent; context against the real window, cache hit rate, memory and the skill in
+play; then branch and lines written. No dependencies, no `npm install` and no subprocess — a
+plain node script that ships with the plugin. `STATUSLINE_GIT_CHANGES=1` adds a dirty-file count
+at the cost of one `git` spawn per render.
 
 Set `statusLine` to `{"type": "command", "command": "node \"<abs>\"", "padding": 0}`, where
 `<abs>` is `${CLAUDE_PLUGIN_ROOT}/assets/statusline.mjs` resolved to a real absolute path with

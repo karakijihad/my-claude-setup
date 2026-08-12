@@ -1,0 +1,57 @@
+name: test
+
+# The suite is the whole gate for this plugin, and it used to run only when
+# somebody remembered to type it. Running it here means a pull request from
+# anyone gets the same check the maintainer gets.
+#
+# Both platforms on purpose. The plugin exists largely because Windows breaks
+# assumptions Unix tooling makes — a `python3` that is a 0-byte Store stub, CRLF
+# checkouts that kill a shebang, a BOM that makes a healthy config look absent —
+# and every one of those is invisible on ubuntu alone.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  suite:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # The suite prefers jq and falls back to Python; ubuntu images ship it,
+      # windows images do not. Installing it on both means the jq path is the
+      # one actually exercised here, and the Python fallback keeps its own
+      # dedicated assertion rather than being tested only by accident.
+      - name: Install jq (Windows)
+        if: runner.os == 'Windows'
+        run: choco install jq --no-progress -y
+
+      - name: Line endings must be LF
+        shell: bash
+        run: |
+          # .gitattributes pins *.sh to LF. With core.autocrlf=true a CRLF
+          # checkout makes bash die on `bad interpreter`, and it fails in a way
+          # that looks like a missing file rather than a line-ending problem.
+          bad=$(find . -name '*.sh' -not -path './.git/*' -exec sh -c \
+            'grep -qU $'"'"'\r'"'"' "$1" && echo "$1"' _ {} \;)
+          if [ -n "$bad" ]; then echo "CRLF found in:"; echo "$bad"; exit 1; fi
+          echo "all *.sh are LF"
+
+      - name: Run the suite
+        shell: bash
+        run: bash tests/suite.sh

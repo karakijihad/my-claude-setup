@@ -17,9 +17,14 @@ The cost was entirely **process spawns** — which on Windows run 90-200ms each,
 
 - **`guard.sh` no longer shells out to decide it has nothing to do.** It ran six `grep`
   pipelines and three interpreter calls on every Bash tool call, which measured ~930ms on a
-  plain `git status`. The patterns are unchanged; the engine is now bash's own `[[ =~ ]]`, and
-  the three JSON reads collapsed into one `parse_all`. **655ms → 287ms**, all 54 assertions
-  still green. The greps in the secret-scan branch stayed: that path only runs on a commit,
+  plain `git status`. The engine is now bash's own `[[ =~ ]]` and the three JSON reads collapsed
+  into one `parse_all`. **655ms → 287ms**. Two force-push boundaries changed with it, and are
+  deliberately not parity: ERE has no `\b`, and rendering it as `([[:space:]]|$)` silently
+  un-blocked the chained forms — `push -f;ls` and `push -f&&ls` — while the spaced
+  and end-of-string forms kept passing, so nothing noticed. Both spellings now end on
+  `([^a-zA-Z0-9_]|$)`, which also catches `--force-with-lease`: the lease protects collaborators
+  but the push still rewrites published history, and blocking only the blunt spelling would make
+  the clearer one the way around the guard. The greps in the secret-scan branch stayed: that path only runs on a commit,
   already pays for a `git diff`, and scanning a whole diff line-by-line in bash would be slower.
 - **`lib-parse.sh` gained `parse_all`**, which returns command, file path and notebook path from
   a single call. NUL-delimited and read through a process substitution, because a bash variable
@@ -33,16 +38,21 @@ The cost was entirely **process spawns** — which on Windows run 90-200ms each,
 
 ### Added
 
-- **`assets/statusline.mjs`** — a status line in three. Line 1 is the main thread, point-in-time:
-  effort level, context used against the model's real window, cache hit ratio, branch. Line 2 is
-  the sub-agent lane, cumulative: calls and their token usage. Line 3 is what the session has
-  spent, across both lanes. Point-in-time and cumulative are different measures on purpose — you
-  steer the main thread by how full it is now, and judge delegation by what it has cost in total.
-  It prints no model name: Claude Code shows that itself, and a status line should add what the
-  harness doesn't. Effort is the opposite case — set in settings, paid on every message, surfaced
-  nowhere else. No dependencies, no `git` subprocess, every failure degrades to a shorter line.
-  The cache ratio floors rather than rounds: a healthy session sits at 99.6%, and rounding that
-  to "100%" claims a perfect hit that did not happen.
+- **`assets/statusline.mjs`** — a status line in three. Line 1 is identity and spend: model,
+  effort level, session cost and elapsed time. Line 2 is what the session and the machine are
+  carrying: context against the model's real window, cache hit ratio, memory, and the skill
+  currently in play. Line 3 is the repo: branch, and lines written this session.
+
+  Almost every value is read straight from the payload Claude Code supplies, which knows the
+  effort level and the real context-window size — deriving either from the transcript, as an
+  earlier draft did, was guessing at a number the harness already had. The active skill is the
+  one exception and is recovered by scanning the transcript.
+
+  Colour is a signal, not decoration: context, cache and memory are scaled green/amber/red so
+  the bar reads without parsing a number. The cache ratio floors rather than rounds — a healthy
+  session sits at 99.6%, and rounding that to "100%" claims a perfect hit that did not happen.
+  No dependencies and no subprocess by default; `STATUSLINE_GIT_CHANGES=1` adds a dirty-file
+  count at the cost of one `git` spawn. Every failure degrades to a shorter line and exits 0.
 - **`/setup` Part 1 now installs the companions**, not just settings keys: it adds the
   marketplaces, installs each plugin in the roster, and writes `enabledPlugins`. A plugin
   carrying its author's opinions is the point of this one; what it must never do is write them
@@ -60,6 +70,20 @@ The cost was entirely **process spawns** — which on Windows run 90-200ms each,
 
 ### Removed
 
+- **`code-review` and `code-simplifier` are no longer companions**, and `commit-commands` is no
+  longer installed. Claude Code ships built-in `/code-review` and `/simplify` that do the same
+  jobs better, and `git-protocol` already owns commit conventions. Worse, neither could fire:
+  the `code-review` plugin's single command is shadowed by the built-in of the same name, and
+  `code-simplifier` ships **only an agent** — passive, invoked by nothing, while `core.md` called
+  it "opt-in". Both sat in the routing table unused for over a month. A companion that cannot
+  trigger is not a companion; it is a line of prose costing resident tokens to describe a tool
+  nobody reaches. The roster is now six, and the suite asserts all four surfaces agree on it.
+- **The reconcile step no longer removes anything.** It reports what is installed outside the
+  roster, says that `claude plugin uninstall <name>` removes it, and moves on. The removing
+  version needed a batched consent prompt, a reversibility promise, and a carve-out for
+  hand-authored skills the promise could not cover — about forty lines defending a feature worth
+  one keystroke, and the only irreversible step in a command whose premise is that running it is
+  safe. Deleting the feature deleted the problem.
 - **`ccstatusline`**, and the `assets/ccstatusline-settings.json` that configured it. It is an
   Ink/React application and boots React even in hook mode: 1665ms per render with the shipped
   four-line config, and still 1189ms stripped to two fields, against 148ms for the replacement.

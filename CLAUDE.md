@@ -22,11 +22,15 @@ references on demand, and enforces three safety hooks. Published as its own mark
   conditional on `enabledPlugins`: when feature-dev is absent it says so rather than staying
   quiet, since a review that never happened must not read like one that did.
 - `hooks/session-start.sh` — dispatcher with the two fallback branches.
-- `hooks/test-hooks.sh` — the hook test suite. See Verifying a change.
+- `tests/suite.sh` — the whole test suite. Lives outside `hooks/` because `hooks/` is what
+  ships and runs; it still `cd`s there, since the hooks resolve their siblings relative to
+  themselves. See Verifying a change.
 - `hooks/guard.sh` — all PreToolUse blocking. One script, dispatches on which field is present.
 - `hooks/post-push.sh` — the only PostToolUse hook, and the whole of the CI feature. Fires on
   every Bash call, so its rejections are ordered cheapest-first; prints nothing unless a push
-  actually landed *and* the repo has CI config. Exit 0 on every path — PostToolUse runs after
+  landed *and* the repo has CI config. "Landed" is knowable only against an upstream: with none
+  configured it speaks anyway but says landing is unverified, rather than asserting a delivery
+  that nothing checked. Exit 0 on every path — PostToolUse runs after
   the call and cannot block it. The docs around it are deliberately thin: the hook is the
   mechanism, and the `.md` files carry only what it can't say at the moment it fires.
 - `hooks/onboarding.py` — one-time first-run check, imported by `session-start.py`. Detects real
@@ -64,19 +68,33 @@ references on demand, and enforces three safety hooks. Published as its own mark
 ## Verifying a change
 
 ```bash
-bash hooks/test-hooks.sh   # exit 0 means every assertion passed
+bash tests/suite.sh   # exit 0 means every assertion passed
 ```
 
-`CI: none, confirmed 2026-08-10` — this suite, run locally, is the whole gate. Recorded in the
-form `/setup` writes so `post-push.sh` and a later session both stay quiet about it.
+## CI
 
-Covers both hook outputs as JSON; every guard block and allow, including backslash paths and
-`notebook_path`; the commit secret scan against a real staged diff; the notify sanitizer, driven
-through a stub backend on `PATH`; both fallback branches; the Windows interpreter layout (jq and
-`python`/`python3` stubbed to fail, only `py -3` real); and four consistency invariants — the
-`hooks.json` matcher matches what `guard.sh` claims, every companion in `onboarding.py` is
-named in `core.md`, this repo's `.gitignore` carries the anchored `/Docs/` the convention ships,
-and every surface stating the Docs rule also names its `Docs policy` opt-out. Slow on Windows:
+GitHub Actions — `.github/workflows/test.yml`, on push to `main`, on every pull request, and on
+demand. It runs this same suite on **ubuntu-latest and windows-latest**, plus a check that no
+`*.sh` picked up CRLF. Check a run with `gh run list --limit 1` / `gh run view <id>`.
+
+Both platforms deliberately: this plugin exists largely because Windows breaks assumptions Unix
+tooling makes — a `python3` that is a 0-byte Store stub, a CRLF checkout that kills a shebang, a
+BOM that makes a healthy config look absent — and every one of those is invisible on ubuntu
+alone. A green ubuntu run proves the logic; only the Windows leg proves the plugin.
+
+Run it locally before pushing anyway; CI reports after the fact, and `post-push.sh` will remind
+you to go read the run.
+
+The suite covers both hook outputs as JSON; every guard block and allow, including backslash
+paths and `notebook_path`; the commit secret scan against a real staged diff; the notify
+sanitizer, driven through a stub backend on `PATH`; both fallback branches; the Windows
+interpreter layout (jq and `python`/`python3` stubbed to fail, only `py -3` real); the status
+line's failure paths, driven with a deliberately synthetic payload — never a real model id, which
+would read as a claim about which models exist and then quietly stop testing anything; and five
+consistency invariants — the `hooks.json` matcher matches what `guard.sh` claims, every companion
+in `onboarding.py` is named in `core.md`, **every companion `/setup` installs is named in
+`core.md`**, this repo's `.gitignore` carries the anchored `/Docs/` the convention ships, and
+every surface stating the Docs rule also names its `Docs policy` opt-out. Slow on Windows:
 roughly 4s per assertion, since each spawns bash plus an interpreter. The last two are prose
 invariants — they exist because that rule is stated in six files and drift there is silent.
 

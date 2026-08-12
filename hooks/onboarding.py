@@ -59,8 +59,6 @@ COMPANIONS = {
     "superpowers": ("process on larger tasks — brainstorming, plans, TDD, verification", OFFICIAL, None),
     "context7": ("unfamiliar or version-sensitive library APIs", OFFICIAL, None),
     "security-guidance": ("the Tier-3 security pass", OFFICIAL, None),
-    "code-review": ("GitHub PR review", OFFICIAL, None),
-    "code-simplifier": ("opt-in cleanup before the reviewer", OFFICIAL, None),
     "playwright": ("verifying changed interactive or rendering behaviour", OFFICIAL, None),
     "trio": ("the Tier-3 independent audit", "trio-cc", "karakijihad/trio-cc"),
 }

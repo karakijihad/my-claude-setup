@@ -70,7 +70,7 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 
 ```
 .claude-plugin/     marketplace.json, plugin.json
-hooks/              hooks.json + 3 hooks and their shared helpers
+hooks/              hooks.json + 4 hooks and their shared helpers
 skills/             9 skills — 7 protocols, plus dependency-auditor and skill-security-auditor
 commands/           setup — machine setup (Part 1), project setup (Part 2)
 assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit README, Docs skeleton
@@ -83,6 +83,7 @@ assets/             statusline.mjs, the status line /setup installs
 |-|-|-|
 | `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the review-escalation ladder, the plan-first offer — plus the current branch, the Tier-2 reviewer notice, and the one-time onboarding check. Commit subjects were deliberately dropped: they are arbitrary free text injected before the user has asked anything. If no Python is available it falls back to a reduced core rather than emitting nothing |
 | `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `checkout -- `, `branch -D` (but not `-d`), `DROP TABLE`/`DROP DATABASE`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`, `.sample`, `.template`), lockfiles, and `.git/`; scans the **staged diff** on commit for value-shaped secrets and for credential material — AWS keys, private keys, `ghp_`/`sk-` tokens |
+| `post-push.sh` | PostToolUse | After a push that actually landed, and only if the repo has CI config, names the pushed SHA and the provider's check command. Verifies nothing and exits 0 on every path — PostToolUse runs after the call and cannot block it |
 | `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |
 
 `guard.sh` is one script doing what three used to. The old ones each spawned a shell and a JSON
@@ -123,7 +124,7 @@ hygiene.
 
 | Command | Does |
 |-|-|
-| `/setup` **Part 1** | Sets up a machine: adds the marketplaces, installs the companion plugins, reconciles anything installed that isn't in the roster, merges the recommended `settings.json` keys, tunes the companions so their triggers don't double-fire, and installs the status line. Shows a diff, asks first, idempotent |
+| `/setup` **Part 1** | Sets up a machine: adds the marketplaces, installs the companion plugins, reports anything installed that isn't in the roster, merges the recommended `settings.json` keys, tunes the companions so their triggers don't double-fire, and installs the status line. Shows a diff, asks first, idempotent |
 | `/setup` **Part 2** | Sets up a project: scaffolds `CLAUDE.md` and the `Docs/` tree on a blank slate, or surveys an existing repo and reports before writing. Never rewrites a `CLAUDE.md` you already have; migrates the older seven-folder `Docs/` layout |
 
 ## The review ladder
@@ -167,7 +168,7 @@ and fall back to the manual equivalent — but the workflow is thinner.
 ```
 
 This list, the companion sentence at the end of `hooks/core.md`, and `COMPANIONS` in
-`hooks/onboarding.py` name the same set. `hooks/test-hooks.sh` asserts the last two agree; keep
+`hooks/onboarding.py` name the same set. `tests/suite.sh` asserts the last two agree; keep
 this one with them.
 
 Each has **exactly one job**, so no two contend for the same decision. That assignment is the
@@ -179,8 +180,6 @@ point — the failure mode isn't tokens, it's four plugins that all think they o
 | `trio` | **Tier 3 audit** — Codex reviews read-only through parallel lenses, Claude adjudicates each finding. Also second opinions via `trio-consult` | Auth, secrets, payments, migrations, deletion; >5 files; a release; or reviewer-vs-diff disagreement |
 | `superpowers` | **Process** — brainstorming, writing-plans, test-driven-development, verification-before-completion | Larger tasks only — never the fast path |
 | `security-guidance` | **Tier 3 security pass** — not a general reviewer | `security-protocol` §9 gate |
-| `code-review` | **GitHub PR review** — a different artifact from a working diff | An actual PR exists |
-| `code-simplifier` | **Opt-in cleanup**, run before the reviewer sees the code | You ask, on larger tasks |
 | `context7` | **Unfamiliar or version-sensitive APIs** — not settled ones | Reaching for an API you can't verify from the repo |
 | `playwright` | **Changed interactive or rendering behaviour** | Not every CSS tweak |
 

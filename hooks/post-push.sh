@@ -27,9 +27,17 @@ ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 # Did the push actually deliver HEAD? A rejected push leaves the branch ahead of
 # its upstream, and a reminder to go read CI for a commit the remote never
 # received is worse than silence — the run it finds would be someone else's.
-# No upstream at all yields an empty count: can't tell, so say it anyway.
+# No upstream at all yields an empty count: can't tell, so say it anyway — but
+# say it as a maybe. Reporting "Push landed" for a push nobody verified is the
+# same failure this block exists to prevent, only quieter: a session reads it as
+# fact, goes looking for a run, and finds one belonging to another commit.
 AHEAD=$(git rev-list --count '@{u}..HEAD' 2>/dev/null)
 [ -n "$AHEAD" ] && [ "$AHEAD" != 0 ] && exit 0
+if [ -n "$AHEAD" ]; then
+  LANDED="Push landed"
+else
+  LANDED="A push ran, but there is no upstream to check it against, so whether it landed is unverified"
+fi
 
 SHA=$(git rev-parse HEAD 2>/dev/null)
 BRANCH=$(git branch --show-current 2>/dev/null)
@@ -64,6 +72,6 @@ fi
 # quote or a backslash (git's ref rules and hex), and PROVIDER/CHECK are literals
 # chosen above, so there is nothing here that needs escaping.
 printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}\n' \
-"Push landed: $SHA on ${BRANCH:-a detached HEAD}. CI here is $PROVIDER. Match the run by SHA — a run on an earlier commit is not evidence: $CHECK. Before calling this done, report the outcome as green / red / cancelled / skipped / queued / unavailable; only green passes. Don't poll — finish the remaining work, then check once more."
+"$LANDED: $SHA on ${BRANCH:-a detached HEAD}. CI here is $PROVIDER. Match the run by SHA — a run on an earlier commit is not evidence: $CHECK. Before calling this done, report the outcome as green / red / cancelled / skipped / queued / unavailable; only green passes. Don't poll — finish the remaining work, then check once more."
 
 exit 0
