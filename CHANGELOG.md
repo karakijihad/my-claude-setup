@@ -5,6 +5,81 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.9.0] — 2026-08-12
+
+Everything below was found by looking at 1.8.0 again rather than by building anything new: an
+independent audit, then a documentation read-through, then the first CI run this repo has ever
+had. Each of the three found something the other two missed.
+
+### Added
+
+- **CI, and with it the end of `CI: none, confirmed`.** `.github/workflows/test.yml` runs the
+  suite on **ubuntu-latest and windows-latest** on every push and pull request, plus a check that
+  no `*.sh` picked up CRLF. Both platforms deliberately: this plugin exists largely because
+  Windows breaks assumptions Unix tooling makes, and those breakages are invisible on ubuntu
+  alone. It proved itself on the first run — see the `.env` fix below.
+- **24 assertions**, 54 → 78. Four destructive patterns that were listed in the regex and tested
+  nowhere; four post-push CI providers, of which only GitHub Actions had ever been exercised; six
+  status-line failure paths; a `notify-send` assertion that runs on every platform, replacing a
+  section that could report success having tested nothing; and the force-push regressions below.
+- **A four-way roster invariant.** `setup.md`, `core.md`, `onboarding.py` and `README.md` must
+  name the same companions, checked as set equality in every direction. The first version checked
+  one direction only, which passes happily when a companion is *dropped* — the exact drift it
+  existed to catch.
+
+### Changed
+
+- **The suite moved to `tests/suite.sh`.** `hooks/` now holds only what ships and runs. It still
+  `cd`s into `hooks/`, because the hooks resolve their siblings relative to themselves and
+  running from anywhere else would test a path no hook uses.
+
+### Removed
+
+- **`code-review` and `code-simplifier` are no longer companions**, and `commit-commands` is no
+  longer installed. Claude Code ships built-in `/code-review` and `/simplify` that do the same
+  jobs better, and `git-protocol` already owns commit conventions. Worse, neither could fire:
+  the `code-review` plugin's single command is shadowed by the built-in of the same name, and
+  `code-simplifier` ships **only an agent** — passive, invoked by nothing, while `core.md` called
+  it "opt-in". Both sat in the routing table unused for over a month. A companion that cannot
+  trigger is not a companion; it is a line of prose costing resident tokens to describe a tool
+  nobody reaches. The roster is now six, and the suite asserts all four surfaces agree on it.
+- **The reconcile step no longer removes anything.** It reports what is installed outside the
+  roster, says that `claude plugin uninstall <name>` removes it, and moves on. The removing
+  version needed a batched consent prompt, a reversibility promise, and a carve-out for
+  hand-authored skills the promise could not cover — about forty lines defending a feature worth
+  one keystroke, and the only irreversible step in a command whose premise is that running it is
+  safe. Deleting the feature deleted the problem.
+
+### Fixed
+
+- **`guard.sh` protected `.env` on Windows and not on Linux, from an identical payload.** A
+  Windows path arrives backslash-delimited, and `basename` only splits on those under MSYS — GNU
+  `basename` returns `C:\repo\.env` whole, so the `.env` case never matched and the write went
+  through. Separators are now normalised before matching, and the `.git` check drops its
+  duplicate backslash pattern as a result. Found by the first CI run this repo has ever had:
+  windows-latest 78/0, ubuntu-latest 77/1, on an assertion that had been passing locally for
+  months.
+- **Thirty-six mojibake sequences across all ten `security-protocol` references.** UTF-8 read as
+  cp1252 and re-saved, so every em dash rendered as `â€"` and every `§` as `Â§` — in the ten
+  files a session loads when it is reasoning about security. Repaired by targeted replacement
+  rather than a cp1252 round trip, which would raise on any character that encoding cannot hold
+  and silently rewrite bytes that were never broken.
+- **The README listed install commands for two plugins that no longer exist in the roster.** That
+  block was a fifth copy of the companion list and the one the suite's invariant did not cover,
+  so it drifted first. It is gone; `/setup` is now the only place that says how to install them,
+  and the table beside it says only what each is for.
+- **Two force-push boundaries.** ERE has no `\b`, and 1.8.0 rendered it as `([[:space:]]|$)`,
+  which silently un-blocked every chained form while the spaced and end-of-string forms kept
+  passing — so nothing noticed. Both spellings now end on `([^a-zA-Z0-9_]|$)`, which also catches
+  `--force-with-lease`: the lease protects collaborators, but the push still rewrites published
+  history, and blocking only the blunt spelling would make the clearer one the way around the
+  guard.
+- **`post-push.sh` claimed a push landed when it could not know.** With no upstream configured
+  the ahead-count is empty, and the hook went on to report "Push landed" as fact. It now says
+  landing is unverified, which is the difference between a prompt and a false one.
+
+---
+
 ## [1.8.0] — 2026-08-12
 
 Driven by a profiling pass rather than a feature idea: sessions had grown slow to launch and
@@ -18,14 +93,9 @@ The cost was entirely **process spawns** — which on Windows run 90-200ms each,
 - **`guard.sh` no longer shells out to decide it has nothing to do.** It ran six `grep`
   pipelines and three interpreter calls on every Bash tool call, which measured ~930ms on a
   plain `git status`. The engine is now bash's own `[[ =~ ]]` and the three JSON reads collapsed
-  into one `parse_all`. **655ms → 287ms**. Two force-push boundaries changed with it, and are
-  deliberately not parity: ERE has no `\b`, and rendering it as `([[:space:]]|$)` silently
-  un-blocked the chained forms — `push -f;ls` and `push -f&&ls` — while the spaced
-  and end-of-string forms kept passing, so nothing noticed. Both spellings now end on
-  `([^a-zA-Z0-9_]|$)`, which also catches `--force-with-lease`: the lease protects collaborators
-  but the push still rewrites published history, and blocking only the blunt spelling would make
-  the clearer one the way around the guard. The greps in the secret-scan branch stayed: that path only runs on a commit,
-  already pays for a `git diff`, and scanning a whole diff line-by-line in bash would be slower.
+  into one `parse_all`. **655ms → 287ms**, 54 assertions still green. The greps in the
+  secret-scan branch stayed: that path only runs on a commit, already pays for a `git diff`, and
+  scanning a whole diff line-by-line in bash would be slower.
 - **`lib-parse.sh` gained `parse_all`**, which returns command, file path and notebook path from
   a single call. NUL-delimited and read through a process substitution, because a bash variable
   cannot hold a NUL and `$(...)` would eat the delimiters — tabs and newlines survive, which
@@ -70,20 +140,6 @@ The cost was entirely **process spawns** — which on Windows run 90-200ms each,
 
 ### Removed
 
-- **`code-review` and `code-simplifier` are no longer companions**, and `commit-commands` is no
-  longer installed. Claude Code ships built-in `/code-review` and `/simplify` that do the same
-  jobs better, and `git-protocol` already owns commit conventions. Worse, neither could fire:
-  the `code-review` plugin's single command is shadowed by the built-in of the same name, and
-  `code-simplifier` ships **only an agent** — passive, invoked by nothing, while `core.md` called
-  it "opt-in". Both sat in the routing table unused for over a month. A companion that cannot
-  trigger is not a companion; it is a line of prose costing resident tokens to describe a tool
-  nobody reaches. The roster is now six, and the suite asserts all four surfaces agree on it.
-- **The reconcile step no longer removes anything.** It reports what is installed outside the
-  roster, says that `claude plugin uninstall <name>` removes it, and moves on. The removing
-  version needed a batched consent prompt, a reversibility promise, and a carve-out for
-  hand-authored skills the promise could not cover — about forty lines defending a feature worth
-  one keystroke, and the only irreversible step in a command whose premise is that running it is
-  safe. Deleting the feature deleted the problem.
 - **`ccstatusline`**, and the `assets/ccstatusline-settings.json` that configured it. It is an
   Ink/React application and boots React even in hook mode: 1665ms per render with the shipped
   four-line config, and still 1189ms stripped to two fields, against 148ms for the replacement.
@@ -93,22 +149,6 @@ The cost was entirely **process spawns** — which on Windows run 90-200ms each,
 
 ### Fixed
 
-- **`guard.sh` protected `.env` on Windows and not on Linux, from an identical payload.** A
-  Windows path arrives backslash-delimited, and `basename` only splits on those under MSYS — GNU
-  `basename` returns `C:\repo\.env` whole, so the `.env` case never matched and the write went
-  through. Separators are now normalised before matching, and the `.git` check drops its
-  duplicate backslash pattern as a result. Found by the first CI run this repo has ever had:
-  windows-latest 78/0, ubuntu-latest 77/1, on an assertion that had been passing locally for
-  months.
-- **Thirty-six mojibake sequences across all ten `security-protocol` references.** UTF-8 read as
-  cp1252 and re-saved, so every em dash rendered as `â€"` and every `§` as `Â§` — in the ten
-  files a session loads when it is reasoning about security. Repaired by targeted replacement
-  rather than a cp1252 round trip, which would raise on any character that encoding cannot hold
-  and silently rewrite bytes that were never broken.
-- **The README listed install commands for two plugins that no longer exist in the roster.** That
-  block was a fifth copy of the companion list and the one the suite's invariant did not cover,
-  so it drifted first. It is gone; `/setup` is now the only place that says how to install them,
-  and the table beside it says only what each is for.
 - **Prose that generalised from one person's setup.** The repo is public; rationale that reads
   "this is how two of the author's machines drift apart" is a story, not a reason. Screened every
   shipped `.md` and rewrote four places in general terms — one of which also assumed a real
