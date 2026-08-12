@@ -1,4 +1,4 @@
-# 10. Verification Checklist â€” Security Gate
+# 10. Verification Checklist — Security Gate
 
 > Part of [Security Protocol](../SKILL.md). Final checklist before merging security-relevant changes.
 

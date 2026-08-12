@@ -93,6 +93,22 @@ The cost was entirely **process spawns** — which on Windows run 90-200ms each,
 
 ### Fixed
 
+- **`guard.sh` protected `.env` on Windows and not on Linux, from an identical payload.** A
+  Windows path arrives backslash-delimited, and `basename` only splits on those under MSYS — GNU
+  `basename` returns `C:\repo\.env` whole, so the `.env` case never matched and the write went
+  through. Separators are now normalised before matching, and the `.git` check drops its
+  duplicate backslash pattern as a result. Found by the first CI run this repo has ever had:
+  windows-latest 78/0, ubuntu-latest 77/1, on an assertion that had been passing locally for
+  months.
+- **Thirty-six mojibake sequences across all ten `security-protocol` references.** UTF-8 read as
+  cp1252 and re-saved, so every em dash rendered as `â€"` and every `§` as `Â§` — in the ten
+  files a session loads when it is reasoning about security. Repaired by targeted replacement
+  rather than a cp1252 round trip, which would raise on any character that encoding cannot hold
+  and silently rewrite bytes that were never broken.
+- **The README listed install commands for two plugins that no longer exist in the roster.** That
+  block was a fifth copy of the companion list and the one the suite's invariant did not cover,
+  so it drifted first. It is gone; `/setup` is now the only place that says how to install them,
+  and the table beside it says only what each is for.
 - **Prose that generalised from one person's setup.** The repo is public; rationale that reads
   "this is how two of the author's machines drift apart" is a story, not a reason. Screened every
   shipped `.md` and rewrote four places in general terms — one of which also assumed a real

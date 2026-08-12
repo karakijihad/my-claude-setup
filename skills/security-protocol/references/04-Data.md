@@ -30,7 +30,7 @@
 - **Never log:** passwords (even hashed), tokens, session IDs, credit card numbers, SSNs, full request/response bodies with sensitive fields, PII beyond what's necessary for debugging.
 - Scrub or mask sensitive fields before logging. Log the structure, not the content.
 - Centralize logs. Set retention policies. Restrict access to log systems.
-- Structured logging (JSON) over unstructured text â€” makes it easier to filter and redact.
+- Structured logging (JSON) over unstructured text — makes it easier to filter and redact.
 
 ## Error Handling
 
@@ -43,4 +43,4 @@
 
 - `.env`, `.env.local`, `.env.production`, config files with secrets: **always in `.gitignore`**. Verify before every commit.
 - Provide `.env.example` with dummy values for onboarding. Never real credentials.
-- Database connection strings, API keys, signing secrets â€” all go through environment variables, never config files checked into source control.
+- Database connection strings, API keys, signing secrets — all go through environment variables, never config files checked into source control.

@@ -154,25 +154,24 @@ that did.
 The protocols name these by default. Nothing hard-fails without them — Claude is told to say so
 and fall back to the manual equivalent — but the workflow is thinner.
 
-```
-/plugin install feature-dev@claude-plugins-official        # code-explorer, code-architect, code-reviewer
-/plugin install superpowers@claude-plugins-official        # brainstorming, plans, TDD, verification
-/plugin install context7@claude-plugins-official           # live library docs instead of model memory
-/plugin install security-guidance@claude-plugins-official  # security review pass, /security-review
-/plugin install code-review@claude-plugins-official        # PR review
-/plugin install code-simplifier@claude-plugins-official    # post-implementation cleanup
-/plugin install playwright@claude-plugins-official         # UI verification
-
-/plugin marketplace add karakijihad/trio-cc                # trio needs its own marketplace
-/plugin install trio@trio-cc                               # independent Codex audit
-```
-
-This list, the companion sentence at the end of `hooks/core.md`, and `COMPANIONS` in
-`hooks/onboarding.py` name the same set. `tests/suite.sh` asserts the last two agree; keep
-this one with them.
+**Run `/setup` and it installs all of them**, marketplaces included. The command list used to be
+repeated here too, which made this file a fifth copy of the roster — and the copy that drifted:
+it went on telling people to install two plugins that had already been dropped. The table below
+says what each one is *for*; `/setup` is the only place that says how to get it.
 
 Each has **exactly one job**, so no two contend for the same decision. That assignment is the
-point — the failure mode isn't tokens, it's four plugins that all think they own "review".
+point — the failure mode isn't tokens, it's several plugins that all think they own "review".
+
+Two were removed for failing that test in the other direction. `code-review` shipped a command
+shadowed by Claude Code's own built-in `/code-review`, and `code-simplifier` shipped only an
+*agent* — passive, dispatched by nothing, while the routing table called it "opt-in". Neither
+could fire, and both sat in the roster unused for over a month. A companion that cannot trigger
+is not a companion. The built-in `/code-review` and `/simplify` cover both jobs.
+
+The table, `hooks/core.md`'s companion sentence, `COMPANIONS` in `hooks/onboarding.py`, and
+`/setup`'s install block must all name the same set. `tests/suite.sh` asserts that in every
+direction — an earlier version checked only one way, which passes happily when a companion is
+*dropped* from one surface, the exact drift it existed to catch.
 
 | Plugin | Its one job | Fires when |
 |-|-|-|

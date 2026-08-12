@@ -60,7 +60,7 @@ Follow this order. Steps are not interchangeable.
 1. **Before implementation:** Define test cases that capture the "done" criteria. Use `superpowers:test-driven-development` for non-trivial features. If the feature has edge cases, list them now — not after you've written the code.
 2. **During implementation:** Run tests incrementally as you build. Don't batch all testing to the end. If a test fails mid-implementation, fix the code — don't comment out the test.
 3. **After implementation, before simplification:** All tests must pass. If a test fails, fix the code — don't delete the test. If a test is wrong, fix the test and document why.
-4. **After simplification:** Run the full test suite again. `code-simplifier:code-simplifier` must not introduce regressions. If it does, revert the simplification.
+4. **After simplification:** Run the full test suite again. the built-in `/simplify` must not introduce regressions. If it does, revert the simplification.
 
 ---
 
@@ -136,7 +136,7 @@ Multiple levels can apply. A new API endpoint needs automated tests, a build che
 - [ ] Tests written for all required scenarios (see §1)
 - [ ] All tests passing — zero failures
 - [ ] Verification level selected from §5 and evidence included in task report
-- [ ] Tests re-run after `code-simplifier:code-simplifier` — no regressions
+- [ ] Tests re-run after `/simplify` — no regressions
 - [ ] Multi-file changes verified at the integration level
 - [ ] `superpowers:verification-before-completion` invoked as final pass
 - [ ] Any unverifiable items documented with reason and flagged for user

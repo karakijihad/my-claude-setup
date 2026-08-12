@@ -35,14 +35,14 @@ Set these on every response:
 | `Strict-Transport-Security` | `max-age=31536000; includeSubDomains` | Force HTTPS |
 | `Referrer-Policy` | `strict-origin-when-cross-origin` or `no-referrer` | Limit referrer leakage |
 | `Permissions-Policy` | Disable unused browser features (`camera=(), microphone=()`, etc.) | Reduce attack surface |
-| Remove `X-Powered-By` | â€” | Don't advertise your stack |
-| Remove `Server` | â€” | Don't advertise your server |
+| Remove `X-Powered-By` | — | Don't advertise your stack |
+| Remove `Server` | — | Don't advertise your server |
 
 ## Request Size & Payload
 
 - Set maximum request body size at the framework and reverse proxy level. Don't let someone POST a 500MB JSON body.
 - Limit JSON depth and array lengths to prevent denial-of-service via deeply nested payloads.
-- Set timeouts on all requests â€” both client-side and server-side.
+- Set timeouts on all requests — both client-side and server-side.
 
 ## Internal Endpoints
 
@@ -60,6 +60,6 @@ Set these on every response:
 ## WebSocket-Specific
 
 - Authenticate the WebSocket connection at handshake time.
-- Validate and sanitize all messages received over WebSocket â€” they're user input.
+- Validate and sanitize all messages received over WebSocket — they're user input.
 - Implement rate limiting on WebSocket messages.
 - Set maximum message size.

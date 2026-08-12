@@ -1,4 +1,4 @@
-# 2. Input Validation â€” Trust Nothing
+# 2. Input Validation — Trust Nothing
 
 > Part of [Security Protocol](../SKILL.md). Read before handling any user-facing input, database query, or file operation.
 
@@ -6,7 +6,7 @@ Every piece of data that enters the system is untrusted until validated. This in
 
 ## Rules
 
-- **Validate and sanitize every input.** Query params, request bodies, headers, cookies, file uploads, URL paths, WebSocket messages, environment variables read at runtime â€” all of it.
+- **Validate and sanitize every input.** Query params, request bodies, headers, cookies, file uploads, URL paths, WebSocket messages, environment variables read at runtime — all of it.
 - **Server-side, always.** Client-side validation is UX, not security. It can be bypassed in seconds.
 - **Whitelist over blacklist.** Define what's allowed, reject everything else. Blacklists always miss something.
 - **Enforce type, length, range, and format at the boundary.** An email field should reject a 10MB string before it hits any logic. An age field should reject negative numbers and strings.
@@ -16,7 +16,7 @@ Every piece of data that enters the system is untrusted until validated. This in
 
 - **Parameterize all queries. No exceptions.** No string concatenation. No template literals. No f-strings. Use prepared statements or your ORM's parameterized methods.
 - This applies to SQL, NoSQL (MongoDB query injection is real), GraphQL, LDAP, and any query language.
-- ORMs are not magic â€” raw queries through an ORM still need parameterization.
+- ORMs are not magic — raw queries through an ORM still need parameterization.
 
 ## Output Encoding
 
@@ -27,7 +27,7 @@ Every piece of data that enters the system is untrusted until validated. This in
   - URLs â†’ URL-encode (`encodeURIComponent`)
   - SQL â†’ parameterize (never encode manually)
   - CSS â†’ CSS-encode or avoid dynamic CSS values entirely
-  - Markdown, CSV, XML, shell commands â€” each has its own escaping rules
+  - Markdown, CSV, XML, shell commands — each has its own escaping rules
 - **Never inject raw user content into any output context.**
 
 ## File Uploads

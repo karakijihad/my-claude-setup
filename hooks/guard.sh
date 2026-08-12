@@ -133,7 +133,19 @@ if [ -z "$FILE" ]; then
   exit 0
 fi
 
-case "$(basename "$FILE")" in
+# Normalise separators before matching. A Windows payload arrives
+# backslash-delimited, and `basename` only splits on those under MSYS — GNU
+# basename returns "C:\repo\.env" whole, so the .env case below never matches
+# and the file is waved through. The guard was therefore protecting .env on
+# Windows and not on Linux, from an identical payload. Caught by the first CI
+# run: windows-latest 78/0, ubuntu-latest 77/1.
+#
+# The trade is a file whose *name* genuinely contains a backslash on a POSIX
+# box, which this would misread. That is vanishingly rare and errs toward
+# blocking, which is the safe direction for a guard.
+FILE_N=${FILE//\\//}
+
+case "$(basename "$FILE_N")" in
   # security-protocol §04-Data requires an example env file to exist.
   .env.example|.env.sample|.env.template) exit 0 ;;
   .env|.env.*|package-lock.json|yarn.lock|pnpm-lock.yaml)
@@ -141,8 +153,8 @@ case "$(basename "$FILE")" in
     exit 2 ;;
 esac
 
-case "$FILE" in
-  */.git/*|*\\.git\\*)
+case "$FILE_N" in
+  */.git/*)
     echo "BLOCKED: Refusing to edit inside .git/: $FILE" >&2
     exit 2 ;;
 esac

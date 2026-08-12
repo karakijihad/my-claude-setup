@@ -1,8 +1,8 @@
-# 1. Threat Assessment â€” Do This First
+# 1. Threat Assessment — Do This First
 
 > Part of [Security Protocol](../SKILL.md). Read before starting any new feature, endpoint, or phase.
 
-Before writing code for any feature, endpoint, or phase â€” answer these:
+Before writing code for any feature, endpoint, or phase — answer these:
 
 - What does this feature expose? (endpoints, file access, user input, auth, data, third-party integrations)
 - Who can reach it? (anonymous users, authenticated users, admins, internal services, automated bots)

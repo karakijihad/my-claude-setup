@@ -6,8 +6,8 @@
 
 ## Process
 
-1. Run the attack vector checklist in [08-Attack-Vectors.md](./08-Attack-Vectors.md) against the diff â€” check only rows relevant to this change. For AI workflow changes, run the gate in [07-AI-Agents.md](./07-AI-Agents.md) Â§7.11.
-2. Get a security review â€” `feature-dev:code-reviewer` agent with an explicit security brief, a `trio:trio-audit` run with the security lens on, a manual review pass, or pair review. The method is flexible. The review is not.
+1. Run the attack vector checklist in [08-Attack-Vectors.md](./08-Attack-Vectors.md) against the diff — check only rows relevant to this change. For AI workflow changes, run the gate in [07-AI-Agents.md](./07-AI-Agents.md) §7.11.
+2. Get a security review — `feature-dev:code-reviewer` agent with an explicit security brief, a `trio:trio-audit` run with the security lens on, a manual review pass, or pair review. The method is flexible. The review is not.
 3. The review must explicitly check: injection, auth bypass, IDOR, XSS, SSRF, secrets exposure, privilege escalation, mass assignment, CSRF, and (for AI workflows) prompt injection and supply chain.
 4. If the review doesn't check these, it's not a security review.
 
