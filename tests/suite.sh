@@ -533,55 +533,57 @@ sys.exit(0 if len(set(map(frozenset, src.values())))==1 else 1)
   || bad "setup.md, core.md, onboarding.py and README name the same companions"
 
 echo "self-heal"
-# Driven against a FAKE home, never the real one: this code rewrites
-# settings.json, and a test suite that edits the operator's actual settings to
-# prove it can is not a test, it is an incident. USERPROFILE and HOME are both
-# set because Path.home() reads whichever the platform prefers, and selfheal
-# resolves its paths at import time — so the environment has to be in place
-# before the interpreter loads it, which is why this runs as a subprocess.
-SH=$(mktemp -d)
-case "$SH" in
-  ""|/) bad "self-heal fixture" "mktemp -d gave an unusable path" ;;
-  *)
-    mkdir -p "$SH/.claude/plugins" "$SH/plugin/assets"
-    printf 'export default 1\n' > "$SH/plugin/assets/statusline-launcher.mjs"
-    SH="$SH" USERPROFILE="$SH" HOME="$SH" bash py.sh -c "
-import json, io, os, sys
-home = os.environ['SH']
-io.open(home + '/.claude/plugins/installed_plugins.json', 'w', encoding='utf-8').write(
-    json.dumps({'plugins': {'my-claude-setup@my-claude-setup': [
-        {'installPath': home + '/plugin', 'version': '9.9.9'}]}}))
-# statusLine pinned inside the plugin cache — the state an update leaves behind.
-io.open(home + '/.claude/settings.json', 'w', encoding='utf-8').write(json.dumps(
-    {'statusLine': {'type': 'command',
-     'command': 'node \"/x/plugins/cache/my-claude-setup/my-claude-setup/1.0.0/assets/statusline.mjs\"',
-     'padding': 0}, 'model': 'keep-me'}))
+# Driven against a FAKE home, never the real one. This code rewrites
+# settings.json and deletes directories; a suite that proves it can by doing it
+# to the operator's machine is not a test, it is an incident. USERPROFILE and
+# HOME are both set because Path.home() reads whichever the platform prefers,
+# and selfheal resolves its paths at import time — so the environment has to be
+# in place before the interpreter loads it, hence the subprocess.
+bash py.sh -c "
+import json, io, os, sys, tempfile, shutil
+from pathlib import Path
+
+home = Path(tempfile.mkdtemp())
+os.environ['USERPROFILE'] = str(home); os.environ['HOME'] = str(home)
+cache = home / '.claude/plugins/cache/my-claude-setup/my-claude-setup'
+old, new = cache / '1.9.0', cache / '1.10.0'
+for d in (old, new):
+    (d / 'assets').mkdir(parents=True); (d / 'hooks').mkdir(parents=True)
+    (d / 'hooks/guard.sh').write_text('identical in both releases')
+(old / 'hooks/core.md').write_text('old'); (new / 'hooks/core.md').write_text('new')
+(new / 'assets/statusline-launcher.mjs').write_text('export default 1')
+(home / '.claude/plugins/installed_plugins.json').write_text(json.dumps(
+    {'plugins': {'my-claude-setup@my-claude-setup': [
+        {'installPath': str(new), 'version': '1.10.0'}]}}))
+(home / '.claude/settings.json').write_text(json.dumps({
+    'statusLine': {'type': 'command',
+        'command': 'node \"/x/cache/my-claude-setup/my-claude-setup/1.0.0/assets/statusline.mjs\"'},
+    'model': 'user-chose-this'}))
+(home / '.claude/.my-claude-setup-version').write_text('1.9.0')
+
 sys.path.insert(0, os.getcwd())
 import selfheal
 first = selfheal.heal()
-cfg = json.load(io.open(home + '/.claude/settings.json', encoding='utf-8-sig'))
+cfg = json.load(io.open(home / '.claude/settings.json', encoding='utf-8-sig'))
 cmd = cfg['statusLine']['command']
 second = selfheal.heal()
-# A foreign status line must survive untouched.
-cfg['statusLine']['command'] = 'somebody-elses-bar'
-io.open(home + '/.claude/settings.json', 'w', encoding='utf-8').write(json.dumps(cfg))
-os.remove(home + '/.claude/.my-claude-setup-version')
-selfheal.heal()
-kept = json.load(io.open(home + '/.claude/settings.json', encoding='utf-8-sig'))['statusLine']['command']
-ok = (
-    'statusline.mjs' in cmd and 'my-claude-setup/1.0.0' not in cmd
-    and os.path.isfile(home + '/.claude/statusline.mjs')
-    and first.strip() and not second.strip()
-    and kept == 'somebody-elses-bar'
-    and cfg.get('model') == 'keep-me'
-)
+
+ok = all([
+    'hooks/core.md (changed)' in first,       # reports what moved
+    'guard.sh' not in first,                  # and only what moved
+    'statusline.mjs' in cmd,                  # repointed off the pinned path
+    '1.0.0' not in cmd,
+    (home / '.claude/statusline.mjs').is_file(),
+    cfg.get('model') == 'user-chose-this',    # user's own keys untouched
+    not old.exists() and new.exists(),        # pruned the superseded release only
+    'setup.md' in first and 'Part 1' in first,# hands the rest to the session
+    first.strip() and not second.strip(),     # says it once
+])
+shutil.rmtree(home, ignore_errors=True)
 sys.exit(0 if ok else 1)
 " >/dev/null 2>&1 \
-      && ok "repairs a version-pinned status line, once, without touching other keys" \
-      || bad "repairs a version-pinned status line, once, without touching other keys"
-    rm -rf "$SH"
-    ;;
-esac
+  && ok "on a version change: reports the diff, repairs, prunes, and says it once" \
+  || bad "on a version change: reports the diff, repairs, prunes, and says it once"
 
 echo "status line"
 # It sits on the render path of every session, so a throw here blanks the bar

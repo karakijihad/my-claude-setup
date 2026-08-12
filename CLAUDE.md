@@ -36,10 +36,16 @@ references on demand, and enforces three safety hooks. Published as its own mark
 - `hooks/onboarding.py` — one-time first-run check, imported by `session-start.py`. Detects real
   state; must never nag a user who is already set up. Reads settings as **`utf-8-sig`**, because
   Windows tooling writes a BOM and plain `utf-8` would make a healthy config look absent.
-- `hooks/selfheal.py` — repairs the plugin's own wiring after an update, imported by
-  `session-start.py`. Runs on every session start and is silent on all but the first after a
-  version change. It rewrites exactly one key it wrote itself; anything the user chose is left
-  alone, because a hook that edits settings nobody delegated is worse than a stale path.
+- `hooks/selfheal.py` — the update path, imported by `session-start.py`. Silent on every session
+  but the first after the installed version moves. The split is the design: **Python does what is
+  deterministic** — diff the outgoing release against the incoming one, repair the status-line
+  wiring, delete superseded cached releases — and **the session does what needs judgement**, by
+  being handed an instruction to reconcile `/setup` Part 1 against the machine. Merging settings
+  and deciding about companions are decisions, not file operations. It adds missing keys and
+  never overwrites a value the user set to something else; installing a companion is asked about,
+  because repairing a path this plugin wrote is the plugin's business and putting new software on
+  someone's machine is theirs. The diff runs *before* the prune, since the outgoing release has to
+  still exist to compare against.
 - `assets/statusline-launcher.mjs` — the stable path `settings.json` points at. The plugin's own
   directory is version-pinned, and pointing at it directly fails *quietly*: old versions stay in
   the cache, so the stale path keeps resolving and the bar renders from a release nobody uses.

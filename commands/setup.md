@@ -158,11 +158,13 @@ previously installed version on disk: the stale path still resolves, still runs,
 on rendering from a release nobody is using. The launcher is one file whose only job is to read
 `installed_plugins.json` and hand off to whichever release is current.
 
-**After this, updates take care of themselves.** `hooks/selfheal.py` runs on every session start,
-notices when the installed version has moved, refreshes the launcher, repoints `statusLine` if it
-is still pinned to a versioned path, and states what it did. It repairs only keys this plugin
-wrote, leaves a status line pointing at anything else alone, and says nothing on the sessions
-where nothing changed.
+**After this, updates run themselves.** `hooks/selfheal.py` fires on the first session after the
+installed version moves. It diffs the outgoing release against the incoming one, repairs the
+status-line wiring, deletes the superseded cached releases, and then hands this command back to
+the session to reconcile sections 1.1–1.5 against the machine. So a user who never types `/setup`
+again still ends up with the marketplaces, roster, settings and tuning of the release they are
+running — and a summary of what changed. On sessions where the version has not moved it does
+nothing and says nothing.
 
 ---
 

@@ -5,6 +5,42 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.11.0] — 2026-08-12
+
+1.10.0 made the status line survive an update. This makes the *whole plugin* survive one: a user
+who never runs `/setup` again still ends up on the release they are actually running.
+
+### Changed
+
+- **`selfheal.py` became the update path rather than a status-line patch.** On the first session
+  after the installed version moves it now: diffs the outgoing release against the incoming one
+  and reports what moved, grouped as resident rules, protocols, commands, hooks, status line,
+  assets and docs; repairs the status-line wiring; deletes the superseded cached releases; and
+  hands the session an instruction to reconcile `/setup` Part 1 — marketplaces, roster,
+  `settings.json`, companion tuning — against the machine, then explain the result.
+
+  The split is deliberate. **Python does what is deterministic**: hashing two trees, copying a
+  file, deleting directories nothing points at. **The session does what needs judgement**:
+  merging settings, weighing a new companion, saying what any of it means. A hook cannot reason,
+  and a model should not be hashing files.
+
+  Two limits it will not cross. It adds missing keys and **never overwrites a value the user set
+  to something else** — that gets reported as a difference and left alone. And it **asks before
+  installing a companion**: repairing a path this plugin wrote is the plugin's business, putting
+  new software on someone's machine is theirs.
+
+- **Superseded releases are pruned automatically.** Claude Code never removes them, and this
+  machine had accumulated eleven — 1.0.0 through 1.10.0. Harmless disk now, but they were the
+  mechanism behind the 1.10.0 bug: a `statusLine` pinned to an old path kept resolving into one
+  of them, so the bar rendered from an abandoned release and nothing said so. The prune is
+  guarded three ways — the parent must sit under the plugin cache, the name must parse as a
+  version, and the installed release is never a candidate.
+
+- **The diff runs before the prune**, because the outgoing release has to still be on disk to
+  compare against. Obvious in hindsight; easy to get backwards.
+
+---
+
 ## [1.10.0] — 2026-08-12
 
 An update that requires the user to run a command afterwards is broken on most machines most of
