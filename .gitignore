@@ -23,3 +23,6 @@ __pycache__/
 # Project docs — local by default, whole tree including any subfolder added later.
 # Root-anchored on purpose: bare `Docs/` also matches a nested `packages/*/Docs/`.
 /Docs/
+
+# Playwright MCP scratch output — never part of the plugin
+.playwright-mcp/
