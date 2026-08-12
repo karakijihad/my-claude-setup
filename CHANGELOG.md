@@ -5,6 +5,19 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.11.1] — 2026-08-12
+
+### Removed
+
+- **`claude-md-management` and `skill-creator` leave the tools list.** Both had been uninstalled
+  on the author's machine and the roster went on advertising them, which is the same drift that
+  removed `code-review` and `code-simplifier` in 1.9.0. Worth naming the reason it survived: the
+  four-source invariant only covers the **companions** block. Tools are deliberately absent from
+  `core.md` — nothing routes to them — so there is no second source to check them against, and no
+  test can catch a stale entry there. That list is maintained by reading it.
+
+---
+
 ## [1.11.0] — 2026-08-12
 
 1.10.0 made the status line survive an update. This makes the *whole plugin* survive one: a user

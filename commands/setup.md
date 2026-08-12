@@ -57,9 +57,7 @@ claude plugin install playwright@claude-plugins-official        # interactive/re
 to. Nothing routes to them; the operator invokes them directly. Add or drop freely.
 
 ```bash
-claude plugin install claude-md-management@claude-plugins-official
 claude plugin install frontend-design@claude-plugins-official
-claude plugin install skill-creator@claude-plugins-official
 claude plugin install ralph-loop@claude-plugins-official
 claude plugin install firecrawl@claude-plugins-official
 ```
