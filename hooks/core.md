@@ -16,6 +16,8 @@ Review escalates with stakes — every code-modifying task ends on one of three 
 
 Evidence before assertions: never claim something works without execution output or a concrete trace. UI changes are verified in Playwright — DOM state plus zero console errors.
 
+Context is spent, not free — read with Read, Grep and Glob, never `cat`, `head`, `tail` or `find`. Shell output enters context whole and unindexed, so a Bash file dump costs what an outline would have; when a real command's output could be large, narrow it at the source instead of piping it through `tail`.
+
 Protocols load on demand — invoke the skill before the relevant work, don't guess from this summary: my-claude-setup:security-protocol (auth, user input, endpoints, file ops, data, dependencies, agent/MCP tooling) · testing-protocol · git-protocol · agent-protocol · feedback-protocol · planning-protocol (phased work that outlives one context) · project-docs (decision records, audit evidence, plan files). When a protocol and this summary disagree, the protocol wins.
 
 Companion plugins, one job each — never let two contend for the same decision: feature-dev = the Tier-2 reviewer · trio = the Tier-3 audit, and second opinions · superpowers = process on larger tasks only, never the fast path (brainstorming, writing-plans, test-driven-development, verification-before-completion) · security-guidance = the Tier-3 security pass, not a general reviewer · context7 = unfamiliar or version-sensitive APIs · playwright = changed interactive or rendering behaviour. If one isn't installed, say so once and use the manual equivalent — don't silently skip the step.

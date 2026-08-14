@@ -5,6 +5,21 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.13.0] — 2026-08-14
+
+### Added
+
+- **A context-economy rule in the resident core.** Reading a file through `cat`, `head`, `tail`
+  or a shell pipe into `grep` puts the whole output in context, unindexed and unre-readable, so
+  a Bash file dump costs what an outline would have. The dedicated tools return line-anchored
+  excerpts instead. The harness already warns about this after the tokens are spent; the core now
+  says it before. One line, because the rule is cheap to state and the failure is expensive.
+
+  `CLAUDE.md` told contributors to prefer the dedicated tools, but that file governs work *on*
+  this repo — it was never in the config the plugin ships.
+
+---
+
 ## [1.12.0] — 2026-08-12
 
 ### Fixed
