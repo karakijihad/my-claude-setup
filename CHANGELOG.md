@@ -5,6 +5,41 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.14.0] — 2026-08-14
+
+Prompted by Claude Code 2.1.229 → 2.1.232, which tightened the static analysis deciding whether a
+Bash call needs a confirmation prompt. Audited by Trio over three passes, which reversed this
+release's own first reasoning twice — see below. The adjudication is not linked here: `Docs/` is
+gitignored in this repo, so it exists only in a working copy.
+
+### Added
+
+- **A command-shape rule in the resident core**, deliberately version-independent. Claude Code
+  updates itself and this analysis changes release to release, so a rule enumerating one version's
+  rejections would be stale config that reads like fact. It states the durable half instead —
+  literal absolute paths, `Write` over a `cat` heredoc, reshape a command that prompts rather than
+  clicking through — and says what does *not* need avoiding: `&&` chains and shell variables both
+  pass. A compound call is evaluated per subcommand. A prompt-fatigue fix, not a security one.
+
+- **`Bash(node:*)` in the allowlist `/setup` merges**, and an honest account of what that list
+  already permitted. `npm exec <pkg>` and `pnpm dlx <pkg>` fetch a package from the registry and run
+  it with **no confirmation prompt** under the shipped `defaultMode: "auto"` — driven and confirmed,
+  not inferred. The pre-existing `Bash(npm:*)`/`Bash(pnpm:*)` entries have always granted this; the
+  caveat now says so, names dropping those two as the edit that closes it — with its cost stated —
+  and stops implying `guard.sh` covers it. `Bash(npx:*)` is absent, and the caveat is precise about
+  what that buys: permission rules match command *text*, so `Bash(npm:*)` matches `npm exec <pkg>`
+  but not `npx <pkg>`. A literal `npx` call does prompt; the capability is still reachable without
+  one. Worth doing, not a safety measure.
+
+- **Three assertions on that allowlist**, replacing two weaker ones. The union is asserted as an
+  **exact** reviewed set rather than filtered through a denylist of bad names, because a denylist
+  only catches the wrapper someone thought of. Exact equality means a future change to shipped
+  permissions fails the suite until a human edits the test too. All three parse every rule in the
+  row — not only `Bash(...)` — bind to the unique section-1.4 row, and fail rather than pass when
+  they cannot read it whole.
+
+---
+
 ## [1.13.0] — 2026-08-14
 
 ### Added

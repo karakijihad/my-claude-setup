@@ -88,9 +88,13 @@ and stop — this command is idempotent.
 |-|-|-|
 | `env.CLAUDE_CODE_SUBAGENT_MODEL` | `"sonnet"` | Sub-agents run faster and cheaper on Sonnet |
 | `permissions.defaultMode` | `"auto"` | |
-| `permissions.allow` | union with `["Bash(git:*)", "Bash(ls:*)", "Bash(npm:*)", "Bash(pnpm:*)", "Bash(python:*)", "Bash(xargs grep:*)"]` | Fewer prompts on what a normal session runs constantly. **Read the note below.** |
+| `permissions.allow` | union with `["Bash(git:*)", "Bash(ls:*)", "Bash(node:*)", "Bash(npm:*)", "Bash(pnpm:*)", "Bash(python:*)", "Bash(xargs grep:*)"]` | Fewer prompts on what a normal session runs constantly. **Read the note below.** |
 | `effortLevel` | `"high"` | |
 | `enabledPlugins` | every plugin from 1.2, `true` | |
+
+The `permissions.allow` union is asserted **exactly** in `tests/suite.sh` — changing it here fails
+the suite until that expected set is changed too. That is deliberate: a widening should cost a
+second, deliberate edit. Read the note below before making it.
 
 Do **not** set `model` — leave the user's choice alone.
 
@@ -101,18 +105,59 @@ teaches people to cargo-cult dead config.
 Do **not** add a `hooks` block. This plugin's hooks live in its own `hooks/hooks.json` and are
 active as soon as it is enabled. A hook copied into `settings.json` would run twice.
 
-### About `Bash(npm:*)` and `Bash(python:*)`
+### About the arbitrary-code entries
 
-Be straight about these two rather than presenting the list as "least-privilege". `npm run
-<anything>` executes whatever the project's `package.json` defines, and `python:*` runs
-arbitrary code — allowlisting them is a real widening, worth most in exactly the repo where it
-is riskiest: one whose scripts you did not write.
+Four of these run code the user did not write: `node`, `npm`, `pnpm`, `python`. Be straight about
+them rather than presenting the list as "least-privilege". `npm run <anything>` executes whatever
+the project's `package.json` defines, and `node`/`python` run arbitrary source — including as a
+one-liner that spawns any OS command, so `node`'s reach is not limited to JavaScript. Allowlisting
+them is a real widening, worth most in exactly the repo where it is riskiest: one whose scripts you
+did not write. `git` is on the list too and is not innocent — hooks, aliases and `-c` can each run
+a command — but it is bounded by what the repo already contains rather than by what can be fetched.
 
-They are in the default because a Node or Python session prompts constantly without them, and
-prompt fatigue causes worse decisions than the widening does. That is a judgment, not a security
-argument. If the user works mainly in untrusted repos, tell them to drop these two and keep the
-rest — the merge is per-key. `guard.sh` blocks destructive commands either way; this list
-controls confirmation prompts, not the safety hooks.
+**And two of them reach the network, which is the sharpest edge here.** `npm exec <pkg>` and
+`pnpm dlx <pkg>` fetch a package from the registry and run it, and under `defaultMode: "auto"` with
+these entries present that happens with **no confirmation prompt**. That was observed during this
+release's audit, not reasoned about: both were driven in a non-interactive shell and both downloaded
+and executed without asking. So this list does not merely auto-approve local scripts; it
+auto-approves arbitrary remote code. Say that plainly to anyone adopting it.
+
+They are still in the default because a Node or Python session prompts constantly without them,
+and prompt fatigue causes worse decisions than the widening does. That is a judgment, not a
+security argument, and it is the operator's to overturn: dropping `npm` and `pnpm` is the per-key
+edit that closes the remote-fetch path. State the cost in the same breath — every `npm run`,
+`npm ci` and `npm test` then prompts, which is the fatigue this section just argued is worse. The
+trade is theirs to make, not yours to make quietly. `guard.sh` applies its own destructive-command
+patterns either way, but it inspects command *text* — it cannot see what a fetched package does.
+This list controls confirmation prompts, not the safety hooks.
+
+`npx` is absent, and be precise about what that does and doesn't buy, because the obvious
+formulation is wrong. Permission rules match command **text**, not the program behind it: `npx` is
+`npm exec` in npm 7+, but `Bash(npm:*)` matches `npm exec <pkg>` and does **not** match `npx <pkg>`.
+So the absence is not nothing — a literal `npx` call prompts. It just doesn't close the
+*capability*, because `npm exec` reaches the same registry fetch without one. Removing the entry is
+worth doing and is not a safety measure; don't present it as either more or less than that.
+
+**Never allowlist a wrapper.** `Bash(timeout:*)`, `Bash(env:*)`, `Bash(sudo:*)`, `Bash(sh:*)`,
+`Bash(bash:*)`, `Bash(command:*)`, `Bash(eval:*)` and bare `Bash(xargs:*)` each match on a word
+that says nothing about what runs after it, so one entry silently allows everything.
+`Bash(xargs grep:*)` is in the list and `Bash(xargs:*)` is not, and that is the distinction.
+`tests/suite.sh` asserts it. Note what is *not* on this list: the package runners are excluded on
+purpose. `npm exec --no -- git --version` fails with "could not determine executable to run" — they
+resolve against `node_modules/.bin` and then the registry, never ambient `PATH`, so calling them
+wrappers describes the wrong mechanism. Their risk is the remote fetch above.
+
+### What the allowlist cannot fix
+
+An allow entry only helps once Claude Code has resolved the command well enough to match a rule
+against it, and no list of entries fixes a command it could not resolve. That is why `core.md`
+carries a rule about command *shape* and this list is only the second half of the answer.
+
+Deliberately **don't** enumerate here which constructs the analyzer currently rejects. Claude Code
+updates itself, that analysis tightens release to release, and a list of this week's rejections is
+stale config that reads like fact — the exact failure this section would otherwise cause. The
+durable half is the shape: literal absolute paths, `Write` over a heredoc, one legible effect per
+call. If prompts return after an update, reshape the command; don't come back here to add entries.
 
 ## 1.5 Companion tuning — stop the double-fire
 

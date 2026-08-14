@@ -542,6 +542,106 @@ sys.exit(0 if len(set(map(frozenset, src.values())))==1 else 1)
 ' >/dev/null 2>&1 && ok "setup.md, core.md, onboarding.py and README name the same companions" \
   || bad "setup.md, core.md, onboarding.py and README name the same companions"
 
+# The allowlist /setup merges is the one place this plugin widens what runs
+# without a prompt, so its invariants are asserted rather than trusted to prose.
+#
+# Every parse below binds to the *unique* section-1.4 table row — anchored at
+# line start with re.M, and `len(rows) != 1` is a failure. An earlier version
+# searched for the first `permissions.allow` anywhere in the file and took `.*`
+# to end of line, which had two defeats and both were the silent kind: a prose
+# mention added above line 91 would be parsed instead of the real table, and
+# wrapping the union onto a second line would hide every entry after the wrap.
+# A test guarding a permissions list must fail when it cannot read the list.
+#
+# Four traps, each of which defeated an earlier draft of these assertions:
+#
+# 1. A *partial* read must fail, not pass. The `"]\`" in r` filter is what does
+#    it — a row wrapped onto two lines still matches the row pattern on its
+#    first physical line, and a truncated list is exactly what a wrapper or an
+#    undocumented interpreter would hide behind.
+# 2. Parse every rule, not only `Bash(...)`. A `Read(...)` added to the row was
+#    once invisible to all three assertions.
+# 3. Compare sorted lists, not sets — set equality silently accepts a duplicate.
+# 4. Assert the set *exactly* rather than filtering against a denylist of bad
+#    names. A denylist only catches the wrapper someone thought of.
+#
+# Each assertion repeats the parse rather than sharing it through a variable:
+# shared, they depended on a definition sixty lines away and broke when copied.
+bash py.sh -c '
+import re,sys
+t=open("../commands/setup.md",encoding="utf-8").read()
+rows=[r for r in re.findall(r"^\| `permissions\.allow` \|.*$", t, re.M) if "]`" in r]
+if len(rows)!=1: sys.exit(1)
+quoted=re.findall(r"\"([^\"]+)\"", rows[0])
+if not quoted: sys.exit(1)
+# Parsed from the quoted strings, not from Name(arg) shapes: a bare tool name
+# such as "Bash" with no parentheses allows *everything* that tool can do, and a
+# Name(arg) regex skips it entirely — the widest possible entry, invisible.
+EXPECTED=["Bash(git:*)","Bash(ls:*)","Bash(node:*)","Bash(npm:*)",
+          "Bash(pnpm:*)","Bash(python:*)","Bash(xargs grep:*)"]
+sys.exit(0 if sorted(quoted)==sorted(EXPECTED) else 1)
+' >/dev/null 2>&1 && ok "setup.md ships exactly the reviewed allowlist" \
+  || bad "setup.md ships exactly the reviewed allowlist"
+# Second layer, over whatever that reviewed set is changed to. A wrapper matches
+# on a word that says nothing about what follows it, so `Bash(timeout:*)` is not
+# "timeout is safe" — it is every command, allowed. `Bash(xargs grep:*)` is
+# allowed and bare `Bash(xargs:*)` is not, and that is the distinction.
+#
+# The npm package runners are deliberately NOT here. An earlier draft listed npx
+# among them on the grounds that it dispatches through ambient PATH; it does not.
+# `npm exec --no -- git --version` fails with "could not determine executable to
+# run" with git plainly on PATH, so npx resolves against node_modules/.bin and
+# then the registry. Its real risk is fetching and running remote code, which is
+# the caveat's job below, not this one's. A test that rejects the right entry for
+# the wrong reason teaches the wrong rule.
+bash py.sh -c '
+import re,sys
+t=open("../commands/setup.md",encoding="utf-8").read()
+rows=[r for r in re.findall(r"^\| `permissions\.allow` \|.*$", t, re.M) if "]`" in r]
+if len(rows)!=1: sys.exit(1)
+rules=re.findall(r"(\w+)\(([^)]*)\)", rows[0])
+if not rules: sys.exit(1)
+WRAPPERS={"timeout","env","sudo","doas","su","sh","bash","zsh","ksh","dash","fish","cmd",
+          "powershell","pwsh","command","eval","exec","nohup","nice","setsid","stdbuf","watch",
+          "xargs","parallel","ssh"}
+# A wrapper is dangerous *bare* — `Bash(xargs:*)` allows every command — but
+# constrained it is fine: `Bash(xargs grep:*)` pins what follows to grep, and
+# that entry is deliberately in the shipped list. So the test is not "contains a
+# wrapper word": it is bare-wrapper, or a wrapper hiding in a later position
+# where a head-only check would read the harmless first token and pass
+# (`Bash(nice -n 5 sh:*)` being the shape that motivates it).
+bad_rules=[]
+for _,a in rules:
+    w=a.split(":")[0].split()
+    if not w: continue
+    if w[0] in WRAPPERS and len(w)==1: bad_rules.append(a)
+    elif any(x in WRAPPERS for x in w[1:]): bad_rules.append(a)
+sys.exit(0 if not bad_rules else 1)
+' >/dev/null 2>&1 && ok "setup.md allowlists no wrapper command" \
+  || bad "setup.md allowlists no wrapper command"
+# And every entry that runs code the user did not write must be named in the
+# caveat that talks the reader through the trade. Adding one to the table and
+# leaving the prose behind ships a widening nobody was told about. Matched on the
+# backticked form the section actually uses, not as a bare substring: `uv` and
+# `bun` are short enough to occur inside an unrelated word and pass on nothing.
+bash py.sh -c '
+import re,sys
+t=open("../commands/setup.md",encoding="utf-8").read()
+rows=[r for r in re.findall(r"^\| `permissions\.allow` \|.*$", t, re.M) if "]`" in r]
+if len(rows)!=1: sys.exit(1)
+rules=re.findall(r"(\w+)\(([^)]*)\)", rows[0])
+if not rules: sys.exit(1)
+heads=[a.split(":")[0].strip() for _,a in rules]
+CODE={"node","npm","npx","pnpm","pnpx","yarn","deno","bun","bunx","python","python3","uv","uvx",
+      "ruby","perl","php","dotnet","cargo","go","java","dart","elixir","lua","Rscript","julia",
+      "tsx","ts-node","pipx","poetry","pdm","rake","gradle","mvn","sbt","composer"}
+risky={h for h in heads if h in CODE}
+note=re.search(r"### About the arbitrary-code entries(.*?)\n### ", t, re.S)
+if not risky or not note: sys.exit(1)
+sys.exit(0 if all(re.search(r"`"+re.escape(r)+r"`", note.group(1)) for r in risky) else 1)
+' >/dev/null 2>&1 && ok "every arbitrary-code allowlist entry is named in setup.md's caveat" \
+  || bad "every arbitrary-code allowlist entry is named in setup.md's caveat"
+
 echo "self-heal"
 # Driven against a FAKE home, never the real one. This code rewrites
 # settings.json and deletes directories; a suite that proves it can by doing it
