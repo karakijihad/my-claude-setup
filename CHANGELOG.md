@@ -5,6 +5,25 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.16.0] — 2026-08-16
+
+### Changed
+
+- **The planning trigger is now a count.** It was "ordered phases that won't fit one context" —
+  two conditions, one of them a prediction about my own context that errs in one direction only.
+  "This will fit" is the normal way a plan doesn't get written, and the cost arrives later, on
+  the session resuming from a summary. Four ordered phases now flips the default: offer unless
+  you can name why it all fits one window. Under four, both conditions still apply. Counting
+  phases is checkable; predicting context is not. In `core.md` and `planning-protocol` §1.
+
+### Removed
+
+- **The ~6-phase split to a `Docs/Plan/<topic>/` directory with an `INDEX.md`.** Two numbers in
+  one protocol read as one limit, and the second one was never worth the confusion: a plan long
+  enough to need an index to navigate is a plan carrying too many phases, and the fix is cutting
+  scope or closing phases, not adding a second file layer to walk. One plan is one file now,
+  whatever the phase count. Four — the §1 tripwire — is the protocol's only number.
+
 ## [1.15.0] — 2026-08-16
 
 A plan file exists because the work won't fit one context — which means every phase after the

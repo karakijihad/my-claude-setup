@@ -18,6 +18,13 @@ Both must hold:
 
 Either alone is not enough. A 20-file rename is one phase. A 3-file change can be four.
 
+**Four phases is the tripwire.** The second condition is an estimate, and the estimate runs
+short in one direction only — "this will fit" is the normal way a plan doesn't get written,
+and the cost lands later, on the session that resumes from a summary. So at four ordered
+phases the default flips: offer, unless you can name the reason it all fits one window.
+Under four, judge both conditions as above. Counting phases is checkable; predicting context
+is not.
+
 Don't offer when the work is under ~50 lines, is pure research, finishes in one clear
 commit, or already has a plan file — extend that one instead of opening a second.
 
@@ -48,8 +55,7 @@ Next: backfill script, then the API cutover
 Updated: YYYY-MM-DD
 ```
 
-Directly under the header, every plan file — and the `INDEX.md` of a split one — carries
-this line verbatim:
+Directly under the header, every plan file carries this line verbatim:
 
 ```markdown
 > Before starting any phase, scout it against the codebase first — brief and skip
@@ -66,8 +72,9 @@ Scope-out is what stops the plan from growing. Exit criteria cite evidence — `
 test output, screenshot path — never "it works". Rollback is what you do when a phase
 fails review, written before you need it.
 
-Past ~6 phases, split to `Docs/Plan/<topic>/` — `INDEX.md` holding the status table,
-session history, and the scout line, one file per phase.
+**One plan is one file**, whatever the phase count. A plan that has grown long is a plan
+with too many phases, not a plan that needs a directory — fix it by cutting scope or
+closing phases, not by adding an index to navigate.
 
 ## 4. Executing
 
