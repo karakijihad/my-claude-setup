@@ -12,4 +12,10 @@ Plan/
 
 Each plan should include: goal, stages, verification checks per stage, and a kill-switch (what aborts the plan). Completed plans get moved to `Plan/archive/` or deleted.
 
+Every plan file carries this line under its header, because the code moves while the plan sits still:
+
+```markdown
+> Before starting any phase, scout it against the codebase first — brief and skip condition in `my-claude-setup:planning-protocol` §4. The plan is older than the code.
+```
+
 See `superpowers:writing-plans` skill for the preferred structure.

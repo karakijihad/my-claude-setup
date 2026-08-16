@@ -5,6 +5,38 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.15.0] — 2026-08-16
+
+A plan file exists because the work won't fit one context — which means every phase after the
+first is started by a session that wasn't there when the plan was written, against a codebase
+that kept moving in between. The protocol verified the plan's own *claims* on resume and
+nothing else, so a phase could confidently edit a path that had since been renamed.
+
+### Added
+
+- **A scout pass before each phase**, in `planning-protocol` §4. An `Explore` agent re-checks
+  the phase against current code on a four-question brief: do the named paths and symbols still
+  exist, do the assumptions still hold, has any of it already landed, and — the one the first
+  three miss — has adjacent work appeared that the phase must now account for. The brief is
+  closed deliberately: a scout that also reviews or proposes is a phase being redesigned by an
+  agent that cannot see the plan. Findings are reconciled into the phase text *before* the first
+  edit, and drift that moves scope-out or ordering is reported to the user rather than absorbed,
+  because it changes the plan they agreed to.
+
+- **`Scouted: <date> @ <sha>` in the resumption header**, which doubles as the skip condition.
+  Closing one phase and opening the next in the same session, against a tree only you have
+  touched, dispatches nothing — `HEAD` still matches the stamp, so nothing has moved. The cost
+  lands where the risk is: resuming days later. `Explore` rather than a main-context grep for the
+  same reason the plan file exists at all — a sweep run in the main context spends on file dumps
+  the budget the phase needs — with an exception for a phase naming two or three concrete files,
+  where the agent round-trip costs more than the answer.
+
+- **A pointer line carried in the plan file itself**, under the header, and in the `INDEX.md` of a
+  split plan. A resuming session reads the plan, not necessarily this skill, so a rule that lives
+  only in the skill may never be read. It stays a pointer and never a copy of §4 — a plan written
+  months ago would otherwise carry a stale mechanism and be believed. The shipped
+  `Docs-skeleton/Plan/README.md` states the same line.
+
 ## [1.14.0] — 2026-08-14
 
 Prompted by Claude Code 2.1.229 → 2.1.232, which tightened the static analysis deciding whether a

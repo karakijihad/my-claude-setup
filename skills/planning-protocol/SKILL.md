@@ -43,22 +43,66 @@ The file opens with the resumption header — the reason it exists:
 ```markdown
 Phase: 2 of 4 — migration · status: in-progress
 Verified: phase 1 green — schema at `db/schema.sql:1-88`, migration test passing
+Scouted: YYYY-MM-DD @ a1b2c3d — phase 2 re-checked, no drift
 Next: backfill script, then the API cutover
 Updated: YYYY-MM-DD
 ```
+
+Directly under the header, every plan file — and the `INDEX.md` of a split one — carries
+this line verbatim:
+
+```markdown
+> Before starting any phase, scout it against the codebase first — brief and skip
+> condition in `my-claude-setup:planning-protocol` §4. The plan is older than the code.
+```
+
+It goes in the file because that is where a fresh session looks — a rule living only in
+this skill is a rule the resuming session may never read. It stays a *pointer*, never a
+copy of §4: a plan written months ago would otherwise carry a stale version of the
+mechanism and be believed.
 
 Each phase carries four things: **scope in · scope out · exit criteria · rollback**.
 Scope-out is what stops the plan from growing. Exit criteria cite evidence — `file:line`,
 test output, screenshot path — never "it works". Rollback is what you do when a phase
 fails review, written before you need it.
 
-Past ~6 phases, split to `Docs/Plan/<topic>/` — `INDEX.md` holding the status table and
-session history, one file per phase.
+Past ~6 phases, split to `Docs/Plan/<topic>/` — `INDEX.md` holding the status table,
+session history, and the scout line, one file per phase.
 
 ## 4. Executing
 
 Opening a session against a plan: read the header, **verify its "Verified" claims against
 current code** before trusting them, then work only the current phase.
+
+**Scout each phase before starting it.** The phase was written against the codebase as it
+was — paths move, interfaces change, work lands elsewhere. Dispatch an `Explore` agent
+scoped to that phase's scope-in and exit criteria, asking four things and nothing else:
+
+1. Do the named paths and symbols still exist, at the cited lines?
+2. Do the phase's assumptions still hold?
+3. Has any of this phase already been done?
+4. Has adjacent work appeared that this phase must now account for — a new caller, a second
+   implementation, a module that overlaps its scope?
+
+Four, because the first three only ask whether what you wrote is still true; the fourth is
+the only one that catches what arrived while you weren't looking. Keep the brief to these —
+a scout that reviews or proposes is a phase being redesigned by an agent that cannot see
+the plan.
+
+`Explore` rather than grepping in the main context: the plan file exists *because* context
+is scarce, and a sweep run here spends on file dumps the budget the phase itself needs. The
+exception is a phase naming two or three concrete files — read those directly, the agent
+round-trip costs more than the answer.
+
+Then reconcile before the first edit: rewrite the phase to match what the scout found, then
+stamp `Scouted: <date> @ <sha> — <drift, or "no drift">` in the header. Drift that changes
+scope-out, ordering, or whether the phase is still needed goes to the user in a line — that
+is a change to the plan they agreed to, not a detail to absorb.
+
+The stamp is also the skip condition: **skip the scout when `HEAD` still equals the stamped
+sha and the working tree is clean of changes you didn't make.** Closing phase 2 and opening
+phase 3 in the same session, against a tree only you have touched, needs no scout — nothing
+has moved. Resuming a plan days later always does.
 
 A phase doesn't start until the phases it depends on are green — reviewed, evidence in the
 file. Closing one: record evidence per exit criterion, update the header, commit.
