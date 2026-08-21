@@ -5,6 +5,56 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.17.0] — 2026-08-21
+
+Measured on a real project using this plugin: a plan index at 1,039 lines, 745 of them a
+prose chronicle of work git already records. Its phase table was 90 lines and was doing the
+whole job. None of it broke a rule, because no rule covered plan documents at all.
+
+### Added
+
+- **`budget.sh`** — PostToolUse on `Write|Edit`. Warns when a plan index, phase file, backlog
+  or code map outgrows its budget; never blocks. Ratcheted: it speaks on the first crossing
+  and again only when an edit makes the overage worse, so the edits that fix a file never nag.
+- **Templates carrying those budgets in their headers** — `plan-index.md`, `plan-phase.md`,
+  `backlog.md`, `codemap.md`. A suite assertion pins them to the numbers the hook enforces.
+- **`Docs/Plan/BACKLOG.md` and `Docs/CODEMAP.md`** as permitted files in `project-docs`.
+
+### Changed
+
+- **The plan folder is back**, one release after 1.16.0 removed it. `INDEX.md` and
+  `phase-N-<slug>.md` are normative names now, because the hook keys its table on them.
+- **`planning-protocol` §3 overrides `superpowers:writing-plans` on document shape.** Its
+  scope check, right-sizing and no-placeholders rule still apply; "assume the engineer has
+  zero context" and the inline code per step do not.
+- **Superseded scope is deleted**, with one line surviving in the index's locked decisions.
+- **A completed plan is deleted, never archived.** `Plan/README.md` had said otherwise.
+- **A maintained code map is permitted** rather than forbidden, on two conditions: roles not
+  histories, and a named regeneration trigger. People who need one keep it anyway, and an
+  unsanctioned map is an unbudgeted one.
+- **`guard.sh`, `post-push.sh` and `budget.sh` read stdin with a builtin** instead of
+  spawning `cat` on every call.
+
+### Removed
+
+- **`skill-security-auditor`** — 1,577 lines: a 1,139-line Python scanner, a 271-line threat
+  model, a 167-line skill. A standalone static-analysis product living inside a rules plugin.
+  `security-protocol` §07 now says what to look for when reading an untrusted skill, which is
+  what the scanner was a proxy for.
+
+### Simplified
+
+This release was reviewed for overbuild after the owner pointed out that a request for a hard
+rule had produced a hook, four templates and 294 lines of tests. **5,713 shipped lines → 4,002,
+with all 112 assertions still passing.**
+
+- `planning-protocol` and `project-docs` stated the same document structure, budgets and
+  git-is-history argument twice — 324 lines → 238, split by the question each answers:
+  planning-protocol owns *when and how to execute*, project-docs owns *where and how big*.
+- `budget.sh` 230 → 130, and its test block 218 → 160, with no assertion dropped.
+- The four new templates 152 → 124.
+- `setup.md`'s allowlist essay compressed; every action it performs is unchanged.
+
 ## [1.16.0] — 2026-08-16
 
 ### Changed

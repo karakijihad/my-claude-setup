@@ -430,6 +430,166 @@ assert d["additionalContext"]
   rm -rf "$PP"
 fi
 
+echo "budget"
+# Like post-push.sh, this hook must always exit 0 and print nothing unless it has
+# something to say — a stray byte here is injected context on every Write and Edit.
+# TMPDIR is redirected into the fixture: the ratchet keeps state there, so without
+# it the suite would read and write the developer's real marks.
+BG=$(mktemp -d) || { bad "budget fixtures" "mktemp -d failed"; BG=; }
+if [ -n "$BG" ] && [ -d "$BG" ]; then
+  mkdir -p "$BG/state" "$BG/Docs/Plan/topic" "$BG/Docs/Plan/typo" "$BG/Docs/Plan/a-b" \
+           "$BG/Docs/Plan/a_b" "$BG/Docs/Research" "$BG/src"
+
+  # One write, not N appends: 300 file opens costs more on Windows than every hook
+  # call in this block put together.
+  mklines() {
+    local n=$1 f=$2 s="" i=1
+    while [ "$i" -le "$n" ]; do s="${s}x
+"; i=$((i+1)); done
+    printf '%s' "$s" > "$f"
+  }
+
+  # bg <quiet|speaks> <name> <path>
+  bg() {
+    local mode="$1" name="$2" path="$3" out got
+    out=$(printf '{"tool_input":{"file_path":"%s"}}' "$path" \
+      | TMPDIR="$BG/state" bash "$HOOKS/budget.sh" 2>/dev/null)
+    got=$?
+    BG_OUT=$out
+    if [ "$got" != 0 ]; then bad "$name" "exit $got — this hook must never block"
+    elif [ "$mode" = quiet ] && [ -n "$out" ]; then bad "$name" "expected silence, got: ${out:0:90}"
+    elif [ "$mode" = speaks ] && [ -z "$out" ]; then bad "$name" "expected a warning, got nothing"
+    else ok "$name"; fi
+  }
+
+  IDX="$BG/Docs/Plan/topic/INDEX.md"
+  PHASE="$BG/Docs/Plan/topic/phase-1-schema.md"
+
+  mklines 500 "$BG/src/app.js"
+  bg quiet "silent on a source file, whatever its length" "$BG/src/app.js"
+  mklines 500 "$BG/Docs/Research/notes.md"
+  bg quiet "silent on a Docs file no budget claims" "$BG/Docs/Research/notes.md"
+  mklines 50 "$IDX"
+  bg quiet "silent on an index under budget" "$IDX"
+
+  mklines 150 "$IDX"
+  bg speaks "warns when an index crosses its budget" "$IDX"
+  # The remedy must match the file kind: a generic "over budget" tells the session to
+  # compress prose, which is the wrong repair for an index.
+  case "$BG_OUT" in
+    *narrate*|*history*) ok "the index warning names the real repair, not 'be shorter'" ;;
+    *) bad "the index warning names the real repair, not 'be shorter'" "got: ${BG_OUT:0:120}" ;;
+  esac
+  # Parsed, not pattern-matched: the failure mode is output that looks right and isn't
+  # valid JSON, which Claude Code discards silently.
+  printf '%s' "$BG_OUT" | bash py.sh -c '
+import json,sys
+d=json.load(sys.stdin)["hookSpecificOutput"]
+assert d["hookEventName"]=="PostToolUse", d
+assert d["additionalContext"]
+' >/dev/null 2>&1 && ok "emits hookSpecificOutput with hookEventName PostToolUse" \
+    || bad "emits hookSpecificOutput with hookEventName PostToolUse" "got: ${BG_OUT:0:90}"
+
+  # The ratchet, which is the whole design. Re-warning on every later edit — including
+  # the ones that fix the file — is how this hook becomes something to scroll past.
+  bg quiet "does not re-warn when the file has not grown" "$IDX"
+  mklines 200 "$IDX"; bg speaks "warns again when an edit makes the overage worse" "$IDX"
+  mklines 160 "$IDX"; bg quiet "silent on an edit that shrinks an over-budget file" "$IDX"
+  mklines 50  "$IDX"; bg quiet "silent once the file is back under budget" "$IDX"
+  mklines 150 "$IDX"; bg speaks "warns again on a fresh crossing after the file was cut" "$IDX"
+
+  # Budget is per file kind, so the table must be reached by name. 150 is the
+  # discriminating length everywhere below: the INDEX arm budgets 100 and warns, the
+  # phase and Plan/*.md arms budget 200 and stay silent.
+  mklines 150 "$PHASE"; bg quiet "a phase file gets the phase budget, not the index's" "$PHASE"
+  mklines 250 "$PHASE"; bg speaks "warns when a phase crosses its own budget" "$PHASE"
+  case "$BG_OUT" in
+    *[Ss]plit*) ok "the phase warning says split the phase, not tighten the prose" ;;
+    *) bad "the phase warning says split the phase, not tighten the prose" "got: ${BG_OUT:0:120}" ;;
+  esac
+
+  # Sibling plan folders named with a hyphen and an underscore are ordinary, and
+  # collapsing every non-alphanumeric gave them one mark: the first silenced the second.
+  mklines 150 "$BG/Docs/Plan/a-b/INDEX.md"
+  mklines 150 "$BG/Docs/Plan/a_b/INDEX.md"
+  bg speaks "warns for a hyphenated plan folder" "$BG/Docs/Plan/a-b/INDEX.md"
+  bg speaks "warns for its underscored sibling too, on a separate mark" "$BG/Docs/Plan/a_b/INDEX.md"
+
+  # `Index.md` is a typo, not an evasion. Its own folder, because NTFS is
+  # case-insensitive and sharing topic/ would be the same file and the same mark.
+  mklines 150 "$BG/Docs/Plan/typo/Index.md"
+  bg speaks "matches the budget table case-insensitively" "$BG/Docs/Plan/typo/Index.md"
+
+  # wc -l counts newline BYTES, so an unterminated last line read one short. The
+  # discriminating shape is exactly budget+1 lines with no trailing newline —
+  # GOVERNANCE.md budgets 60, so this reads 60 as a byte count and 61 as a line count.
+  GOV="$BG/Docs/Plan/topic/GOVERNANCE.md"
+  mklines 60 "$GOV"; printf 'a 61st line, unterminated' >> "$GOV"
+  bg speaks "counts a final line that has no trailing newline" "$GOV"
+
+  # file_path is normally absolute; a Docs test written only as */Docs/* matches nothing
+  # when it isn't, and every other assertion here would still pass.
+  OUT=$(printf '{"tool_input":{"file_path":"Docs/Plan/topic/INDEX.md"}}' \
+    | (cd "$BG" && TMPDIR="$BG/state" bash "$HOOKS/budget.sh") 2>/dev/null)
+  [ -n "$OUT" ] && ok "budgets a relative path, not only an absolute one" \
+    || bad "budgets a relative path, not only an absolute one" "expected a warning"
+
+  # JSON forbids every codepoint below U+0020 and a POSIX filename may hold any of them,
+  # so a path with a backspace produced output Claude Code discards without logging.
+  # The payload carries it as a  escape — a raw byte would make the payload itself
+  # invalid, testing the fixture rather than the hook. NTFS rejects such names, so the
+  # case says it skipped rather than reporting a pass it did not earn. 250 lines because
+  # the basename is not INDEX.md and falls to the Plan/*.md arm at 200.
+  CTRL="$BG/Docs/Plan/topic/INDEX$(printf '\010')X.md"
+  if mklines 250 "$CTRL" 2>/dev/null && [ -f "$CTRL" ]; then
+    OUT=$(printf '{"tool_input":{"file_path":"%s\\u0008X.md"}}' "$BG/Docs/Plan/topic/INDEX" \
+      | TMPDIR="$BG/state" bash "$HOOKS/budget.sh" 2>/dev/null)
+    printf '%s' "$OUT" | bash py.sh -c '
+import json,sys
+d=json.load(sys.stdin)["hookSpecificOutput"]
+assert d["hookEventName"]=="PostToolUse", d
+assert d["additionalContext"]
+' >/dev/null 2>&1 && ok "emits valid JSON for a path holding a control character" \
+      || bad "emits valid JSON for a path holding a control character" "got: ${OUT:0:120}"
+  else
+    ok "skipped: control-character path (this filesystem rejects the filename)"
+  fi
+
+  # The mark path is predictable, so on a shared /tmp it can be pre-planted as a symlink
+  # and the write would truncate its target. The mark is created BY the hook and never
+  # recomputed here — an assertion that reimplements the key keeps passing after the key
+  # changes, which this repo has shipped before.
+  RIT="$BG/Docs/Plan/topic/SESSION-RITUAL.md"
+  VICTIM="$BG/victim.txt"
+  printf 'must survive\n' > "$VICTIM"
+  mklines 100 "$RIT"
+  printf '{"tool_input":{"file_path":"%s"}}' "$RIT" \
+    | TMPDIR="$BG/symstate" bash "$HOOKS/budget.sh" >/dev/null 2>&1
+  MARKF=$(ls "$BG/symstate/my-claude-setup-budget"/* 2>/dev/null | head -1)
+  if [ -n "$MARKF" ] && rm -f "$MARKF" && ln -s "$VICTIM" "$MARKF" 2>/dev/null; then
+    mklines 200 "$RIT"
+    OUT=$(printf '{"tool_input":{"file_path":"%s"}}' "$RIT" \
+      | TMPDIR="$BG/symstate" bash "$HOOKS/budget.sh" 2>/dev/null)
+    [ -n "$OUT" ] && ok "still warns when its mark path is a planted symlink" \
+      || bad "still warns when its mark path is a planted symlink" "expected a warning"
+    [ "$(cat "$VICTIM" 2>/dev/null)" = "must survive" ] \
+      && ok "does not write through a symlink planted at its mark path" \
+      || bad "does not write through a symlink planted at its mark path" "target was overwritten"
+  else
+    ok "skipped: planted-symlink case (symlinks unavailable to this user)"
+  fi
+
+  OUT=$(printf 'not json at all, but it does mention docs' \
+    | TMPDIR="$BG/state" bash "$HOOKS/budget.sh" 2>/dev/null)
+  if [ $? = 0 ] && [ -z "$OUT" ]; then
+    ok "silent and exit 0 on an unparseable payload"
+  else
+    bad "silent and exit 0 on an unparseable payload" "got: ${OUT:0:90}"
+  fi
+
+  rm -rf "$BG"
+fi
+
 echo "onboarding"
 bash py.sh -c '
 import sys, tempfile, pathlib
@@ -499,6 +659,82 @@ case "$P" in
   *Bash*) ok "hooks.json registers post-push.sh on Bash, as that script claims" ;;
   *) bad "hooks.json registers post-push.sh on Bash, as that script claims" "matcher: $P" ;;
 esac
+B=$(bash py.sh -c 'import json;print(json.load(open("hooks.json"))["hooks"]["PostToolUse"][1]["matcher"])' 2>/dev/null)
+case "$B" in
+  *Write*Edit*|*Edit*Write*) ok "hooks.json registers budget.sh on Write|Edit, as that script claims" ;;
+  *) bad "hooks.json registers budget.sh on Write|Edit, as that script claims" "matcher: $B" ;;
+esac
+# The three assertions above read only `.matcher`. That certifies the event a
+# hook is wired to and says nothing about whether the hook is still wired at all:
+# point a command somewhere else, or delete it, and a matcher of `Bash` or
+# `Write|Edit` keeps them green while nothing runs. Assert the commands too, and
+# assert every registered command resolves to a script that exists — a path typo
+# in hooks.json is silent at runtime.
+bash py.sh -c '
+import json,os,sys
+h=json.load(open("hooks.json"))["hooks"]
+want={("PreToolUse",0):"guard.sh",("PostToolUse",0):"post-push.sh",("PostToolUse",1):"budget.sh"}
+bad=[]
+for (event,i),script in want.items():
+    try: cmd=h[event][i]["hooks"][0]["command"]
+    except Exception as e: bad.append("%s[%d] missing: %s"%(event,i,e)); continue
+    # Equality, not containment. `budget.sh in "hooks/not-budget.sh"` is true,
+    # so a substring test accepts a different script with a colliding name --
+    # and the existence check below would accept it too, since that file really
+    # would exist. The command strings in hooks.json are literal, unexpanded
+    # text, so comparing them exactly is stable.
+    expect=chr(34)+"${CLAUDE_PLUGIN_ROOT}/hooks/"+script+chr(34)
+    if cmd != expect: bad.append("%s[%d] runs %r, expected %r"%(event,i,cmd,expect))
+for event,entries in h.items():
+    for i,entry in enumerate(entries):
+        for hk in entry.get("hooks",[]):
+            cmd=hk.get("command","")
+            if "${CLAUDE_PLUGIN_ROOT}" not in cmd:
+                bad.append("%s[%d] is not plugin-root relative: %r"%(event,i,cmd)); continue
+            rel=cmd.strip(chr(34)).split("${CLAUDE_PLUGIN_ROOT}/",1)[-1]
+            if not os.path.exists(os.path.join("..",rel)):
+                bad.append("%s[%d] points at a missing file: %s"%(event,i,rel))
+sys.exit(0 if not bad else 1)
+' >/dev/null 2>&1 && ok "every hooks.json command names the script it claims and that file exists" \
+  || bad "every hooks.json command names the script it claims and that file exists"
+# project-docs names the template header as the single source of truth for every
+# line budget, and budget.sh necessarily holds a second copy — a hook cannot read
+# a header at runtime. Two copies of a number drift, and the drift is invisible:
+# the hook keeps warning, just at a threshold the documents no longer state. So
+# pin them. Set equality per file kind, not containment: a budget dropped from
+# budget.sh must fail here too, and containment in one direction would not catch
+# it. GOVERNANCE.md and SESSION-RITUAL.md are absent on purpose — budget.sh
+# documents why they have no template.
+# core.md is resident in every session, so a routing claim there outranks the
+# same claim in a skill that loads on demand. It used to hand document shape to
+# superpowers:writing-plans; planning-protocol §3 now overrides that skill on
+# exactly this point, and two live answers to "who owns the shape" is worse
+# than either one alone. Pinned as wording, deliberately: a reword should fail
+# here and make someone re-check that both files still agree.
+grep -q "overrides superpowers:writing-plans" core.md \
+  && grep -q "overrides \`superpowers:writing-plans\`" ../skills/planning-protocol/SKILL.md \
+  && ok "core.md and planning-protocol agree on who owns a plan's document shape" \
+  || bad "core.md and planning-protocol agree on who owns a plan's document shape"
+bash py.sh -c '
+import re,sys
+pairs={"plan-index.md":"INDEX.md","plan-phase.md":"phase-","backlog.md":"Backlog.md","codemap.md":"CODEMAP.md"}
+src=open("budget.sh",encoding="utf-8").read()
+arms=dict(re.findall(r"^  ([^\n)]+)\)\n\s*BUDGET=(\d+)", src, re.M))
+hook={}
+for pat,n in arms.items():
+    for alt in pat.split("|"):
+        hook[alt.rstrip("*.md") if alt.startswith("phase-") else alt]=int(n)
+bad=[]
+for tpl,key in pairs.items():
+    txt=open("../assets/templates/"+tpl,encoding="utf-8").read()
+    m=re.search(r"\*\*Budget: (\d+) lines", txt)
+    if not m: bad.append(tpl+" states no budget in its header"); continue
+    if key not in hook: bad.append(tpl+" -> "+key+" is not budgeted by budget.sh"); continue
+    if hook[key]!=int(m.group(1)):
+        bad.append("%s says %s, budget.sh says %d" % (tpl,m.group(1),hook[key]))
+sys.exit(0 if not bad else 1)
+' >/dev/null 2>&1 && ok "every template budget matches the number budget.sh enforces" \
+  || bad "every template budget matches the number budget.sh enforces"
 bash py.sh -c '
 import re,sys
 core=open("core.md",encoding="utf-8").read()

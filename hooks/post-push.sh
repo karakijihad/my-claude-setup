@@ -10,7 +10,11 @@
 #
 # Fires on every Bash call, so the cheap rejections come first.
 
-INPUT=$(cat)
+# `read`, not `$(cat)`. `cat` is an external binary, so this forked and exec'd
+# on every call — the one spawn every payload paid before any check ran. `-d ''`
+# reads to EOF and returns non-zero having set INPUT, which is why the status is
+# not checked. See budget.sh for the same note.
+IFS= read -r -d '' INPUT
 . "$(dirname "$0")/lib-parse.sh"
 
 CMD=$(parse_field "tool_input.command")

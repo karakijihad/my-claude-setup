@@ -17,6 +17,6 @@
 Grep for: TODO security, FIXME security, password, secret, token, api_key, hardcoded
 Check: .env in .gitignore, no secrets in committed files
 Run: dependency-auditor skill for any dependency changes
-Run: skill-security-auditor on any newly installed skill or MCP server
+Read the source of any newly installed skill or MCP server before enabling it
 Verify: all new endpoints have auth middleware
 ```

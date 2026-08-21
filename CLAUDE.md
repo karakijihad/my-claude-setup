@@ -8,7 +8,7 @@
 ## Project
 
 A Claude Code plugin. It injects a small always-resident rule core, loads seven protocol
-references on demand, and enforces three safety hooks. Published as its own marketplace.
+references on demand, and ships four hooks. Published as its own marketplace.
 
 ## Key files
 
@@ -22,7 +22,12 @@ references on demand, and enforces three safety hooks. Published as its own mark
   that did.
 - `hooks/session-start.sh` — dispatcher with the two fallback branches.
 - `hooks/guard.sh` — all PreToolUse blocking. One script, dispatches on which field is present.
-- `hooks/post-push.sh` — the only PostToolUse hook, and the whole of the CI feature. Fires on
+- `hooks/budget.sh` — PostToolUse on `Write|Edit`, the whole of the doc line-budget feature.
+  **The ratchet is the design**: warn on the first crossing, again only when an edit makes
+  the overage worse — a hook that re-warns on the corrective edit gets ignored. Its table is
+  keyed on file *names*, which is why `planning-protocol` §3 makes `INDEX.md` and
+  `phase-*.md` normative; a hook can't tell one from the other by reading it.
+- `hooks/post-push.sh` — the other PostToolUse hook, and the whole of the CI feature. Fires on
   every Bash call, so its rejections are ordered cheapest-first. Prints nothing unless a push
   landed *and* the repo has CI config; with no upstream configured it speaks but says landing is
   unverified. Exit 0 on every path — PostToolUse cannot block the call it follows.

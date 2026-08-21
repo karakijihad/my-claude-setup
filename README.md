@@ -29,7 +29,7 @@ be lost for good. It stops as soon as nothing is missing. Delete that file to se
 | Requirement | Needed by | Check |
 |-|-|-|
 | Git | everything | `git --version` |
-| Python 3 | `session-start` hook, `skill-security-auditor`, and stdin parsing in `guard.sh`/`notify.sh` when `jq` is absent | `python -c "import sys; print(sys.version_info[:2])"` |
+| Python 3 | `session-start` hook, and stdin parsing in `guard.sh`/`notify.sh` when `jq` is absent | `python -c "import sys; print(sys.version_info[:2])"` |
 | Node.js | the status line in `assets/statusline.mjs` (optional) | `node --version` |
 
 Every Python entry point in this plugin runs through `hooks/py.sh`, which *executes* each of
@@ -71,7 +71,7 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 ```
 .claude-plugin/     marketplace.json, plugin.json
 hooks/              hooks.json + 4 hooks and their shared helpers
-skills/             9 skills — 7 protocols, plus dependency-auditor and skill-security-auditor
+skills/             8 skills — 7 protocols, plus dependency-auditor
 commands/           setup — machine setup (Part 1), project setup (Part 2)
 assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit README, Docs skeleton
 assets/             statusline.mjs, the status line /setup installs
@@ -84,6 +84,7 @@ assets/             statusline.mjs, the status line /setup installs
 | `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core (its text lives in `core.md`, read by the Python path and re-emitted via jq by the fallback, so there is one copy) — brevity, code discipline, the confirm-first threshold, the fast path, the review-escalation ladder, the plan-first offer — plus the current branch, the Tier-2 reviewer notice, and the one-time onboarding check. Commit subjects were deliberately dropped: they are arbitrary free text injected before the user has asked anything. If no Python is available it falls back to a reduced core rather than emitting nothing |
 | `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `checkout -- `, `branch -D` (but not `-d`), `DROP TABLE`/`DROP DATABASE`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`, `.sample`, `.template`), lockfiles, and `.git/`; scans the **staged diff** on commit for value-shaped secrets and for credential material — AWS keys, private keys, `ghp_`/`sk-` tokens |
 | `post-push.sh` | PostToolUse | After a push that actually landed, and only if the repo has CI config, names the pushed SHA and the provider's check command. Verifies nothing and exits 0 on every path — PostToolUse runs after the call and cannot block it |
+| `budget.sh` | PostToolUse | Warns when a project doc outgrows its line budget — a plan index, a phase file, a backlog, a code map. Ratcheted: it speaks on the first crossing and again only when an edit makes the overage worse, so the edits that fix the file are never the ones that nag. Never blocks |
 | `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |
 
 `guard.sh` is one script doing what three used to. The old ones each spawned a shell and a JSON
@@ -114,7 +115,6 @@ Invoke by name, or let the description trigger them.
 | `planning-protocol` | When phased work earns a plan file, and what the file needs to survive a context reset |
 | `project-docs` | The `Docs/` convention, line budgets, templates |
 | `dependency-auditor` | Vulnerability scanning, license compliance, upgrade planning via each ecosystem's native tools |
-| `skill-security-auditor` | Static audit of a skill before you install it |
 
 `security-protocol` §7 (AI/agent security) is the one to read before adding an MCP server or
 installing someone else's skill — prompt injection, tool authority, supply chain, transcript

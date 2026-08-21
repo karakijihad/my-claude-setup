@@ -9,6 +9,10 @@ records what changed and when, so anything restating that is cost without value.
 | [Audit/](./Audit/)         | Review findings **and** their adjudication — `claude/`, `codex/` |
 | [Plan/](./Plan/)           | In-flight work only; delete a plan when its work lands       |
 
+Two files may sit beside them: `Plan/BACKLOG.md` (identified, not yet planned) and
+`CODEMAP.md` (a structural map, for a repo too large to hold in one head — roles not
+histories, and it carries its own regeneration trigger).
+
 **This tree is gitignored by default** — all of it, including any subfolder added later. It is
 working evidence, and some of it is private. To version it instead, say so in the project's
 `CLAUDE.md` under a `Docs policy` heading; a note left in here is read by nobody.

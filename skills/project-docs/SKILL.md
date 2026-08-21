@@ -10,117 +10,104 @@ description: >
 
 # Per-Project Docs
 
-**Write down what git cannot reconstruct. Nothing else.**
-
-Git already records what changed, when, by whom, and in what order. Documentation that
-restates it is pure cost: written once, read many times, stale within a month, and
-misleading once stale. Three things survive that test.
+**Write down what git cannot reconstruct. Nothing else.** Git records what changed, when,
+by whom, in what order. Documentation restating it is written once, read many times, stale
+within a month, and misleading once stale.
 
 ```
 Docs/
 ├── Decisions/YYYY-MM-DD.md     why, and what was rejected
-├── Audit/
-│   ├── claude/YYYY-MM-DD/      the adjudication — verdict per finding
-│   └── codex/YYYY-MM-DD/       what the auditor reported
-└── Plan/                       in-flight only; delete when the work lands
+├── Audit/claude|codex/DATE/    the adjudication, and what the auditor reported
+├── Plan/<topic>/INDEX.md       + phase-N-<slug>.md — in-flight only
+├── Plan/BACKLOG.md             identified, not yet planned
+└── CODEMAP.md                  optional, for a repo too large to hold in one head
 CHANGELOG.md                    at the repo root, committed, release-facing
 ```
 
-## Why these three
-
-- **`Decisions/`** — the accepted decision, the constraint that forced it, and *the option
-  you rejected*. A diff shows the road taken; nothing in git shows the road refused, and
-  that is the thing you re-litigate six months later.
+- **`Decisions/`** — the decision, the constraint that forced it, and *the option you
+  rejected*. A diff shows the road taken; nothing shows the road refused, and that is what
+  gets re-litigated six months later.
 - **`Audit/`** — findings **plus** adjudication. The refutations are the point: a commit
-  shows what changed, never which findings were argued down and why. `trio:trio-audit`
-  fills both halves — `codex/` is what its lenses reported, `claude/` the verdict per
-  finding. Record both by hand when the audit was manual. **An audit is never a decision
-  by itself.**
-- **`Plan/`** — the only forward-looking tree. It exists so work survives a context reset;
-  see `planning-protocol` for its structure. Delete a plan when its work lands — a
-  completed plan is history, and git holds history.
+  never shows which findings were argued down and why. **An audit is not a decision.**
+- **`Plan/`** — the only forward-looking tree. **Delete a plan when its work lands**, never
+  `Plan/archive/`: a plan kept past its work reads as live to the next session.
+- **`CODEMAP.md`** — permitted on two conditions: **roles, not histories**, and a **named
+  regeneration trigger** in the file. A budget keeps a map short; only a trigger keeps it
+  true.
 
-**`CHANGELOG.md` lives at the repo root and is committed.** A changelog exists to be read
-by people who don't have your working copy, so a dated file inside an ignored `Docs/`
-cannot do that job. Group by release, not by day.
+**A project that must deviate says so in its own `CLAUDE.md`** — loaded every session. A
+folder of overrides is loaded by nobody.
+
+## Plan documents
+
+The names are normative: `budget.sh` keys its table on them and cannot tell an index from a
+phase by reading it. Work small enough to need no index stays one file,
+`Plan/YYYY-MM-DD-<topic>.md`. When to write a plan at all, and how to execute one:
+`planning-protocol`.
+
+| File | Owns | Must not own |
+|-|-|-|
+| `INDEX.md` | resumption header · phase table with status, evidence ref, what each still owes · locked decisions as one-liners | narrative history, a "what landed" or "session history" section, phase detail |
+| `phase-N.md` | current scope, exit criteria, rollback | superseded scope, backlog, anything another phase owns |
+| `BACKLOG.md` | open items, five lines each: what · why deferred · the trigger · one ref | a `Closed` section, a `History` section |
+
+**An index over budget is carrying a chronicle**, not prose needing compression — git holds
+what changed, the table holds what is owed. **A phase over budget is a phase too large**:
+split it, where each half has its own exit criterion. **A backlog entry that lands is
+deleted in the pass that lands it.**
+
+**Superseded scope is deleted, and one line survives** in the index's locked decisions. Not
+struck through, not under an "original ruling" heading — that is how a 200-line phase
+becomes a 1,200-line one. True whether or not `Docs/` is committed: where it is ignored the
+text is gone, and where it is committed nobody greps `git log` for a ruling they don't know
+exists.
+
+## Sizing
+
+**Line budgets live in each template's header** — the single source of truth, so the
+numbers appear nowhere else. `budget.sh` warns after each write: once on crossing, again
+only when an edit worsens the overage. It never blocks, and it is a backstop — a header is
+read when someone opens the template and never again.
+
+- **Decision entry** — decision · why, with the triggering incident · rejected alternative
+  and what ruled it out · mechanism as file and function, not code. 1–2 sentences each.
+- **Changelog entry** — `Added/Changed/Fixed/Removed`, one line per item. No narrative.
+
+**Reject:** commit messages pasted verbatim, whole audit findings inlined, a paragraph per
+file touched, line-count bookkeeping that rots — and the three worst, all the same mistake
+of a document narrating its own past: a "session history" section, superseded text kept
+struck through, closed items archived in place.
 
 ## Local by default
 
-**`Docs/` is gitignored** — the whole tree, including subfolders that don't exist yet. One
-root-anchored line:
+**`Docs/` is gitignored** — the whole tree, including subfolders that don't exist yet:
 
 ```gitignore
 # Project docs — local by default, whole tree including subfolders added later
 /Docs/
 ```
 
-The tree holds working evidence, not a deliverable: findings mid-adjudication, plans that die
-when the work lands, decisions still being argued, and whatever else the author drops into a
-folder they invented that afternoon. Some of that is private. So the rule names the
-**directory**, not its children — otherwise it protects only the folders someone remembered.
+It holds working evidence, not a deliverable, and some of it is private. Three things
+before adding the line:
 
-Three things to know before adding the line:
+- **It does not untrack anything.** Files already committed stay tracked. `git ls-files --
+  Docs` tells you; `git rm --cached -r -- Docs/` is the fix and it **deletes them from the
+  remote on the next push**. Never run it unprompted.
+- **It is not a privacy remediation.** Anything pushed is in history and every clone.
+- **On Windows and macOS it also matches `docs/`** — `core.ignorecase=true` is the default
+  and anchoring does not help. That is where published doc sites live. Check with
+  `git check-ignore -v docs/<file>`; on a collision the site wins.
 
-- **It does not untrack anything.** Files already committed under `Docs/` stay tracked and keep
-  going to the remote. `git ls-files -- Docs` tells you; `git rm --cached -r -- Docs/` is the fix
-  and it **deletes them from the remote on the next push**. Never run it unprompted.
-- **It is not a privacy remediation.** Anything already pushed is in history and in every clone.
-  Ignoring it now changes nothing about that — real exposure means rotating what leaked and a
-  deliberate history rewrite, not a `.gitignore` line.
-- **On Windows and macOS it also matches `docs/`.** `core.ignorecase=true` is the default on
-  those filesystems, and *anchoring does not help* — `/Docs/` still swallows a lowercase `docs/`.
-  That is where published doc sites live (mkdocs, Docusaurus). In a repo that has one, run
-  `git check-ignore -v docs/<some-file>` first; on a collision the site wins and the project
-  records the deviation below.
+In a monorepo, one anchored line per package (`/packages/foo/Docs/`).
 
-In a monorepo, give each package's tree its own anchored line (`/packages/foo/Docs/`). Dropping
-the anchor would catch them all in one go — and also anything vendored under that name.
-
-**Committing `Docs/` is a legitimate choice. It just has to be written down**, in the project's
-`CLAUDE.md`, which is loaded every session:
+**Committing `Docs/` is a legitimate choice — it just has to be written down**, in the
+project's `CLAUDE.md`, or the next session helpfully re-adds the rule:
 
 ```md
 ## Docs policy
 
 `Docs/` is versioned in this repo on purpose. Do not add `/Docs/` to `.gitignore`.
 ```
-
-A note inside `Docs/` or a comment where the `.gitignore` line *isn't* is read by nobody, and
-the next session helpfully re-adds the rule. `/setup` looks for
-that section before they touch `.gitignore`.
-
-## Three, and only three
-
-There is no fourth tree, and no reserved path for one.
-
-**A project that must deviate from a protocol says so in its own `CLAUDE.md`.** That file is
-loaded every session; a folder of overrides is loaded by nobody. A convention with no
-mechanism behind it is decoration — it looks like governance and enforces nothing.
-
-**A structural file map is generated when someone asks for one**, not maintained. For a large
-repo that's a reasonable thing to want; reserving it a permanent home is how it ends up stale,
-and a file map that lags a rename is worse than none, because it gets believed.
-
-If you find yourself wanting a new tree, the question to answer first is what reads it.
-
-## Sizing — highlights, not monoliths
-
-These files exist for *trackability*, not reconstruction. Evidence lives in commits, diffs,
-and audits; docs link to it rather than duplicating it.
-
-- **Line budgets live in each template's header** — that header is the single source of
-  truth, so don't restate the numbers anywhere else.
-- **Decision entry** — Decision (1–2 sentences) · Why, including the triggering incident
-  (1–2) · Rejected alternative and what ruled it out (1–2) · Mechanism, file and function
-  rather than code (1–2). Longer than that belongs in a plan or audit, linked.
-- **Changelog entry** — `Added/Changed/Fixed/Removed`, one line per item. No narrative.
-
-**Reject these:** pasting commit messages verbatim, embedding whole audit findings, a
-paragraph per file touched, restating a change under three headings, and line-count
-bookkeeping that rots.
-
-If a reader needs the full story they open the commit, the audit, or the plan. These files
-exist to help them find it.
 
 ## Templates
 
@@ -130,10 +117,16 @@ In `${CLAUDE_PLUGIN_ROOT}/assets/templates/`:
 |-|-|
 | `project-CLAUDE.md` | `<project>/CLAUDE.md` |
 | `decision-entry.md` | `Docs/Decisions/YYYY-MM-DD.md` |
+| `plan-index.md` | `Docs/Plan/<topic>/INDEX.md` |
+| `plan-phase.md` | `Docs/Plan/<topic>/phase-N-<slug>.md` |
+| `backlog.md` | `Docs/Plan/BACKLOG.md` |
+| `codemap.md` | `Docs/CODEMAP.md` |
 | `changelog-entry.md` | `<project>/CHANGELOG.md` |
-| `Docs-skeleton/` | `<project>/Docs/` — copy wholesale, includes `Audit/README.md` |
+| `Docs-skeleton/` | `<project>/Docs/` — copy wholesale |
 
-`/setup` places all of these for you.
+`/setup` places `project-CLAUDE.md` and `Docs-skeleton/`, and offers `changelog-entry.md`
+when the repo has none. The plan, backlog and code-map templates are written on first use —
+there is nothing to plan on an empty repo, and unfilled boilerplate is the first thing to go
+stale.
 
-**Already have `Doclog/`?** It's the same tree under the older name. Keep it — renaming an
-append-only history buys nothing. New projects get `Decisions/`.
+**Already have `Doclog/`?** Same tree, older name. Keep it. New projects get `Decisions/`.

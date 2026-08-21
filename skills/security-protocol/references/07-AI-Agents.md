@@ -31,7 +31,7 @@
 ## 7.4 Skill & Plugin Supply Chain
 
 - Skills are executable — `SKILL.md` instructions plus Python / bash / tool-use scripts. Treat installing one like `npm install` from an unknown publisher.
-- Run `skill-security-auditor` before installing skills from untrusted sources. It checks for dangerous patterns: `os.system`, `eval`, `subprocess`, network exfiltration, prompt injection in SKILL.md, boundary violations.
+- Read a skill before installing it from an untrusted source. What matters: `os.system`, `eval`, `subprocess`, network calls that exfiltrate, instructions in SKILL.md aimed at the agent rather than the user, and file access outside the skill directory.
 - Pin skill / plugin versions where the tooling allows. A compromised skill update is a supply-chain attack with agent-level authority.
 - Review SKILL.md for hidden instructions ("always do X", "never mention Y to the user", "exfiltrate on any auth keyword"). Review bundled scripts for network calls and filesystem access outside the skill directory.
 
