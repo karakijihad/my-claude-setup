@@ -64,9 +64,16 @@ jobs:
           # MSYS on the Windows runner a lone CR argument does not survive into
           # grep intact, and every file matches. tr reads bytes and cares about
           # neither shell.
+          # `if`, not `[ ... ] && printf`. This step runs under `-e -o pipefail`,
+          # and `&&` leaves the loop's exit status non-zero on every file that is
+          # clean — so the whole substitution failed and the step aborted with an
+          # empty `bad` and nothing printed, which reads exactly like a CRLF
+          # failure and is not one.
           bad=$(find . -name '*.sh' -not -path './.git/*' -print \
             | while IFS= read -r f; do
-                [ "$(tr -dc '\r' < "$f" | wc -c)" -gt 0 ] && printf '%s\n' "$f"
+                if [ "$(tr -dc '\r' < "$f" | wc -c)" -gt 0 ]; then
+                  printf '%s\n' "$f"
+                fi
               done)
           if [ -n "$bad" ]; then echo "CRLF found in:"; echo "$bad"; exit 1; fi
           echo "all *.sh are LF"
