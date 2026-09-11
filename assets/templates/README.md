@@ -11,6 +11,7 @@ Copy these into a new project to bootstrap the conventions described in the `pro
 | `backlog.md` | `Docs/Plan/BACKLOG.md` | Identified but not yet planned; landed entries deleted |
 | `codemap.md` | `Docs/CODEMAP.md` | Structural map of a large repo — roles, not histories |
 | `changelog-entry.md` | `<project>/CHANGELOG.md` | Release-facing changelog, grouped by version |
+| `handoff.md` | `Docs/HANDOFF.md` | Where the work stood — one file, overwritten, read back on compact or resume |
 | `Docs-skeleton/` | `<project>/Docs/` | Folder tree — copy wholesale. Includes `Audit/README.md`, which explains how audits are produced and reconciled |
 
 ## Set up a new project

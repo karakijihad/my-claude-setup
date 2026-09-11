@@ -1,11 +1,10 @@
 ---
 name: project-docs
 description: >
-  The per-project Docs/ convention — decision records, audit evidence, and in-flight plans,
-  with line budgets. Use when recording why a decision was made, when writing down what an
-  audit found and how it was adjudicated, when opening or updating a plan file, when
-  bootstrapping a new project's Docs folder, or when deciding whether a Docs tree is
-  committed or kept local.
+  Use when a session is running long with work unfinished or is resuming one that was, when
+  recording why a decision was made, when writing down what an audit found and how it was
+  adjudicated, when bootstrapping a project's Docs tree, or when deciding whether that tree
+  is committed or kept local.
 ---
 
 # Per-Project Docs
@@ -20,6 +19,7 @@ Docs/
 ├── Audit/claude|codex/DATE/    the adjudication, and what the auditor reported
 ├── Plan/<topic>/INDEX.md       + phase-N-<slug>.md — in-flight only
 ├── Plan/BACKLOG.md             identified, not yet planned
+├── HANDOFF.md                  where the work stood — one file, overwritten
 └── CODEMAP.md                  optional, for a repo too large to hold in one head
 CHANGELOG.md                    at the repo root, committed, release-facing
 ```
@@ -31,12 +31,15 @@ CHANGELOG.md                    at the repo root, committed, release-facing
   never shows which findings were argued down and why. **An audit is not a decision.**
 - **`Plan/`** — the only forward-looking tree. **Delete a plan when its work lands**, never
   `Plan/archive/`: a plan kept past its work reads as live to the next session.
+- **`HANDOFF.md`** — one file, overwritten, deleted when the work lands. A second one means
+  the next session reads the wrong one. See §Handoff.
 - **`CODEMAP.md`** — permitted on two conditions: **roles, not histories**, and a **named
   regeneration trigger** in the file. A budget keeps a map short; only a trigger keeps it
   true.
 
 **A project that must deviate says so in its own `CLAUDE.md`** — loaded every session. A
-folder of overrides is loaded by nobody.
+folder of overrides is loaded by nobody. Same destination for a correction that recurs: once
+is a one-off and belongs in memory, twice is a rule and belongs in `CLAUDE.md`.
 
 ## Plan documents
 
@@ -61,6 +64,52 @@ struck through, not under an "original ruling" heading — that is how a 200-lin
 becomes a 1,200-line one. True whether or not `Docs/` is committed: where it is ignored the
 text is gone, and where it is committed nobody greps `git log` for a ruling they don't know
 exists.
+
+## Handoff
+
+**Read your own context, then decide.** Where the harness gives you a context-usage figure,
+use it — but it is not the number in the operator's status line. That one is computed from
+the last API response and handed to the status-line subprocess, which does not feed it back
+to you; the two measure the same window at different moments and by different accounting, so
+never quote one as the other. If you have no figure at all, fall back on the triggers below
+rather than inventing a percentage.
+
+Before starting anything substantial, compare what remains against what the work needs — and
+say which way you went, in one line:
+
+- **Continue here** — the remaining work fits, with room left for the verify and the review.
+- **Hand off** — it doesn't. Write `Docs/HANDOFF.md`, then stop and ask for `/clear`.
+
+**The flow is three automatic steps and one keystroke.** You write the handoff, the user
+types `/clear`, `SessionStart` fires with source `clear`, and the hook tells the fresh session
+a handoff exists and how old it is — then **asks before loading it**, because `/clear` is also
+just how a fresh start is made and the file on disk may be finished or a week stale. After a
+compaction or a resume it loads without asking: those are not chosen, and the handoff is the
+work that was interrupted. You cannot do the clearing part:
+no tool, hook field or SDK call lets a session clear itself — it destroys the user's
+conversation, so it stays theirs. So end the turn by naming the file and asking for the
+clear, in one line. Don't spawn `claude -p` to fake it: that is a separate headless process
+whose work lands nowhere the user is looking.
+
+**This is your call, not a question for the user** — but state it so they can overrule it.
+Deciding late is the only way to get it wrong: once a compaction lands, the detail you would
+have written down is the detail that is gone. Too early costs minutes; too late cannot be
+done at all.
+
+Write one also when the user says to stop, when a phase lands with more to go, and when
+handing work to another session or another person.
+
+**Shape:** `assets/templates/handoff.md`. Labelled lines and bullets, 30 lines, no headings —
+a handoff is read at a glance or it is not read. Omit no field; an empty one is information.
+
+- **Every `Done` line names what proves it.** "Added tests" is not an entry; "added four
+  notification tests, 40 pass" is. The next session cannot re-derive what you verified — and
+  **say what you did *not* do**, which is usually the line that stops it assuming the obvious
+  next step already happened.
+- **`Review rung` is not optional.** Without it a resumed session either re-reviews finished
+  work or commits work that never had its Tier-2 pass, and the second one is silent.
+- **The repo outranks the handoff.** On resumption, reconcile against `git status`, the suite
+  and the plan file before acting. A handoff is what the last session believed.
 
 ## Sizing
 
@@ -122,6 +171,7 @@ In `${CLAUDE_PLUGIN_ROOT}/assets/templates/`:
 | `backlog.md` | `Docs/Plan/BACKLOG.md` |
 | `codemap.md` | `Docs/CODEMAP.md` |
 | `changelog-entry.md` | `<project>/CHANGELOG.md` |
+| `handoff.md` | `Docs/HANDOFF.md` |
 | `Docs-skeleton/` | `<project>/Docs/` — copy wholesale |
 
 `/setup` places `project-CLAUDE.md` and `Docs-skeleton/`, and offers `changelog-entry.md`

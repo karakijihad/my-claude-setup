@@ -64,6 +64,26 @@ if [ -n "$TMP" ] && [ -d "$TMP" ]; then
   cp session-start.sh session-start.py core.md "$TMP/" 2>/dev/null
   printf '#!/bin/bash\nexit 1\n' > "$TMP/py.sh"
   json_ok "falls back to a core when Python is unavailable" "$TMP/session-start.sh"
+  # The jq branch has to carry the handoff as well. Without it, a machine with jq
+  # and no working Python — the exact configuration this branch exists to serve —
+  # gets the rules back and silently loses the one feature whose whole purpose is
+  # that work is not lost. Run from inside the fixture: the branch resolves the
+  # handoff against `git rev-parse --show-toplevel`, which reads the CWD.
+  ( cd "$TMP" && git init -q . && printf '/Docs/\n' > .gitignore && mkdir -p Docs \
+    && printf 'Objective: jq path\nNext: pick this up\n' > Docs/HANDOFF.md ) >/dev/null 2>&1
+  out=$(cd "$TMP" && printf '%s' '{"source":"compact"}' | bash ./session-start.sh 2>/dev/null)
+  case "$out" in
+    *"pick this up"*) ok "the jq fallback carries the handoff, not just the core" ;;
+    *) bad "the jq fallback carries the handoff, not just the core" "got: ${out:0:140}" ;;
+  esac
+  # And a tracked handoff is named, never pasted, on this branch too.
+  ( cd "$TMP" && git add -f Docs/HANDOFF.md ) >/dev/null 2>&1
+  out=$(cd "$TMP" && printf '%s' '{"source":"compact"}' | bash ./session-start.sh 2>/dev/null)
+  case "$out" in
+    *"pick this up"*) bad "the jq fallback does not paste a tracked handoff" "pasted a tracked file" ;;
+    *) ok "the jq fallback does not paste a tracked handoff" ;;
+  esac
+  ( cd "$TMP" && git rm -q --cached Docs/HANDOFF.md ) >/dev/null 2>&1
   # And with neither Python nor jq, the last-resort branch must still emit a
   # core. Asserted with grep, not a JSON parser — on the machine this branch
   # exists for, there is no JSON parser to validate it with.
@@ -150,104 +170,6 @@ exit_is 0 "fails open on an unparseable payload" 'not json at all'
 exit_is 2 "blocks a backslash .env path"         '{"tool_input":{"file_path":"C:\\repo\\.env"}}'
 exit_is 2 "blocks a backslash .git path"         '{"tool_input":{"file_path":"C:\\repo\\.git\\config"}}'
 exit_is 0 "allows a backslash source path"       '{"tool_input":{"file_path":"C:\\repo\\src\\a.ts"}}'
-
-echo "notify"
-printf '%s' '{"message":"build done"}' | bash notify.sh >/dev/null 2>&1 \
-  && ok "exits 0 on a normal message" || bad "exits 0 on a normal message"
-
-# Drive notify.sh for real with a stub backend on PATH and inspect the argv it
-# built. Recomputing the tr pipeline here instead would test a copy of the
-# sanitizer — notify.sh could drop its own and the assertion would still pass.
-NT=$(mktemp -d)
-if [ -n "$NT" ] && [ -d "$NT" ]; then
-  printf '#!/bin/bash\nprintf "%%s\\n" "$@" > "%s/argv"\n' "$NT" > "$NT/osascript"
-  chmod +x "$NT/osascript"
-  printf '%s' '{"message":"x\" & (do shell script \"id\") & \"$(whoami)`hostname`"}' \
-    | PATH="$NT:$PATH" bash "$HOOKS/notify.sh" >/dev/null 2>&1
-  ARGV=$(cat "$NT/argv" 2>/dev/null)
-
-  # notify.sh tries notify-send first, so on Linux the osascript branch below is
-  # never reached and this section used to record a pass having tested nothing.
-  # This assertion always runs: it stubs notify-send, and checks the property
-  # that branch actually relies on — the message goes as a separate argv element,
-  # never interpolated into a command string, so metacharacters cannot re-enter.
-  printf '#!/bin/bash\nprintf "%%s\\n" "$#" > "%s/nsargc"\nprintf "%%s" "$2" > "%s/nsarg2"\n' \
-    "$NT" "$NT" > "$NT/notify-send"
-  chmod +x "$NT/notify-send"
-  NS_MSG='x" & (do shell script "id") & "`hostname`'
-  printf '%s' "{\"message\":\"x\\\" & (do shell script \\\"id\\\") & \\\"\`hostname\`\"}" \
-    | PATH="$NT:$PATH" bash "$HOOKS/notify.sh" >/dev/null 2>&1
-  NSARGC=$(cat "$NT/nsargc" 2>/dev/null)
-  NSARG2=$(cat "$NT/nsarg2" 2>/dev/null)
-  if [ "$NSARGC" = 2 ] && [ "$NSARG2" = "$NS_MSG" ]; then
-    ok "notify-send receives the message as one argv element, not as source"
-  else
-    bad "notify-send receives the message as one argv element, not as source" \
-        "argc=$NSARGC arg2=$NSARG2"
-  fi
-  rm -f "$NT/notify-send"
-
-  # The PowerShell branch interpolates SAFE_MSG into a -Command source string,
-  # exactly like the osascript one, and on Windows it is the branch that
-  # actually runs. It had no stub at all: the only source-interpolating backend
-  # on the plugin's primary platform was the one nothing tested. Reached by
-  # removing both earlier stubs so powershell.exe is the first backend found.
-  # The osascript stub has to go first or it shadows this one — notify.sh tries
-  # notify-send, then osascript, then powershell.exe. ARGV was already captured
-  # above, so removing it now costs the earlier assertion nothing. PATH keeps
-  # the system entries because notify.sh needs tr and cut to build SAFE_MSG at
-  # all; stripping PATH to the stub dir makes it exit before any backend runs.
-  rm -f "$NT/osascript"
-  printf '#!/bin/bash\nprintf "%%s" "$*" > "%s/psargv"\n' "$NT" > "$NT/powershell.exe"
-  chmod +x "$NT/powershell.exe"
-  printf '%s' "{\"message\":\"x'; iex(whoami) #\`hostname\`\$(id)\"}" \
-    | PATH="$NT:$PATH" bash "$HOOKS/notify.sh" >/dev/null 2>&1
-  # That branch backgrounds its call, so give it a moment to land.
-  for _ in 1 2 3 4 5; do [ -s "$NT/psargv" ] && break; sleep 1; done
-  PSARGV=$(cat "$NT/psargv" 2>/dev/null)
-  if [ -z "$PSARGV" ]; then
-    ok "powershell.exe backend not reached on this platform (an earlier backend won)"
-  else
-    # Only the interpolated message is under test. The surrounding -Command
-    # template legitimately contains $n, $true and its own single quotes, so
-    # scanning the whole argv fails on notify.sh's own source — which is what
-    # the first version of this assertion did. Cut to the ShowBalloonTip
-    # argument and check that.
-    PSMSG=${PSARGV#*\'Claude Code\', \'}
-    PSMSG=${PSMSG%%\', \'Info\'*}
-    if [ "$PSMSG" = "$PSARGV" ]; then
-      bad "powershell.exe backend receives a sanitized message" \
-          "could not locate the message inside the -Command template"
-    else
-      case "$PSMSG" in
-        *\'*|*\`*|*\$*|*\\*|*\"*)
-          bad "powershell.exe backend receives a sanitized message" "message: $PSMSG" ;;
-        *) ok "powershell.exe backend receives a sanitized message" ;;
-      esac
-    fi
-  fi
-  rm -f "$NT/powershell.exe"
-
-  if [ -z "$ARGV" ]; then
-    # notify-send is tried first and wins on Linux; it takes argv, not source.
-    ok "osascript backend not reached on this platform (notify-send preferred)"
-  else
-    # The argv legitimately contains four double quotes — AppleScript's own
-    # delimiters around the message and the title. Anything beyond that, or any
-    # backtick/dollar/backslash/single quote at all, means the message escaped.
-    QUOTES=$(printf '%s' "$ARGV" | tr -cd '"' | wc -c | tr -d ' ')
-    case "$ARGV" in
-      *\'*|*\`*|*\$*|*\\*)
-        bad "notify.sh passes no re-enterable characters to its backend" "argv: $ARGV" ;;
-      *)
-        [ "$QUOTES" = 4 ] \
-          && ok "notify.sh passes no re-enterable characters to its backend" \
-          || bad "notify.sh passes no re-enterable characters to its backend" \
-                 "expected 4 delimiter quotes, found $QUOTES in: $ARGV" ;;
-    esac
-  fi
-  rm -rf "$NT"
-fi
 
 echo "guard — commit secret scan"
 # Real staged diff in a throwaway repo: guard.sh reads `git diff --cached`, not
@@ -367,12 +289,128 @@ if [ -n "$PP" ] && [ -d "$PP" ]; then
   esac
   pp speaks "matches a push chained after a commit" \
      '{"tool_input":{"command":"git commit -m ok && git push -u origin main"}}' "$PP"
-  pp speaks "matches git -C <dir> push" '{"tool_input":{"command":"git -C /srv/app push"}}' "$PP"
+  # `git -C <dir> push` runs here but acts there, and the hook used to report the
+  # *caller's* toplevel, SHA and branch for it — a CI pointer to a commit that
+  # was never pushed. The fixture is a second real repo so the assertion can
+  # compare which SHA came back; `/srv/app` proved only that the matcher fired.
+  OTHER=$(mktemp -d)
+  case "$OTHER" in
+    ""|/) bad "git -C names the pushed repo" "mktemp -d gave an unusable path"; OTHER= ;;
+    *)
+      ( cd "$OTHER" && git init -q && git config user.email t@t && git config user.name t \
+        && mkdir -p .github/workflows && printf 'on: push\n' > .github/workflows/ci.yml \
+        && printf 'y\n' > b.txt && git add -A && git commit -q -m other ) >/dev/null 2>&1
+      # git applies -C cumulatively and the last absolute one wins, while a bash
+      # `=~` anchors on the first. Extracting the first named the wrong repo for
+      # a push that landed in the other, so this asserts the LAST is used.
+      OUT2=$(printf '{"tool_input":{"command":"git -C /nonexistent-a -C %s push"}}' "$OTHER" \
+             | (cd "$PP" && bash "$HOOKS/post-push.sh") 2>/dev/null)
+      OTHER_SHA=$(git -C "$OTHER" rev-parse HEAD 2>/dev/null)
+      PP_SHA=$(git -C "$PP" rev-parse HEAD 2>/dev/null)
+      OUT=$(printf '{"tool_input":{"command":"git -C %s push"}}' "$OTHER" \
+            | (cd "$PP" && bash "$HOOKS/post-push.sh") 2>/dev/null)
+      if [ -z "$OTHER_SHA" ] || [ "$OTHER_SHA" = "$PP_SHA" ]; then
+        bad "git -C names the pushed repo, not the caller's" "fixture SHAs unusable"
+      else
+        case "$OUT" in
+          *"$OTHER_SHA"*) ok  "git -C names the pushed repo, not the caller's" ;;
+          *"$PP_SHA"*)    bad "git -C names the pushed repo, not the caller's" \
+                              "reported the caller's SHA $PP_SHA" ;;
+          *)              bad "git -C names the pushed repo, not the caller's" \
+                              "named neither SHA: ${OUT:0:90}" ;;
+        esac
+      fi
+      case "$OUT2" in
+        *"$OTHER_SHA"*) ok  "uses the last -C when a command carries several" ;;
+        *)              bad "uses the last -C when a command carries several" \
+                            "named neither the last repo nor anything: ${OUT2:0:90}" ;;
+      esac
+      rm -rf "$OTHER" ;;
+  esac
+  # --git-dir names a git directory rather than a work tree, and the provider
+  # detection reads files from the work tree. Silence beats a wrong answer.
+  pp quiet "stays silent for a push redirected with --git-dir" \
+     '{"tool_input":{"command":"git --git-dir=/tmp/x/.git push"}}' "$PP"
+  # Options are read from the matched `git … push` span, not the whole command.
+  # Here `-C` belongs to `git commit` and takes a commit, not a path — reading it
+  # as the repo pointed every query at a directory named HEAD~1, which fails, and
+  # the hook went silent about a push that really happened.
+  pp speaks "reads -C from the push, not from another git call in the same line" \
+     '{"tool_input":{"command":"git commit -C HEAD~1 --no-edit && git push"}}' "$PP"
+  # `git` must start a command. Without that boundary the matcher fired on the
+  # literal text anywhere in the payload — this hook announced a landed push
+  # twice while its own test loop was being written.
+  # The other half of that boundary, and the reason it is a character class
+  # rather than just `^`. A newline separates commands too, and several git
+  # commands in one Bash call — one per line, no `&&` anywhere — is the
+  # commonest way an agent issues a push. It matched before the boundary was
+  # added and stopped matching after, turning a false-positive fix into a silent
+  # false negative on the case the hook exists for.
+  pp speaks "matches a push on its own line in a multi-line command" \
+     '{"tool_input":{"command":"git add -A\ngit commit -m ok\ngit push"}}' "$PP"
+  pp quiet "ignores 'git push' quoted inside another command" \
+     '{"tool_input":{"command":"echo git push"}}' "$PP"
+  pp quiet "ignores 'git push' inside a quoted string" \
+     '{"tool_input":{"command":"grep -r \"git push\" ."}}' "$PP"
+
+  # A branch name may contain a double quote — git's ref grammar forbids control
+  # characters, space, ~^:?*[ and backslash, but not `"`. Interpolated raw into
+  # the printf JSON template it makes the object unparseable, and Claude Code
+  # discards a malformed hookSpecificOutput silently, so the reminder vanishes
+  # with no error anywhere. Windows will not create the loose ref file, hence
+  # packed-refs plus a hand-written HEAD: the shape a fetched or packed branch
+  # arrives in. The assertion is a real JSON parse, not a substring check.
+  QB=$(mktemp -d)
+  case "$QB" in
+    ""|/) bad "emits parseable JSON for a branch name containing a quote" "mktemp -d unusable" ;;
+    *)
+      # GitLab, deliberately, not GitHub Actions. GitLab is the provider whose
+      # CHECK string interpolates the branch name, so it exercises both paths
+      # into the JSON; the GitHub branch only interpolates BRANCH once, at the
+      # end. Sanitising just before the printf passed a GitHub fixture and still
+      # emitted broken JSON here, because CHECK had already taken its copy.
+      ( cd "$QB" && git init -q && git config user.email t@t && git config user.name t \
+        && printf 'ci\n' > .gitlab-ci.yml \
+        && printf 'z\n' > c.txt && git add -A && git commit -q -m init ) >/dev/null 2>&1
+      QSHA=$(git -C "$QB" rev-parse HEAD 2>/dev/null)
+      if [ -n "$QSHA" ]; then
+        printf '%s refs/heads/a"b\n' "$QSHA" > "$QB/.git/packed-refs"
+        printf 'ref: refs/heads/a"b\n' > "$QB/.git/HEAD"
+        printf '%s' '{"tool_input":{"command":"git push"}}' \
+          | (cd "$QB" && bash "$HOOKS/post-push.sh") 2>/dev/null \
+          | bash py.sh -c '
+import json,sys
+d=json.load(sys.stdin)
+assert d["hookSpecificOutput"]["hookEventName"]=="PostToolUse"
+assert d["hookSpecificOutput"]["additionalContext"]
+' >/dev/null 2>&1 \
+          && ok  "emits parseable JSON for a branch name containing a quote" \
+          || bad "emits parseable JSON for a branch name containing a quote" \
+                 "output did not parse as JSON"
+      else
+        bad "emits parseable JSON for a branch name containing a quote" "fixture repo unusable"
+      fi
+      rm -rf "$QB" ;;
+  esac
 
   # The false-positive that matters: `push` as an argument is not a push. A
   # reminder on every log search is noise, and noise gets the hook disabled.
   pp quiet  "ignores 'push' as an argument to another git command" \
      '{"tool_input":{"command":"git log --grep push"}}' "$PP"
+  # Same false positive, with a leading flag in front of the subcommand. This is
+  # the shape that got through: a generic "option, then optionally one non-option
+  # word" rule cannot tell `-C /r` from `--no-pager log`, so the matcher parsed
+  # `log` as --no-pager's argument and announced a landed push for a command that
+  # never touched the remote. Someone grepping history while working on this hook
+  # types it verbatim.
+  pp quiet  "ignores 'push' behind a git-level flag before the subcommand" \
+     '{"tool_input":{"command":"git --no-pager log --grep push"}}' "$PP"
+  # The other side of that fix. The named separate-argument options must still
+  # reach a real push, or narrowing the matcher would have gone silent for
+  # everyone who uses them — a quiet assertion here would pass either way, so
+  # this one has to speak.
+  pp speaks "still matches a push behind git -c <k=v>" \
+     '{"tool_input":{"command":"git -c user.name=x push -u origin main"}}' "$PP"
   pp quiet  "ignores a non-git command"    '{"tool_input":{"command":"npm run push"}}' "$PP"
   pp quiet  "ignores an Edit payload"      '{"tool_input":{"file_path":"/x/a.ts"}}' "$PP"
   pp quiet  "fails open on an unparseable payload" 'not json at all' "$PP"
@@ -430,6 +468,121 @@ assert d["additionalContext"]
   rm -rf "$PP"
 fi
 
+echo "subagent-verify"
+# stop_is <expected-exit> <name> <json>. Drives the hook as a script: the point
+# of the gate is what it does to a real payload, and a reimplementation of the
+# awk here would stay green after the awk is deleted.
+# stderr is captured, not discarded. Exit 2 is only half the contract for this
+# event: the harness feeds stderr back to the agent as the system message it
+# recovers from, so a block that says nothing blocks forever for no stated
+# reason. Asserting only the exit code let a regression blank that message and
+# stay green.
+stop_is() {
+  local want="$1" name="$2" json="$3" got err
+  err=$(printf '%s' "$json" | bash subagent-verify.sh 2>&1 >/dev/null)
+  got=$?
+  if [ "$got" != "$want" ]; then
+    bad "$name" "expected exit $want, got $got"
+  elif [ "$want" = 2 ] && [ -z "$err" ]; then
+    bad "$name" "blocked with empty stderr — the agent gets no recovery instruction"
+  elif [ "$want" = 2 ] && [ "${err#*Verify output}" = "$err" ]; then
+    bad "$name" "stderr does not name the field to fill: $err"
+  elif [ "$want" = 0 ] && [ -n "$err" ]; then
+    bad "$name" "expected silence, got stderr: ${err:0:80}"
+  else
+    ok "$name"
+  fi
+}
+
+stop_is 2 "blocks done with changed files and no verify output" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Assumptions:** none"}'
+# The audit's finding, and the reason the gate is no longer a length test: an
+# excuse is longer than the floor a length test can set, so it satisfied the
+# check it was excusing.
+stop_is 2 "blocks an explanation supplied as the verify output" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:** could not run the command\n- **Assumptions:** none"}'
+stop_is 2 "blocks 'was not verified'" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:** the change was not verified\n- **Assumptions:** none"}'
+# The excuse test is anchored to the start of the field because unanchored it
+# blocked these two — both of which are pasted evidence that a command DID run.
+# A false block costs a wasted round and teaches rewording, which is worse than
+# the forgetfulness the gate defends against.
+stop_is 0 "does not bounce real output containing 'did not run'" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:** suite: 2 tests did not run\n- **Assumptions:** none"}'
+stop_is 0 "does not bounce real output containing 'unverified'" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:** connected ok; certificate unverified warning shown\n- **Assumptions:** none"}'
+# The other direction, and why the floor had to go: this is exactly what a
+# passing tsc or linter prints.
+stop_is 0 "allows a terse but real verify output" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:** 0 errors\n- **Assumptions:** none"}'
+# A compiler error is a failed verification the orchestrator must see, not a
+# malformed report to bounce — which is why the excuse test requires a verb.
+stop_is 0 "does not bounce real output containing 'cannot'" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:** src/a.ts(4,9): error TS2304: cannot find name foo\n- **Assumptions:** none"}'
+# And "2 skipped" is pytest, not an admission.
+stop_is 0 "does not bounce output reporting skipped tests" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:** 41 passed, 2 skipped\n- **Assumptions:** none"}'
+stop_is 2 "blocks a placeholder verify field" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:** n/a\n- **Assumptions:** none"}'
+stop_is 0 "allows pasted verify output" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:** 41 passed, 0 failed\n- **Assumptions:** none"}'
+# Sections, not lines. The label normally sits alone above a fenced block, so a
+# line-scoped check would call every real report empty and block all of them.
+stop_is 0 "reads a fenced block under the label as the verify output" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:**\n```\n41 passed, 0 failed\n```\n- **Assumptions:** none"}'
+# A read-only agent holds no files, so there is nothing for it to verify.
+# The hole a review found: an unrecognised bolded label used to fall through to
+# the accumulator, so an agent explaining *why* it had no output padded the
+# verify section past the threshold with the text of its own excuse.
+stop_is 2 "an unrecognised label cannot pad an empty verify section" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh\n- **Verify output:**\n- **Note:** could not run the tests here\n- **Assumptions:** none"}'
+# Closing on a label is scoped to line-start, so pasted output containing bold
+# text does not truncate a section that is genuinely still open — and a report
+# written without bullets is still read, rather than being an evasion.
+stop_is 0 "reads a report written without bullets" \
+  '{"last_assistant_message":"**Status:** done\n**Changed:** hooks/x.sh\n**Verify output:** 41 passed, 0 failed"}'
+stop_is 0 "allows a read-only report with no changes" \
+  '{"last_assistant_message":"- **Status:** done\n- **Changed:** none\n- **Assumptions:** none"}'
+stop_is 0 "allows partial without verify output" \
+  '{"last_assistant_message":"- **Status:** partial\n- **Changed:** hooks/x.sh\n- **Blockers:** no runner installed"}'
+# No report block at all means the agent is not using the protocol; this hook
+# has no opinion about those, and blocking them would break every plain answer.
+stop_is 0 "ignores a message with no report block" \
+  '{"last_assistant_message":"I looked at three files and found the parser in lib-parse.sh."}'
+# The loop guard. Without it a agent that cannot produce output is blocked
+# forever on the same stop.
+stop_is 0 "never blocks twice on one stop" \
+  '{"stop_hook_active":true,"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh"}'
+stop_is 0 "fails open on an unparseable payload" 'not json at all'
+stop_is 0 "fails open on an empty payload" '{}'
+
+# Every case above reaches parse_stop's jq branch, so the Python fallback a
+# jq-less machine takes was covered by nothing — on the one gate whose failure
+# mode is to wave unverified work through. Stub jq to fail the way a Store stub
+# does, then re-run one blocking and one passing case through the other branch.
+WT2=$(mktemp -d)
+case "$WT2" in
+  ""|/) bad "parse_stop falls back to Python when jq is unusable" "mktemp -d gave an unusable path" ;;
+  *)
+    printf '#!/bin/bash\nexit 9009\n' > "$WT2/jq"; chmod +x "$WT2/jq"
+    G1=$(printf '%s' '{"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh"}' \
+         | PATH="$WT2:$PATH" bash subagent-verify.sh >/dev/null 2>&1; echo $?)
+    G2=$(printf '%s' '{"last_assistant_message":"- **Status:** done\n- **Changed:** none"}' \
+         | PATH="$WT2:$PATH" bash subagent-verify.sh >/dev/null 2>&1; echo $?)
+    # And the loop guard, which is the boolean parse_stop exists for: parse_field
+    # returns "" for a JSON boolean on this very branch, which is how a hook ends
+    # up blocking the same stop forever.
+    G3=$(printf '%s' '{"stop_hook_active":true,"last_assistant_message":"- **Status:** done\n- **Changed:** hooks/x.sh"}' \
+         | PATH="$WT2:$PATH" bash subagent-verify.sh >/dev/null 2>&1; echo $?)
+    if [ "$G1" = 2 ] && [ "$G2" = 0 ] && [ "$G3" = 0 ]; then
+      ok "parse_stop falls back to Python when jq is unusable"
+    else
+      bad "parse_stop falls back to Python when jq is unusable" \
+          "blocking=$G1 (want 2), read-only=$G2 (want 0), loop-guard=$G3 (want 0)"
+    fi
+    rm -rf "$WT2" ;;
+esac
+
 echo "budget"
 # Like post-push.sh, this hook must always exit 0 and print nothing unless it has
 # something to say — a stray byte here is injected context on every Write and Edit.
@@ -471,6 +624,21 @@ if [ -n "$BG" ] && [ -d "$BG" ]; then
   bg quiet "silent on a Docs file no budget claims" "$BG/Docs/Research/notes.md"
   mklines 50 "$IDX"
   bg quiet "silent on an index under budget" "$IDX"
+
+  # The handoff arm, driven like every other file kind. The only other thing
+  # touching it is the static check that budget.sh and the template state the
+  # same number — which compares two texts and never invokes the hook, so a
+  # broken case pattern or a nocasematch interaction here would go unseen.
+  HO="$BG/Docs/HANDOFF.md"
+  mklines 20 "$HO"
+  bg quiet  "silent on a handoff under budget" "$HO"
+  mklines 40 "$HO"
+  bg speaks "warns when a handoff crosses its budget" "$HO"
+  case "$BG_OUT" in
+    *"position, not a narrative"*) ok "the handoff remedy names what to cut, not just the overage" ;;
+    *) bad "the handoff remedy names what to cut, not just the overage" "got: ${BG_OUT:0:90}" ;;
+  esac
+  bg quiet "does not re-warn a handoff that has not grown" "$HO"
 
   mklines 150 "$IDX"
   bg speaks "warns when an index crosses its budget" "$IDX"
@@ -627,26 +795,196 @@ _spec = importlib.util.spec_from_file_location("ss", "session-start.py")
 s = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(s)
 tmp = pathlib.Path(tempfile.mkdtemp())
 
-# Enabled: announce it. feature-dev ships passive agents and no hook of its own,
-# so if this line goes missing the default review rung fails silently.
+# Enabled: say nothing. The resident ladder already orders a fresh
+# feature-dev:code-reviewer by default, so a notice here was a resident
+# instruction restated at resident cost, every session, forever.
 cfg = tmp / "on.json"
 cfg.write_text(json.dumps({"enabledPlugins": {"feature-dev@claude-plugins-official": True}}))
 s.read_settings = lambda: json.loads(cfg.read_text())
-out = s.reviewer_notice()
-assert "feature-dev:code-reviewer" in out, out
-assert "MISSING" not in out, out
+assert s.reviewer_notice() == "", s.reviewer_notice()
 
-# Absent: say so loudly. A silent skip here is the whole failure mode.
+# Absent: this is the branch that carries information nothing else has — the
+# ladder names a rung with no agent behind it, and a review that silently did
+# not happen is the failure the whole notice exists for. Hedged, because it
+# reads settings rather than the live agent list.
 s.read_settings = lambda: {}
 out = s.reviewer_notice()
-assert "MISSING" in out, out
+assert "unavailable" in out, out
+assert "feature-dev:code-reviewer" in out, out
 
 # Unreadable settings must not cost the session its core.
 def boom(): raise OSError("nope")
 s.read_settings = boom
 assert s.reviewer_notice() == ""
-' >/dev/null 2>&1 && ok "announces Tier 2, flags it when feature-dev is absent, fails open" \
-  || bad "announces Tier 2, flags it when feature-dev is absent, fails open"
+' >/dev/null 2>&1 && ok "silent when Tier 2 is installed, flags it when absent, fails open" \
+  || bad "silent when Tier 2 is installed, flags it when absent, fails open"
+
+echo "resumption notice"
+bash py.sh -c '
+import importlib.util
+_spec = importlib.util.spec_from_file_location("ss2", "session-start.py")
+s = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(s)
+
+import pathlib, tempfile
+d = pathlib.Path(tempfile.mkdtemp())
+(d / "Docs").mkdir()
+s._repo_root = lambda: str(d)
+
+# No handoff on disk: silent on every source, including the three that inherited
+# their context. A notice pointing at a file nobody wrote sends the session
+# hunting for state that does not exist, which is worse than saying nothing.
+for src in ("compact", "resume", "clear", "startup"):
+    assert s.resumption_notice(src) == "", src
+
+# An empty or whitespace-only handoff is the same as none: a heading with no
+# position under it tells the next session nothing and costs it a detour.
+(d / "Docs" / "HANDOFF.md").write_text("   \n\n")
+for src in ("compact", "resume", "clear"):
+    assert s.resumption_notice(src) == "", src
+
+(d / "Docs" / "HANDOFF.md").write_text("Objective: x\nNext: finish the thing")
+
+# With one on disk, the three inherited-context sources speak. `clear` is in the
+# set because writing a handoff in order to clear is the whole point of the flow
+# — Claude cannot clear its own session, so the user does it and this is what
+# picks the work back up.
+# compact and resume are involuntary: the handoff describes the work this very
+# session was interrupted mid-way through, so loading it is handing back what was
+# lost. Contents, not a pointer — a notice that only names the file spends tokens
+# saying so and still depends on the session choosing to read it, and the session
+# that just lost its context is the one least likely to bother.
+for src in ("compact", "resume"):
+    out = s.resumption_notice(src)
+    assert out, src
+    assert "HANDOFF.md" in out, out
+    assert "Next: finish the thing" in out, out
+    # The reconcile instruction is the load-bearing half: a handoff trusted
+    # without checking it against the repo is worse than none, because it reads
+    # as verified.
+    assert "reconcile" in out.lower(), out
+
+# `clear` is asked for, and is also simply how a fresh start is made — the
+# handoff on disk may be finished, abandoned, or a week old. So it is announced
+# with its age and the user is asked, never silently reinstated as the work.
+out = s.resumption_notice("clear")
+assert "HANDOFF.md" in out, out
+assert "Next: finish the thing" not in out, out
+assert "whether to resume" in out, out
+assert "ago" in out, out
+
+# A session that built its own context pays nothing even with a handoff present.
+for src in ("startup", "", "anything-else"):
+    assert s.resumption_notice(src) == "", src
+
+# Oversized: still injected, but the terminator has to say it was cut. The tail
+# is where Artifacts and the back half of Remaining live, so a handoff closed
+# with the same marker as a whole one hides exactly the part that went missing.
+(d / "Docs" / "HANDOFF.md").write_text("y" * 5000)
+out = s.resumption_notice("compact")
+assert "truncated at 4000 bytes" in out, out[-150:]
+
+# Tracked by git: named, never pasted. git_context() in this same file drops
+# commit subjects as repo-authored free text injected before the user has asked
+# anything; pasting a tracked file is that move at 4000 bytes. The Docs/ tree is
+# gitignored by default, but this convention explicitly allows committing it.
+import shutil, subprocess as _sp
+(d / "Docs" / "HANDOFF.md").write_text("Objective: tracked\nNext: do not paste me")
+_sp.run(["git", "init", "-q", "."], cwd=str(d), capture_output=True)
+_sp.run(["git", "add", "Docs/HANDOFF.md"], cwd=str(d), capture_output=True)
+out = s.resumption_notice("clear")
+assert "tracked by git" in out, out
+assert "do not paste me" not in out, out
+
+# The case the icase pathspec exists for, and the reason it needs its own case:
+# the check above commits the file under exactly the name the guard queries, so
+# it passes whether or not the pathspec is case-insensitive. A repo tracking
+# `docs/handoff.md` is resolved to the same file by a Windows or macOS
+# filesystem while an exact-case `git ls-files` misses it — and the body then
+# gets pasted in as trusted local state. Without this assertion, deleting the
+# `:(icase)` and reopening that hole leaves the suite green.
+d2 = pathlib.Path(tempfile.mkdtemp())
+s._repo_root = lambda: str(d2)
+_sp.run(["git", "init", "-q", "."], cwd=str(d2), capture_output=True)
+(d2 / "docs").mkdir()
+(d2 / "docs" / "handoff.md").write_text("Objective: attacker\nNext: do not paste me either")
+_sp.run(["git", "add", "docs/handoff.md"], cwd=str(d2), capture_output=True)
+out = s.resumption_notice("compact")
+# On a case-sensitive filesystem the mixed-case path simply does not exist, so
+# the notice is empty — also a pass. What must never happen is the body being
+# pasted as though this machine had written it locally.
+assert "do not paste me either" not in out, out
+shutil.rmtree(d2, ignore_errors=True)
+shutil.rmtree(d, ignore_errors=True)
+' >/dev/null 2>&1 && ok "speaks on compact, resume and clear only when a handoff exists" \
+  || bad "speaks on compact, resume and clear only when a handoff exists"
+
+# The payload is parsed now rather than drained, so a malformed one must not cost
+# the session its core — the failure this whole hook exists to prevent.
+printf '%s' 'not json at all' | bash session-start.sh 2>/dev/null \
+  | bash py.sh -c '
+import json,sys
+d=json.load(sys.stdin)
+assert d["hookSpecificOutput"]["additionalContext"], "core missing"
+' >/dev/null 2>&1 && ok "an unparseable SessionStart payload still yields the core" \
+  || bad "an unparseable SessionStart payload still yields the core"
+# And the source field must actually reach the notice through the real hook, not
+# only through a direct call to the function. Driving the script is what proves
+# the payload is parsed rather than drained; a monkeypatched function call would
+# pass even if main() never read stdin.
+#
+# In its own scratch repo, never the real checkout. This fixture used to write
+# ../Docs/HANDOFF.md — the actual file resumption_notice() reads — guarded only
+# by an existence check and cleaned up on the success path. An interrupted run
+# between the write and the `rm` would have left a real handoff in the working
+# tree, and the next genuine session would have been told a previous one stopped
+# with unfinished work that never existed. The hook resolves the handoff against
+# `git rev-parse --show-toplevel`, so running from inside the fixture is enough
+# to point it there; the scripts still resolve their own siblings from $HOOKS.
+SS=$(mktemp -d)
+case "$SS" in
+  ""|/) bad "source reaches the notice through the hook" "mktemp -d gave an unusable path" ;;
+  *)
+  ( cd "$SS" && git init -q . && mkdir -p Docs && printf 'Objective: x\n' > Docs/HANDOFF.md ) >/dev/null 2>&1
+  ( cd "$SS" && printf '%s' '{"source":"compact"}' | bash "$HOOKS/session-start.sh" 2>/dev/null ) \
+    | bash py.sh -c '
+import json,sys
+c=json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"]
+assert "inherited its context" in c, c[:200]
+assert "HANDOFF.md" in c, c[:200]
+' >/dev/null 2>&1 && ok "source reaches the notice through the hook, not just the function" \
+    || bad "source reaches the notice through the hook, not just the function"
+  # And through the hook, /clear must ask instead of loading. Pinned here as well
+  # as at the function, because this is the branch a user hits by typing one word
+  # for reasons that have nothing to do with the handoff sitting on disk.
+  ( cd "$SS" && printf '%s' '{"source":"clear"}' | bash "$HOOKS/session-start.sh" 2>/dev/null ) \
+    | bash py.sh -c '
+import json,sys
+c=json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"]
+assert "whether to resume" in c, c[:200]
+assert "Objective: x" not in c, c[:200]
+' >/dev/null 2>&1 && ok "/clear asks before loading a handoff rather than reinstating it" \
+    || bad "/clear asks before loading a handoff rather than reinstating it"
+  rm -rf "$SS" ;;
+esac
+# The mirror image: same hook, same source, a repo with no handoff — must be
+# silent. Without this the assertions above would pass on a hook that speaks
+# regardless of whether there is anything to speak about. Its own scratch repo
+# again, so the answer cannot depend on what happens to be in this checkout.
+SN=$(mktemp -d)
+case "$SN" in
+  ""|/) bad "silent through the hook when no handoff is on disk" "mktemp -d gave an unusable path" ;;
+  *)
+  ( cd "$SN" && git init -q . ) >/dev/null 2>&1
+  ( cd "$SN" && printf '%s' '{"source":"clear"}' | bash "$HOOKS/session-start.sh" 2>/dev/null ) \
+    | bash py.sh -c '
+import json,sys
+c=json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"]
+assert "inherited its context" not in c, c[:200]
+assert "whether to resume" not in c, c[:200]
+' >/dev/null 2>&1 && ok "silent through the hook when no handoff is on disk" \
+    || bad "silent through the hook when no handoff is on disk"
+  rm -rf "$SN" ;;
+esac
 
 echo "consistency"
 M=$(bash py.sh -c 'import json;print(json.load(open("hooks.json"))["hooks"]["PreToolUse"][0]["matcher"])' 2>/dev/null)
@@ -659,6 +997,18 @@ case "$P" in
   *Bash*) ok "hooks.json registers post-push.sh on Bash, as that script claims" ;;
   *) bad "hooks.json registers post-push.sh on Bash, as that script claims" "matcher: $P" ;;
 esac
+# Every source resumption_notice() answers to must be in the SessionStart
+# matcher, or the branch is unreachable: Claude Code never invokes the hook for a
+# source the matcher excludes, so the function is not merely skipped, it never
+# runs. `resume` was missing here while session-start.py handled it — dead code
+# that read as a working feature.
+S=$(bash py.sh -c 'import json;print(json.load(open("hooks.json"))["hooks"]["SessionStart"][0]["matcher"])' 2>/dev/null)
+MISSING=""
+for want in startup resume clear compact; do
+  case "$S" in *"$want"*) ;; *) MISSING="$MISSING $want" ;; esac
+done
+[ -z "$MISSING" ] && ok "SessionStart matcher covers every source the hook handles" \
+  || bad "SessionStart matcher covers every source the hook handles" "missing:$MISSING (matcher: $S)"
 B=$(bash py.sh -c 'import json;print(json.load(open("hooks.json"))["hooks"]["PostToolUse"][1]["matcher"])' 2>/dev/null)
 case "$B" in
   *Write*Edit*|*Edit*Write*) ok "hooks.json registers budget.sh on Write|Edit, as that script claims" ;;
@@ -717,7 +1067,7 @@ grep -q "overrides superpowers:writing-plans" core.md \
   || bad "core.md and planning-protocol agree on who owns a plan's document shape"
 bash py.sh -c '
 import re,sys
-pairs={"plan-index.md":"INDEX.md","plan-phase.md":"phase-","backlog.md":"Backlog.md","codemap.md":"CODEMAP.md"}
+pairs={"plan-index.md":"INDEX.md","plan-phase.md":"phase-","backlog.md":"Backlog.md","codemap.md":"CODEMAP.md","handoff.md":"HANDOFF.md"}
 src=open("budget.sh",encoding="utf-8").read()
 arms=dict(re.findall(r"^  ([^\n)]+)\)\n\s*BUDGET=(\d+)", src, re.M))
 hook={}
@@ -735,16 +1085,25 @@ for tpl,key in pairs.items():
 sys.exit(0 if not bad else 1)
 ' >/dev/null 2>&1 && ok "every template budget matches the number budget.sh enforces" \
   || bad "every template budget matches the number budget.sh enforces"
+# Subset, not equality. This used to require core.md to name every companion
+# onboarding.py knows about, which made the most expensive file in the plugin
+# carry a full catalogue to satisfy a consistency check — core.md pays its tokens
+# on every session forever, and what it uniquely contributes is not *that* these
+# plugins exist but *who owns which decision when two could contend*. A companion
+# needing no conflict resolution has no business being named there. What still
+# has to hold is the other direction: a name in core.md that is in nobody's
+# roster is a typo or a stale entry routing to nothing.
 bash py.sh -c '
 import re,sys
 core=open("core.md",encoding="utf-8").read()
-src=open("onboarding.py",encoding="utf-8").read()
-listed={n for n in re.findall(r"^    \"([a-z0-9-]+)\": \(", src, re.M)}
-named={c for c in listed if c in core}
-missing=listed-named
-sys.exit(0 if not missing else 1)
-' >/dev/null 2>&1 && ok "every onboarding companion is named in core.md" \
-  || bad "every onboarding companion is named in core.md"
+named=set()
+for l in core.splitlines():
+    if "Companion plugins" in l: named=set(re.findall(r"([a-z0-9-]+) = ", l))
+roster=set(re.findall(r"^    \"([a-z0-9-]+)\": \(", open("onboarding.py",encoding="utf-8").read(), re.M))
+if not named: sys.exit(1)                      # a parser that found nothing is a failure, not a pass
+sys.exit(0 if named <= roster else 1)
+' >/dev/null 2>&1 && ok "every companion core.md names is one the plugin actually knows" \
+  || bad "every companion core.md names is one the plugin actually knows"
 # The companion roster is stated in four places — setup.md installs it, core.md
 # routes to it, onboarding.py checks it, README.md documents it — and each one
 # needs its own wording, so none can be generated from another. What can be

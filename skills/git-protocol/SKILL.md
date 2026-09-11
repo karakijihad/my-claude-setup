@@ -1,9 +1,8 @@
 ---
 name: git-protocol
 description: >
-  Branching strategy, conventional commit format, safety rules, the post-push CI check, and
-  PR/merge process. Use before creating a branch, staging, committing, pushing, merging,
-  rebasing, cherry-picking, force-pushing, opening a PR, or any other git interaction.
+  Use before branching, staging, committing, pushing, merging, rebasing, cherry-picking,
+  force-pushing, or opening a PR.
 ---
 
 # Git Workflow Protocol

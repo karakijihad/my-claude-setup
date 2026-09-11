@@ -1,10 +1,8 @@
 ---
 name: testing-protocol
 description: >
-  When tests are required, test quality rules, coverage expectations, and the
-  verification levels that count as evidence. Use before writing or modifying tests
-  or test infrastructure — jest, pytest, vitest, unittest, e2e, coverage — and before
-  claiming any non-trivial change is verified.
+  Use before writing or modifying tests or test infrastructure, and before claiming any
+  non-trivial change is verified.
 ---
 
 # Testing & Verification Protocol

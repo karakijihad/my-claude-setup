@@ -45,6 +45,9 @@ case "$BASE" in
   INDEX.md)
     BUDGET=100
     REMEDY="An index tracks; it does not narrate. What landed is in git log, binding rulings go to Docs/Decisions/ — a 'Session history' or 'What landed' section does not belong here at all." ;;
+  HANDOFF.md)
+    BUDGET=30
+    REMEDY="A handoff is a position, not a narrative. What happened is in git log; why it was decided goes to Docs/Decisions/. If it has grown past this, it is retelling the session instead of stating where the work stands." ;;
   GOVERNANCE.md)
     BUDGET=60
     REMEDY="Governance holds stable rules, not state. Anything that changes as work proceeds belongs in INDEX.md's phase table." ;;

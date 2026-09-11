@@ -1,10 +1,8 @@
 ---
 name: security-protocol
 description: >
-  Threat modelling and the full security review gate — input validation, authentication,
-  secrets and data handling, API exposure, dependency supply chain, and AI-agent security.
   Use before writing or reviewing anything that touches user input, auth, credentials,
-  endpoints, file operations, dependencies, or agent/MCP tooling.
+  secrets, endpoints, file operations, dependencies, or agent/MCP tooling.
 ---
 
 # Security Protocol

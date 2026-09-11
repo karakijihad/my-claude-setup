@@ -16,7 +16,7 @@
 ```
 Grep for: TODO security, FIXME security, password, secret, token, api_key, hardcoded
 Check: .env in .gitignore, no secrets in committed files
-Run: dependency-auditor skill for any dependency changes
+Run the dependency audit in [06-Dependencies.md](./06-Dependencies.md) for any dependency changes
 Read the source of any newly installed skill or MCP server before enabling it
 Verify: all new endpoints have auth middleware
 ```

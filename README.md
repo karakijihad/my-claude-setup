@@ -4,7 +4,7 @@ Security, testing, git, and delegation discipline for Claude Code, packaged as a
 
 Install it once and every repo you open gets the same rules: minimum-code discipline, a
 mandatory independent review at the end of any code-modifying task, safety hooks that block
-destructive commands and staged secrets, and seven protocol references that load only when
+destructive commands and staged secrets, and six protocol references that load only when
 they're relevant.
 
 ```
@@ -29,7 +29,7 @@ be lost for good. It stops as soon as nothing is missing. Delete that file to se
 | Requirement | Needed by | Check |
 |-|-|-|
 | Git | everything | `git --version` |
-| Python 3 | `session-start` hook, and stdin parsing in `guard.sh`/`notify.sh` when `jq` is absent | `python -c "import sys; print(sys.version_info[:2])"` |
+| Python 3 | `session-start` hook, and stdin parsing in `guard.sh`/`subagent-verify.sh` when `jq` is absent | `python -c "import sys; print(sys.version_info[:2])"` |
 | Node.js | the status line in `assets/statusline.mjs` (optional) | `node --version` |
 
 Every Python entry point in this plugin runs through `hooks/py.sh`, which *executes* each of
@@ -70,10 +70,10 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 
 ```
 .claude-plugin/     marketplace.json, plugin.json
-hooks/              hooks.json + 4 hooks and their shared helpers
-skills/             8 skills — 7 protocols, plus dependency-auditor
+hooks/              hooks.json + 5 hooks and their shared helpers
+skills/             6 protocol skills
 commands/           setup — machine setup (Part 1), project setup (Part 2)
-assets/templates/   project CLAUDE.md, session note, doclog, changelog, audit README, Docs skeleton
+assets/templates/   project CLAUDE.md, decision / plan / backlog / codemap entries, handoff, changelog, Docs skeleton
 assets/             statusline.mjs, the status line /setup installs
 ```
 
@@ -85,7 +85,7 @@ assets/             statusline.mjs, the status line /setup installs
 | `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `checkout -- `, `branch -D` (but not `-d`), `DROP TABLE`/`DROP DATABASE`/`TRUNCATE TABLE`; blocks writes to `.env*` (except `.env.example`, `.sample`, `.template`), lockfiles, and `.git/`; scans the **staged diff** on commit for value-shaped secrets and for credential material — AWS keys, private keys, `ghp_`/`sk-` tokens |
 | `post-push.sh` | PostToolUse | After a push that actually landed, and only if the repo has CI config, names the pushed SHA and the provider's check command. Verifies nothing and exits 0 on every path — PostToolUse runs after the call and cannot block it |
 | `budget.sh` | PostToolUse | Warns when a project doc outgrows its line budget — a plan index, a phase file, a backlog, a code map. Ratcheted: it speaks on the first crossing and again only when an edit makes the overage worse, so the edits that fix the file are never the ones that nag. Never blocks |
-| `notify.sh` | Notification | Desktop notification — notify-send, osascript, or PowerShell |
+| `subagent-verify.sh` | SubagentStop | Blocks a sub-agent that reports `done` with changed files but pastes no verify output, and feeds it back the reason so it can produce one. Read-only agents and honest `partial` reports pass untouched; it never blocks the same stop twice |
 
 `guard.sh` is one script doing what three used to. The old ones each spawned a shell and a JSON
 parse on *every* Bash call just to determine they had nothing to do.
@@ -96,6 +96,10 @@ rewriting Markdown as it was authored and desyncing editor state.
 
 Hooks that need event fields parse stdin with `lib-parse.sh` (jq if present, otherwise a Python
 located by `py.sh`), so they work without `jq` installed.
+
+A fourth was removed in 1.18.0: a `Notification` hook that raised a desktop toast. It steered no
+behaviour, and the sanitizer it needed to interpolate a message into `osascript` and PowerShell
+safely cost three audit findings to get right — maintenance with nothing on the other side.
 
 A third hook was removed in 1.4.0: a `UserPromptSubmit` hook that re-stated the brevity rule on
 every single turn. Brevity is already line 1 of `core.md`; re-injecting it each turn paid for the
@@ -110,11 +114,9 @@ Invoke by name, or let the description trigger them.
 | `security-protocol` | Threat model, input validation, auth, data, API, dependencies, AI/agent security — 10 references |
 | `testing-protocol` | When tests are required, quality rules, coverage, verification levels |
 | `git-protocol` | Conventional commits, safety rules, PR process — and asks before branching rather than assuming |
-| `agent-protocol` | Delegation, structured task reports, sub-agent context budgeting, orchestration |
-| `feedback-protocol` | Turning corrections into permanent rules |
+| `agent-protocol` | The brief a sub-agent gets and the report it owes back — the fan-out rule itself lives in the resident core |
 | `planning-protocol` | When phased work earns a plan file, and what the file needs to survive a context reset |
 | `project-docs` | The `Docs/` convention, line budgets, templates |
-| `dependency-auditor` | Vulnerability scanning, license compliance, upgrade planning via each ecosystem's native tools |
 
 `security-protocol` §7 (AI/agent security) is the one to read before adding an MCP server or
 installing someone else's skill — prompt injection, tool authority, supply chain, transcript

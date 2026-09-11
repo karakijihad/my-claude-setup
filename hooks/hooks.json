@@ -2,7 +2,7 @@
   "hooks": {
     "SessionStart": [
       {
-        "matcher": "startup|clear|compact",
+        "matcher": "startup|resume|clear|compact",
         "hooks": [
           {
             "type": "command",
@@ -50,15 +50,14 @@
         ]
       }
     ],
-    "Notification": [
+    "SubagentStop": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/notify.sh\"",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/subagent-verify.sh\"",
             "shell": "bash",
-            "timeout": 10,
-            "async": true
+            "timeout": 10
           }
         ]
       }

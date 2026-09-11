@@ -1,10 +1,9 @@
 ---
 name: planning-protocol
 description: >
-  When to stop and write a plan before implementing, and what that plan must contain to
-  survive a context reset. Use before starting work that breaks into ordered phases, when
-  a task won't fit one context window, when the user asks for a plan, roadmap, or phased
-  breakdown, and when resuming work against an existing plan file in Docs/Plan/.
+  Use before starting work that breaks into ordered phases, when a task won't fit one
+  context window, when the user asks for a plan, roadmap, or phased breakdown, and when
+  resuming work against an existing plan file in Docs/Plan/.
 ---
 
 # Planning Protocol

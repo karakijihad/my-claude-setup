@@ -7,8 +7,8 @@
 
 ## Project
 
-A Claude Code plugin. It injects a small always-resident rule core, loads seven protocol
-references on demand, and ships four hooks. Published as its own marketplace.
+A Claude Code plugin. It injects a small always-resident rule core, loads six protocol
+references on demand, and ships five hooks. Published as its own marketplace.
 
 ## Key files
 
@@ -27,6 +27,14 @@ references on demand, and ships four hooks. Published as its own marketplace.
   the overage worse — a hook that re-warns on the corrective edit gets ignored. Its table is
   keyed on file *names*, which is why `planning-protocol` §3 makes `INDEX.md` and
   `phase-*.md` normative; a hook can't tell one from the other by reading it.
+- `hooks/subagent-verify.sh` — SubagentStop, and the whole of the delegation-verification
+  feature. **Exit 2 is deliberate here** — it is the documented block for this event and the only
+  sanctioned use outside `guard.sh`; stderr is fed back to the agent as a system message. Three
+  things keep it from being a nuisance: no `Status:` field means the agent isn't using the
+  protocol and the hook has no opinion; `Changed:` empty or `none` means a read-only agent with
+  nothing to verify; and `stop_hook_active` ends it after one nudge, because blocking twice on
+  one stop is an infinite loop. It reads `last_assistant_message` off the payload, never the
+  transcript — that file is written asynchronously and its line schema is undocumented.
 - `hooks/post-push.sh` — the other PostToolUse hook, and the whole of the CI feature. Fires on
   every Bash call, so its rejections are ordered cheapest-first. Prints nothing unless a push
   landed *and* the repo has CI config; with no upstream configured it speaks but says landing is
@@ -61,8 +69,9 @@ references on demand, and ships four hooks. Published as its own marketplace.
   usually a 0-byte Microsoft Store alias stub that exits 9009, and installing Python does not
   displace it. Route through `hooks/py.sh`, which executes candidates instead of trusting names.
 - **Hooks must fail open.** A hook that errors should exit 0, never 2. Exit 2 blocks the tool
-  call — reserve it for a deliberate, explained block. The one exception is a genuine safety
-  refusal in `guard.sh`.
+  call — reserve it for a deliberate, explained block. There are exactly two: a genuine safety
+  refusal in `guard.sh`, and `subagent-verify.sh` refusing an unverified `done`. Every other
+  path in every hook exits 0.
 - **Match the harness's JSON contract exactly.** SessionStart and PostToolUse output is read from
   `hookSpecificOutput.additionalContext` **with `hookEventName` set**. Anything else — including
   a bare top-level `additionalContext`, which is the SDK/Copilot shape — is discarded silently:
@@ -101,6 +110,12 @@ Roughly 4s per assertion on Windows, since each spawns bash plus an interpreter.
 
 **Add a case for anything you change.** Traps worth knowing before you write one:
 
+- **Never edit `tests/suite.sh` while a run of it is in flight.** Bash reads a script
+  incrementally, not all at once, so an edit lands under the running interpreter: it fails at
+  a syntax error in a region it had not reached yet, or — worse — reports a plausible count
+  and a green tally for a file that no longer exists in that form. The suite takes minutes on
+  Windows, which is exactly how long the window is. Wait for it, or copy the file and run the
+  copy.
 - **Never put a literal destructive string in a test file.** `guard.sh` inspects the text of the
   command that invokes it, so a literal `rm -rf /` blocks the test run itself. Assemble such
   fixtures at runtime.
@@ -109,8 +124,8 @@ Roughly 4s per assertion on Windows, since each spawns bash plus an interpreter.
 - **Redirect stdin from `/dev/null`.** `session-start.py` drains stdin, so a test that runs it
   without an EOF hangs rather than failing.
 - **Don't assert against a reimplementation of the thing you're testing** — an assertion that
-  recomputes `notify.sh`'s sanitizer stays green after the sanitizer is deleted. Drive the script
-  and inspect what it produced. **And assert against the consumer's contract, not the producer's
+  recomputes `subagent-verify.sh`'s report parsing stays green after the awk is deleted. Drive
+  the script and inspect what it produced. **And assert against the consumer's contract, not the producer's
   output**: `json_ok` once asserted the exact key `session-start.py` emitted, so it certified a
   hook whose core never loaded. Driving the real script is necessary and not sufficient.
 - **Guard `mktemp`, and stay inside it.** `TMP=$(mktemp -d) && cp ...` does not stop the script;

@@ -1,129 +1,67 @@
 ---
 name: agent-protocol
 description: >
-  Sub-agent delegation, the structured task-report format, sub-agent context budgeting,
-  and orchestration responsibilities. Use before dispatching sub-agents, spawning parallel
-  agents, or delegating work, and when reviewing what an agent reported back.
+  Use before dispatching any agent, and when assessing what one reported back.
 ---
 
 # Agent Protocol
 
-> Applies to all delegation — built-in sub-agents, custom agents, and parallel dispatch.
-> **Skip delegation** for tasks under ~50 lines with clear intent — do them directly. Sub-agents add overhead; use them when the gain outweighs the cost.
-> **Exception:** review still escalates by stakes — the ladder lives in the resident core. Tier 1 (own diff, small and non-sensitive) dispatches no agent at all; Tier 2 dispatches `feature-dev:code-reviewer`; Tier 3 adds `trio:trio-audit` on top.
+The decision of *whether* to fan out is in the resident core: **by file sets, not task
+count.** This skill is what that decision needs to execute — the brief you send, the report
+you demand back, and how to read one.
 
-**Core principle: delegate with structure, report with evidence, verify before claiming done.**
+**Dispatch rules.** One agent per file set, all of them sent in a single message so they run
+concurrently. Never edit a file an agent holds: you are a writer too, and the merge has no
+git behind it.
 
----
+## The brief
 
-## 1. Orchestration Model
-
-Claude is the **orchestrator**. The main context coordinates work, delegates to specialists, reviews results, and commits.
-
-**When to delegate:** broad exploration, deep analysis, 2+ independent parallel tasks, specialized review (security, architecture, code quality), any task where the output is a report.
-
-**When NOT to delegate:** simple edits under ~50 lines, tasks requiring ongoing user dialogue, work depending on context already loaded, sequential steps where each depends on the previous.
-
----
-
-## 2. Delegation Reference
-
-| Task                          | Delegate to                                                |
-| ----------------------------- | ---------------------------------------------------------- |
-| Broad codebase exploration    | `Explore` agent                                            |
-| Architecture design, planning | `Plan` agent                                               |
-| Deep feature analysis         | `feature-dev:code-explorer`                                |
-| Implementation blueprint      | `feature-dev:code-architect`                               |
-| Post-implementation review    | `feature-dev:code-reviewer`                                |
-| Security-focused review       | `feature-dev:code-reviewer` (with explicit security brief) |
-| Independent audit of the diff | `trio:trio-audit` (Codex lenses read-only, Claude adjudicates) |
-| Second opinion on a decision  | `trio:trio-consult`                                        |
-| 2+ independent tasks          | `superpowers:dispatching-parallel-agents`                  |
-
-**Parallelization:** If tasks have no shared state or sequential dependency, launch them in one message with multiple `Agent` calls.
-
-**When trio is worth it.** `feature-dev:code-reviewer` is Tier 2 and stays the default; trio is
-Tier 3 on top of it. Escalate when the work is structural or hard to reverse — a refactor across
-modules, a migration, a new dependency or agent/MCP surface, anything touching auth or data
-access, a release, or a change you already wrote a plan for. Don't escalate a rename, a doc edit,
-a config tweak, or a single-function change — Tier 1 ends at implement → verify → own-diff review
-→ commit, and an audit there costs a Codex round for nothing. Same for `trio:trio-consult`: for a
-decision with real branches, not a settled call. Skipping it on work that looks heavy? Say so in
-one line rather than silently.
-
----
-
-## 3. Task Reporting
-
-Every delegated task must return a structured report.
-
-### Required Report Format
+Every dispatched agent gets all six fields. A missing field is how an agent invents scope.
 
 ```markdown
-## Task Report: [task name]
-
-- **Status:** done | blocked | partial
-- **What changed:** [files created/modified/deleted — list each]
-- **What was verified:** [concrete checks performed and their results]
-- **Verification output:** [paste or summarize test output, lint output, or manual check result]
-- **Blockers:** [none, or describe what's blocking and what's needed]
-- **Assumptions made:** [any decisions the agent made without asking]
+**Goal:** [one sentence — the outcome, not the steps]
+**Files you may touch:** [explicit list; no globs]
+**Files you must not touch:** [the sets held by sibling agents, and anything shared]
+**Acceptance criterion:** [what makes this done, stated so it can fail]
+**Verify with:** [the exact command, copy-pasteable]
+**Report with:** [the block below — say "verbatim"]
 ```
 
-### Rules
+Read-only agents (`Explore`, reviewers, `trio:trio-lens`) take the same brief minus the two
+file-list fields: they hold nothing, so nothing collides.
 
-- A task is not "done" without the Verification output field populated. Paste the evidence.
-- Can't verify → Status must be `partial`, Blockers must explain what's needed.
-- The orchestrator reviews every report before committing. Non-trivial assumptions → confirm with user.
-- **Status definitions:** `done` = all criteria met, verified. `partial` = some work remains or verification incomplete. `blocked` = needs external input.
+## The report
 
----
+```markdown
+- **Status:** done | partial | blocked
+- **Changed:** [each file created, modified or deleted]
+- **Verify output:** [paste it — the command's actual output]
+- **Assumptions:** [decisions made without asking; "none" is a valid answer]
+```
 
-## 4. Sub-Agent Context
+`done` requires pasted verify output. Couldn't run the command → `partial`, and say why.
+Needs something you don't have → `blocked`.
 
-- **Prefer fresh sub-agent sessions** for exploration and analysis. Sub-agents get their own context window — use this to keep the main context lean.
-- **Don't pass unnecessary context to sub-agents.** Give them the specific task and the specific files they need, not a dump of everything.
-- **Sub-agents should return concise reports**, not raw output. The structured task report format (§3) is designed to carry maximum information in minimum tokens.
+**This is enforced, not requested.** `hooks/subagent-verify.sh` fires on `SubagentStop` and
+reads the report itself: a `done` that lists changed files but whose **Verify output** is
+empty, a placeholder, or a sentence saying the command didn't run is blocked, and the agent
+resumes to produce one. So a brief that omits **Verify with** doesn't produce a lax agent — it
+produces a stuck one.
 
----
+It judges the *report*, not the transcript — an agent's own `Changed: none` is taken at its
+word, because the transcript is written asynchronously and its line schema is undocumented.
+That makes this a gate against forgetting to verify, not against an agent that misreports. The
+orchestrator still reads what came back.
 
-## 5. Orchestrator Responsibilities
+## Reading reports
 
-1. **Define clear tasks** with specific acceptance criteria.
-2. **Assign the right agent** — match task type to agent specialty.
-3. **Review reports** — check that verification output matches claimed status.
-4. **Synthesize results** — resolve conflicts between parallel agents, verify integration.
-5. **Run final verification** — `superpowers:verification-before-completion` after all agent work is integrated.
-6. **Communicate to user** — clear summary of what was done, verified, assumed, and what needs attention.
+Check each report's verify output *before* dispatching anything that depends on it, and run
+the whole project's verify yourself at the end. Separately-green does not compose; the hook
+proves each agent ran its own command, not that the pieces fit.
 
----
+Non-trivial assumptions go to the user before the commit, not after.
 
-## 6. Running the loop
+## The loop
 
-Once tasks are defined and assigned, `superpowers:subagent-driven-development` owns the
-execution loop — per-task briefs, the implementer/reviewer cycle, and integration verification.
-It is far more detailed than a summary here would be, and a second copy would only drift.
-
-Without superpowers: dispatch one agent per task with its own acceptance criteria, review each
-report against §3 before starting the next dependent task, and verify the integration yourself
-rather than trusting that separately-green tasks compose.
-
-**This section is the only part of delegation that is delegated.** Everything above — when to
-delegate at all, which agent, the trio threshold, the report schema — is decided here, because
-superpowers' loop assumes an existing plan and has nothing to say about exploratory, advisory,
-or review-only dispatch.
-
----
-
-## 7. Verification Checklist — Agent Gate
-
-- [ ] Each delegated task has specific acceptance criteria
-- [ ] Task report received from every agent with all required fields
-- [ ] Verification output is actual evidence, not just "it works"
-- [ ] Assumptions reviewed — non-trivial ones confirmed with user
-- [ ] Integration verified between parallel agents' outputs
-- [ ] `superpowers:verification-before-completion` run as final pass
-
----
-
-_This skill is the single source of truth for agent delegation and task reporting. Where the resident session rules are terser, this skill wins._
+With a written plan, `superpowers:subagent-driven-development` owns the execution loop.
+Without one, dispatch per the brief above and integrate yourself.

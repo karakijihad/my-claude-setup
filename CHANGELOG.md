@@ -5,6 +5,146 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.18.0] — 2026-09-11
+
+Two pruning passes and three consults. Fable 5.1 measured what the plugin charges before a
+session does anything — `core.md` plus eight skill `description:` fields plus the reviewer
+notice, ~1,570 tokens paid every session, forever — and found roughly a third of it was
+rationale, duplication, or a rule the harness now contradicts. GPT-6-Astra took a second pass
+at the remainder and corrected two of the first pass's reasons along the way. Codex audited
+the result through four lenses: seven findings fixed, two argued down.
+
+**~1,570 → ~1,035 resident tokens**, with the fan-out rule *and* the handoff added on top of
+the cut.
+
+### Added
+
+- **`subagent-verify.sh`** — SubagentStop. `agent-protocol` has always required a sub-agent's
+  report to carry pasted verify output, and prose could not make it so: the orchestrator reads
+  a confident `done` and integrates work nothing ran. Now an agent that claims `done` with
+  changed files and no verify output is blocked, and the reason is fed back so it can produce
+  one. Read-only agents, honest `partial` reports, and messages with no report block at all
+  pass untouched, and `stop_hook_active` ends it after one nudge.
+- **The fan-out rule, in the resident core** — *by file sets, not task count*. A read goes to
+  parallel agents when holding the files would cost more than holding the answer; writes fan
+  out only into disjoint file sets, each with its own verify command. A shared file, an
+  unfixed interface, layers of one feature, or context already in hand means do it in-line.
+  The old trigger ("2+ independent tasks") fired on layered features, where the parallelism is
+  fictional, and missed the read case, which is the one that actually pays.
+- **`parse_stop` in `lib-parse.sh`** — `parse_field` returns `""` for a JSON boolean on its
+  Python branch and `"true"` on its jq branch, so the loop guard would have read as absent on
+  exactly the machines this plugin exists for.
+- **The handoff — `Docs/HANDOFF.md`, 30 lines, one file, overwritten.** A session that runs
+  out of room mid-work loses the detail behind it and leaves the next one inferring. Now the
+  session reads its own remaining context, decides *continue here* or *hand off*, and says
+  which — its call, stated so the operator can overrule it. Deciding late is the only way to
+  get it wrong: once a compaction lands, the detail worth writing down is the detail that is
+  gone. Labelled lines and bullets, no headings; `budget.sh` holds it to 30 with the remedy
+  *a handoff is a position, not a narrative*.
+- **Automatic pickup, via a `source` field the hook had been discarding.** `session-start.py`
+  read the payload only to drain it. It now reads `source` and, on `compact`, `resume` or
+  `clear` **and only when `Docs/HANDOFF.md` has something in it**, carries it into the fresh
+  session.
+
+  `compact` and `resume` are not chosen, so the handoff is the work that was interrupted and
+  its *contents* are injected — not a pointer to them — plus the instruction to reconcile it
+  against
+  `git status`, the suite and the plan file, the repo winning any disagreement, because a
+  handoff trusted without checking reads as verified. Naming the file would spend tokens
+  saying so and still depend on the session choosing to read it, and the session that just
+  lost its context is the one least likely to. The 30-line budget is what makes pasting it
+  inline affordable.
+
+  `clear` is different, and that difference is the point: it is typed on purpose, and often
+  for reasons that have nothing to do with the handoff sitting on disk. So that branch names
+  the file, says how old it is, and **asks** — a handoff written last week should not quietly
+  reinstate itself as the work in hand. Silent on an ordinary session, so nothing is paid for
+  a feature that isn't being used.
+
+  That makes the loop three automatic steps and one keystroke: write, the operator types
+  `/clear`, the hook reloads, work continues. The clear cannot be automated — no tool, hook
+  output field or SDK call lets a session clear itself, and `claude -p` only spawns a
+  headless process whose work lands where nobody is looking. `project-docs` says so rather
+  than leaving a future session to rediscover it.
+
+  `PreCompact` was the obvious event and is not used: exit 2 is not honoured for it, so it
+  cannot hold a session open long enough to write anything, and whether it can inject context
+  at all is undocumented — which is the silent-discard trap this repo's JSON-contract rule
+  already exists for.
+
+### Removed
+
+- **`notify.sh` and its `Notification` hook.** A desktop toast steers no behaviour, and the
+  sanitizer it needed to interpolate a message into `osascript` and PowerShell safely cost
+  three audit findings to get right. Maintenance with nothing on the other side.
+- **`dependency-auditor`.** Its command tables were worth keeping and are now in
+  `security-protocol/references/06-Dependencies.md`, where they cost nothing until read. As a
+  skill it paid ~65 resident tokens per session for a description that was a keyword list —
+  the vocabulary routing this repo's own conventions forbid.
+- **`feedback-protocol`.** 110 lines describing what auto-memory now does mechanically. The
+  one part memory does not cover is a destination, and that is one line in `project-docs`:
+  once is a one-off and belongs in memory, twice is a rule and belongs in `CLAUDE.md`.
+- **The protocol list in `core.md`.** Skill descriptions are the router and are already
+  resident; the list was a second, hand-maintained copy of them — the drift this repo's own
+  Gotchas warn about, sitting in the most expensive file it owns.
+- **The `Read`-over-`cat` paragraph.** It contradicted the harness: auto mode instructs the
+  opposite, so the two fought on every read. The one idea worth keeping — narrow large output
+  at the source — survives in the shell-gating line.
+
+### Changed
+
+- **`core.md` carries the same rules in fewer words.** Rationale moved out (this file is where
+  it belongs); duplicated companion assignments merged into the ladder. Net effect after
+  *adding* the fan-out paragraph: **750 words → 637**. Four rules were caught going out with
+  the rationale and put back in self-review — "say nothing if there is nothing new", "don't
+  improve adjacent code", narrowing large output at the source, and which superpowers skills
+  are in scope.
+- **`agent-protocol` is two artefacts instead of seven sections** — the six-field brief you
+  send, and the four-field report you demand back. The orchestration prose, the delegation
+  table (a stale hand-copy of the agent list the harness injects anyway), the context-budget
+  advice and the closing checklist are gone; the rule they circled lives in the core, and the
+  report is now enforced by a hook.
+- **Skill descriptions are triggers only — 380 words → 139.** Per this repo's own routing
+  rule: framework names out of `testing-protocol`, "any other git interaction" out of
+  `git-protocol` (it fired on `git status`), the coverage-list-then-trigger-list duplication
+  out of `security-protocol`, and plan files out of `project-docs`, where two skills were
+  claiming one trigger — the collision the router exists to prevent. Then a second pass: six
+  of them still opened by summarising their own contents before saying when to fire, and a
+  contents summary does not route.
+- **A second pruning pass, after a consult with GPT-6-Astra.** It corrected two of the four
+  reasons behind the first pass — the reviewer notice is redundant because `core.md` already
+  *orders* the reviewer, not because the harness lists the agent (availability is not
+  dispatch); and prompt-shape routing is wrong because prompt shape is a poor classifier, not
+  because 1.4.0 settled it. It also found the largest remaining duplication, which was a day
+  old: the fan-out paragraph carried brief fields and report-checking that `agent-protocol`
+  already owned. The resident core keeps the *decision*; the mechanics went to the skill.
+- **`core.md` defers to `planning-protocol` before the offer, not after accepting one.** It
+  had duplicated the tripwire, the offer wording and the declined-plan behaviour that
+  `planning-protocol` §1–2 already own — and deferring only on acceptance meant the skill
+  arrived after its own decision point.
+- **The Tier-2 reviewer notice speaks only when the reviewer is missing.** The installed
+  branch restated a resident instruction at resident cost, every session, forever. The absent
+  branch is hedged now: it reads *settings*, not the live agent list, so an unparsable
+  settings file looked exactly like a plugin that was not enabled.
+- **`post-push.sh` matches with `[[ =~ ]]` instead of `echo | grep`**, which forked twice on
+  every Bash call in the session — the exact cost its "cheapest rejections first" ordering
+  exists to avoid. It now also names `/loop` for the one case that is genuinely a poll: CI
+  still running after the work is done.
+
+### Fixed
+
+- **`post-push.sh` announced a landed push for `git --no-pager log --grep push`.** Present since
+  the matcher was written, and found by the Tier-2 review of this release. A generic "option,
+  then optionally one non-option word" rule cannot tell `-C /r` from `--no-pager log`, and a
+  regex engine needs only one valid decomposition to report a match — so `log` was parsed as
+  `--no-pager`'s argument and the trailing `push` satisfied the pattern. The seven git options
+  that take their value as the next word are now named; every other flag stands alone or
+  carries its value with `=`. The old negative case had no leading flag, so nothing caught it.
+- **`subagent-verify.sh`'s parser could be padded past its own evidence threshold.** An
+  unrecognised bolded label fell through to the accumulator, so `- **Note:** could not run the
+  tests here` written under an empty `Verify output:` counted as the output — the excuse
+  satisfying the check it was excusing. Any line-initial label now closes the open section.
+
 ## [1.17.0] — 2026-08-21
 
 Measured on a real project using this plugin: a plan index at 1,039 lines, 745 of them a

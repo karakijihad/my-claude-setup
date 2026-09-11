@@ -70,6 +70,51 @@ parse_all() {
   return 0
 }
 
+# parse_stop — sets MSG and ACTIVE for the SubagentStop hook.
+#
+# parse_field cannot do this pair. `stop_hook_active` is a JSON boolean, and
+# parse_field's Python branch returns "" for anything that is not a string,
+# while its jq branch returns "true" — so the loop guard would read as absent on
+# exactly the machines this plugin exists for. One call, NUL-delimited, both
+# branches stringifying the boolean the same way. Same process-substitution
+# reasoning as parse_all: a bash variable cannot hold NUL.
+_PY_PARSE_STOP="
+import json,sys
+try:
+    obj=json.loads(sys.stdin.buffer.read().decode('utf-8','replace') or '{}')
+    m=obj.get('last_assistant_message','')
+    a=obj.get('stop_hook_active')
+    vals=[m if isinstance(m,str) else '', 'true' if a is True else '', 'ok']
+except Exception:
+    vals=['','','']
+w=sys.stdout.buffer
+for v in vals:
+    w.write(v.encode('utf-8','replace')+b'\\x00')
+"
+
+_JQ_PARSE_STOP='(.last_assistant_message // ""), "\u0000",
+                (if .stop_hook_active == true then "true" else "" end), "\u0000",
+                "ok", "\u0000"'
+
+parse_stop() {
+  local ran
+  MSG=""; ACTIVE=""; ran=""
+  { IFS= read -r -d '' MSG; IFS= read -r -d '' ACTIVE; IFS= read -r -d '' ran; } \
+    < <(printf '%s' "$INPUT" | jq -j "$_JQ_PARSE_STOP" 2>/dev/null)
+  # A sentinel, not `[ -n "$MSG$ACTIVE" ]` as parse_all does. Both of these
+  # fields are legitimately empty on a common payload — a read-only agent that
+  # stopped with no final text — so testing the values cannot tell "jq ran and
+  # found nothing" from "jq is not here", and every such stop paid a second
+  # interpreter spawn to learn nothing. This event fires once per agent, and the
+  # read-only agents the fan-out rule encourages are exactly that payload.
+  [ -n "$ran" ] && return 0
+
+  MSG=""; ACTIVE=""
+  { IFS= read -r -d '' MSG; IFS= read -r -d '' ACTIVE; } \
+    < <(printf '%s' "$INPUT" | bash "$_LIB_PARSE_DIR/py.sh" -c "$_PY_PARSE_STOP" 2>/dev/null)
+  return 0
+}
+
 parse_field() {
   local path="$1"
   if _have_jq; then
