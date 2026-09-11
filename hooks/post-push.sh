@@ -17,7 +17,12 @@
 IFS= read -r -d '' INPUT
 . "$(dirname "$0")/lib-parse.sh"
 
-CMD=$(parse_field "tool_input.command")
+# parse_all, not parse_field, even though only one of its three fields is wanted
+# here. This hook fires on every Bash call, and parse_field paid an interpreter
+# spawn per field through its own separate jq-then-Python implementation — the
+# exact cost parse_all was written to collapse when guard.sh stopped doing this.
+# One extraction, one spawn, and one implementation left to keep correct.
+parse_all
 [ -z "$CMD" ] && exit 0
 
 # `git push`, `git -C /path push`, `git --no-pager push`, and the same chained

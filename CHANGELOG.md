@@ -5,6 +5,46 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.19.0] — 2026-09-11
+
+The four findings 1.18.0 shipped with open, and a CI check that turned out never to have
+worked on one of its two platforms.
+
+### Fixed
+
+- **The line-ending check never looked for a carriage return on ubuntu.** It shelled out per
+  file with `find -exec sh -c`, and `sh` is dash there, which has no `$'...'` ANSI-C quoting —
+  so `$'\r'` reached grep as the literal pattern `$\r`, a dollar followed by an r. It passed
+  for as long as no `*.sh` contained `$r`, then failed the day one did: `[ -n "$ran" ]`, added
+  to `lib-parse.sh` in 1.18.0. Windows was green throughout because Git Bash's `sh` *is* bash.
+  A check that cannot fail for the right reason is worse than none, because it is trusted —
+  and this one is half the reason the Windows leg exists. It now counts CR bytes with `tr`,
+  with no nested shell and no carriage return passed as an argument; `grep -rlU $'\r'` fixes
+  the quoting and is wrong a second way, since under MSYS a lone CR argument does not survive
+  into grep and every file matches.
+
+### Changed
+
+- **`post-push.sh` reads its payload with `parse_all`, and `parse_field` is gone.** It was the
+  last caller of a helper that duplicated `parse_all`'s jq-then-Python fallback in full, and it
+  fires on *every* Bash call — paying a spawn per field, which is the exact cost `parse_all`
+  was written to collapse when `guard.sh` stopped doing it. Removing it also orphaned
+  `_have_jq`, so two implementations became one.
+- **Session start makes one git call where it made three.** `git_context()` and the handoff
+  lookup both wanted half of the same answer, so a single
+  `rev-parse --show-toplevel --abbrev-ref HEAD` now serves both and is cached for the process.
+  On a resumed session that is three spawns down to two, and on an ordinary one, two down to
+  one — against a repo whose own `lib-parse.sh` header measures spawns at 90–200ms on Windows.
+- **The handoff's age comes from a `Written:` date in the file, not the filesystem.** mtime is
+  a property of the file rather than of the handoff: a restore, a copy, or any tool that
+  rewrites it resets the clock, so a fortnight-old handoff claimed to be minutes old at exactly
+  the moment `/clear` asks the operator to judge staleness. mtime remains the fallback and the
+  answer now says which it used — an age you cannot source is one more thing to distrust.
+- **The handoff budget is 45 lines, not 30.** The template alone was 29, so a correctly filled
+  handoff — three things done, two remaining, three artifacts — crossed the budget while being
+  exactly the document the template describes. A budget that fires on correct use is one the
+  session learns to dismiss, which is the failure the ratchet was designed to avoid.
+
 ## [1.18.0] — 2026-09-11
 
 Two pruning passes and three consults. Fable 5.1 measured what the plugin charges before a

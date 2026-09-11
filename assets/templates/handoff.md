@@ -1,11 +1,12 @@
 # Handoff
 
 > Destination: `Docs/HANDOFF.md`. The name is normative — `budget.sh` reads it.
-> **Budget: 30 lines.** This header is the single source of truth for that number.
+> **Budget: 45 lines.** This header is the single source of truth for that number.
 > One file, overwritten, deleted when the work lands. Two handoffs means the next
 > session reads the wrong one.
 > **Never here:** a narrative of the session · anything `git log` already records.
 
+Written: <YYYY-MM-DD>
 Objective: <the goal, not the task list>
 Phase: <where in the work this is>
 

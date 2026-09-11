@@ -632,7 +632,7 @@ if [ -n "$BG" ] && [ -d "$BG" ]; then
   HO="$BG/Docs/HANDOFF.md"
   mklines 20 "$HO"
   bg quiet  "silent on a handoff under budget" "$HO"
-  mklines 40 "$HO"
+  mklines 60 "$HO"
   bg speaks "warns when a handoff crosses its budget" "$HO"
   case "$BG_OUT" in
     *"position, not a narrative"*) ok "the handoff remedy names what to cut, not just the overage" ;;
@@ -871,6 +871,23 @@ assert "HANDOFF.md" in out, out
 assert "Next: finish the thing" not in out, out
 assert "whether to resume" in out, out
 assert "ago" in out, out
+# With no Written: field the age comes from the file timestamp, and says so.
+assert "by file timestamp" in out, out
+
+# A Written: date beats mtime, which is the whole point: mtime is a property of
+# the file, not of the handoff, so a copy or a restore resets it and a fortnight
+# old handoff reads as minutes old at exactly the moment /clear asks the user to
+# judge staleness. The file here was written seconds ago and must still report
+# its recorded age.
+(d / "Docs" / "HANDOFF.md").write_text("Written: 2020-01-02\nObjective: x\nNext: y")
+out = s.resumption_notice("clear")
+assert "as recorded in the file" in out, out
+assert "by file timestamp" not in out, out
+assert " days ago" in out, out
+# A malformed date falls back rather than crashing or claiming the epoch.
+(d / "Docs" / "HANDOFF.md").write_text("Written: not-a-date\nObjective: x")
+out = s.resumption_notice("clear")
+assert "by file timestamp" in out, out
 
 # A session that built its own context pays nothing even with a handoff present.
 for src in ("startup", "", "anything-else"):

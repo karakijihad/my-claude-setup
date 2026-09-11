@@ -47,8 +47,27 @@ jobs:
           # .gitattributes pins *.sh to LF. With core.autocrlf=true a CRLF
           # checkout makes bash die on `bad interpreter`, and it fails in a way
           # that looks like a missing file rather than a line-ending problem.
-          bad=$(find . -name '*.sh' -not -path './.git/*' -exec sh -c \
-            'grep -qU $'"'"'\r'"'"' "$1" && echo "$1"' _ {} \;)
+          #
+          # Counts CR bytes with tr. No nested shell and no carriage return
+          # passed as an argument, because both of those broke it:
+          #
+          # It used to shell out per file via `find -exec sh -c`, and `sh` is
+          # dash on ubuntu, which has no `$'...'` ANSI-C quoting — so `$'\r'`
+          # reached grep as the literal pattern `$\r`, a dollar followed by an
+          # r. The check never looked for a carriage return on ubuntu at all. It
+          # passed for as long as no *.sh happened to contain `$r`, then failed
+          # the day one did (`[ -n "$ran" ]` in lib-parse.sh). A check that
+          # cannot fail for the right reason is worse than none, because it is
+          # trusted.
+          #
+          # `grep -rlU $'\r'` fixes the quoting and is wrong a second way: under
+          # MSYS on the Windows runner a lone CR argument does not survive into
+          # grep intact, and every file matches. tr reads bytes and cares about
+          # neither shell.
+          bad=$(find . -name '*.sh' -not -path './.git/*' -print \
+            | while IFS= read -r f; do
+                [ "$(tr -dc '\r' < "$f" | wc -c)" -gt 0 ] && printf '%s\n' "$f"
+              done)
           if [ -n "$bad" ]; then echo "CRLF found in:"; echo "$bad"; exit 1; fi
           echo "all *.sh are LF"
 

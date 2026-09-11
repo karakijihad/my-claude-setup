@@ -99,9 +99,12 @@ done at all.
 Write one also when the user says to stop, when a phase lands with more to go, and when
 handing work to another session or another person.
 
-**Shape:** `assets/templates/handoff.md`. Labelled lines and bullets, 30 lines, no headings —
+**Shape:** `assets/templates/handoff.md`. Labelled lines and bullets, 45 lines, no headings —
 a handoff is read at a glance or it is not read. Omit no field; an empty one is information.
 
+- **`Written:` is a real date, not a guess.** It is what the /clear branch reports the
+  handoff’s age from; without it the age falls back to the file timestamp, which a copy or a
+  restore resets, so a fortnight-old handoff can read as minutes old.
 - **Every `Done` line names what proves it.** "Added tests" is not an entry; "added four
   notification tests, 40 pass" is. The next session cannot re-derive what you verified — and
   **say what you did *not* do**, which is usually the line that stops it assuming the obvious

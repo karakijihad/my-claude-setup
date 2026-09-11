@@ -1,6 +1,11 @@
-# Sourced by hooks. Provides parse_field <json-path> — reads stdin JSON from $INPUT.
-# jq if present, else a Python located by py.sh. Empty string on failure.
-# Path syntax: dot-separated keys, e.g. "tool_input.command" or "message".
+# Sourced by hooks. Provides parse_all (tool_input command / file_path /
+# notebook_path) and parse_stop (last_assistant_message / stop_hook_active),
+# each reading the stdin JSON already in $INPUT. jq if present, else a Python
+# located by py.sh. Empty strings on failure — every caller must fail open.
+#
+# Both probe jq by *running* it rather than asking whether the name resolves:
+# a jq on PATH that fails to execute would otherwise take the branch, return
+# nothing, and leave a hook reading every field as absent.
 #
 # Goes through py.sh rather than naming `python`/`python3`, for the reason py.sh
 # documents: on Windows those names are usually 0-byte Store stubs that exist on
@@ -10,31 +15,15 @@
 
 _LIB_PARSE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Probe jq by running it, not by asking whether the name resolves — the same
-# mistake this file made with `python`. A jq on PATH that fails to execute would
-# otherwise take the branch, return nothing, and leave guard.sh reading every
-# field as absent. Probed once per hook run, then cached.
-_LIB_PARSE_JQ=""
-_have_jq() {
-  if [ -z "$_LIB_PARSE_JQ" ]; then
-    if command -v jq >/dev/null 2>&1 && printf '{}' | jq -e . >/dev/null 2>&1; then
-      _LIB_PARSE_JQ=yes
-    else
-      _LIB_PARSE_JQ=no
-    fi
-  fi
-  [ "$_LIB_PARSE_JQ" = yes ]
-}
 
 # parse_all — sets CMD, FILE and NBPATH from one interpreter call.
 #
-# parse_field is fine for a hook that wants one field; guard.sh wants three, and
-# paying a separate jq spawn for each is most of what that hook costs. Measured
-# on Windows 2026-08-12: process spawns here run 90-200ms apiece, so the three
-# calls plus the _have_jq probe were ~370ms of guard.sh's ~930ms. This does the
-# probe and the extraction in a single call: jq that is missing or a broken stub
-# writes nothing, which lands in the same empty-output branch as a payload that
-# genuinely had no fields, and Python gets its turn.
+# guard.sh once read its three fields one at a time, paying a separate jq spawn
+# for each. Measured on Windows 2026-08-12: process spawns here run 90-200ms
+# apiece, so those calls plus a separate jq-probe were ~370ms of guard.sh's
+# ~930ms. This does the probe and the extraction in a single call: jq that is
+# missing or a broken stub writes nothing, which lands in the same empty-output
+# branch as a payload that genuinely had no fields, and Python gets its turn.
 #
 # NUL-delimited, and read straight from a process substitution rather than a
 # command substitution, because a bash variable cannot hold a NUL byte — $(...)
@@ -72,12 +61,13 @@ parse_all() {
 
 # parse_stop — sets MSG and ACTIVE for the SubagentStop hook.
 #
-# parse_field cannot do this pair. `stop_hook_active` is a JSON boolean, and
-# parse_field's Python branch returns "" for anything that is not a string,
-# while its jq branch returns "true" — so the loop guard would read as absent on
-# exactly the machines this plugin exists for. One call, NUL-delimited, both
-# branches stringifying the boolean the same way. Same process-substitution
-# reasoning as parse_all: a bash variable cannot hold NUL.
+# A single-field helper could not do this pair. A JSON boolean stringifies
+# differently on the two branches — jq yields "true" where a naive Python read
+# yields "" for anything that is not a string — so the loop guard would have
+# read as absent on exactly the machines this plugin exists for. One call,
+# NUL-delimited, both branches stringifying the boolean the same way.
+# Same process-substitution reasoning as parse_all: a bash variable cannot hold
+# NUL.
 _PY_PARSE_STOP="
 import json,sys
 try:
@@ -113,25 +103,4 @@ parse_stop() {
   { IFS= read -r -d '' MSG; IFS= read -r -d '' ACTIVE; } \
     < <(printf '%s' "$INPUT" | bash "$_LIB_PARSE_DIR/py.sh" -c "$_PY_PARSE_STOP" 2>/dev/null)
   return 0
-}
-
-parse_field() {
-  local path="$1"
-  if _have_jq; then
-    printf '%s' "$INPUT" | jq -r ".${path} // \"\"" 2>/dev/null
-    return
-  fi
-  local py="
-import json,sys,io
-sys.stdin=io.TextIOWrapper(sys.stdin.buffer,encoding='utf-8',errors='replace')
-sys.stdout=io.TextIOWrapper(sys.stdout.buffer,encoding='utf-8',errors='replace')
-try:
-    obj=json.loads(sys.stdin.read() or '{}')
-    for k in '${path}'.split('.'):
-        obj=obj.get(k,'') if isinstance(obj,dict) else ''
-    print(obj if isinstance(obj,str) else '')
-except Exception:
-    print('')
-"
-  printf '%s' "$INPUT" | bash "$_LIB_PARSE_DIR/py.sh" -c "$py" 2>/dev/null
 }

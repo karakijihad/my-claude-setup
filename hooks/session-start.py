@@ -10,6 +10,7 @@ Invoked through py.sh, never as `python3` directly — see that script for why.
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -41,18 +42,45 @@ REVIEWER = "feature-dev"
 CORE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "core.md")
 
 
-def git_context() -> str:
-    """Branch and recent commits, or empty string outside a repo."""
-    def run(*args: str) -> str:
+_GIT_INFO = None
+
+
+def _git_info() -> tuple:
+    """(toplevel, branch) from a single git call, cached for this process.
+
+    One `rev-parse` answers both questions, and both callers here wanted one of
+    them: git_context needs the branch, the handoff lookup needs the toplevel.
+    They used to shell out separately, which on a resumed session meant three
+    git processes before the hook had said anything — and lib-parse.sh's own
+    header records this repo measuring spawns at 90-200ms apiece on Windows and
+    rewriting a parser to avoid exactly that.
+
+    `--abbrev-ref HEAD` prints the literal string `HEAD` on a detached head,
+    which is not a branch name; it becomes "" here so callers see what
+    `git branch --show-current` used to give them.
+    """
+    global _GIT_INFO
+    if _GIT_INFO is None:
+        top = branch = ""
         try:
             out = subprocess.run(
-                ["git", *args], capture_output=True, text=True, timeout=5
+                ["git", "rev-parse", "--show-toplevel", "--abbrev-ref", "HEAD"],
+                capture_output=True, text=True, timeout=5,
             )
-            return out.stdout.strip() if out.returncode == 0 else ""
+            if out.returncode == 0:
+                parts = [p.strip() for p in out.stdout.strip().splitlines()]
+                top = parts[0] if parts else ""
+                if len(parts) > 1 and parts[1] != "HEAD":
+                    branch = parts[1]
         except Exception:
-            return ""
+            pass
+        _GIT_INFO = (top, branch)
+    return _GIT_INFO
 
-    branch = run("branch", "--show-current")
+
+def git_context() -> str:
+    """Branch, or empty string outside a repo."""
+    branch = _git_info()[1]
     if not branch:
         return ""
     # Commit subjects used to be included here and no longer are. They are
@@ -97,35 +125,47 @@ def reviewer_notice() -> str:
 
 def _repo_root() -> str:
     """Toplevel if this is a repo, else the working directory."""
-    try:
-        out = subprocess.run(
-            ["git", "rev-parse", "--show-toplevel"],
-            capture_output=True, text=True, timeout=5,
-        )
-        if out.returncode == 0 and out.stdout.strip():
-            return out.stdout.strip()
-    except Exception:
-        pass
-    return os.getcwd()
+    return _git_info()[0] or os.getcwd()
 
 
-def _age(path: str) -> str:
-    """How long ago the file was last written, in the coarsest honest unit.
+def _age(path: str, body: str = "") -> str:
+    """How long ago the handoff was written, in the coarsest honest unit.
 
     Age is what makes a handoff's relevance judgeable: minutes old is the work
     just interrupted, days old is probably finished and forgotten. Coarse on
     purpose — a stale handoff is what this exists to flag, and a precise figure
-    for something a week old would imply a precision the decision doesn't need.
+    for something a week old implies a precision the decision doesn't need.
+
+    A `Written:` date inside the file beats the filesystem's mtime, which is a
+    property of the file rather than of the handoff: a restore, a copy, or any
+    tool that rewrites without changing content resets it to now, so a fortnight
+    old handoff can claim to be minutes old at exactly the moment /clear is
+    asking the user to judge staleness. mtime stays the fallback, and the answer
+    says which one it used — an age the reader cannot source is one more thing
+    to distrust.
     """
-    try:
-        secs = max(0, int(time.time() - os.path.getmtime(path)))
-    except Exception:
-        return "at an unknown time"
+    stamp, how = None, "as recorded in the file"
+    m = re.search(r"^[ \t]*Written:[ \t]*(\d{4})-(\d{2})-(\d{2})", body, re.M)
+    if m:
+        try:
+            # Midday, so a timezone offset either way cannot make today's date
+            # read as the future and come back "less than a minute ago".
+            stamp = time.mktime((int(m.group(1)), int(m.group(2)), int(m.group(3)),
+                                 12, 0, 0, 0, 0, -1))
+        except Exception:
+            stamp = None
+    if stamp is None:
+        how = "by file timestamp"
+        try:
+            stamp = os.path.getmtime(path)
+        except Exception:
+            return "at an unknown time"
+    secs = max(0, int(time.time() - stamp))
     for unit, size in (("day", 86400), ("hour", 3600), ("minute", 60)):
         if secs >= size:
             n = secs // size
-            return f"{n} {unit}{'s' if n != 1 else ''} ago"
-    return "less than a minute ago"
+            return f"{n} {unit}{'s' if n != 1 else ''} ago ({how})"
+    return f"less than a minute ago ({how})"
 
 
 def resumption_notice(source: str) -> str:
@@ -239,7 +279,7 @@ def resumption_notice(source: str) -> str:
     if source == "clear":
         return (
             f"\n\nThe session was cleared, and a handoff is on disk: {path}, last written "
-            f"{_age(path)}. It has not been loaded — /clear is also how a fresh start is "
+            f"{_age(path, body)}. It has not been loaded — /clear is also how a fresh start is "
             "made, so this may be finished or stale. Ask the user in one line whether to "
             "resume from it, and don't read it in until they say so."
         )
