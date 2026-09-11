@@ -19,7 +19,7 @@ Docs/
 ├── Audit/claude|codex/DATE/    the adjudication, and what the auditor reported
 ├── Plan/<topic>/INDEX.md       + phase-N-<slug>.md — in-flight only
 ├── Plan/BACKLOG.md             identified, not yet planned
-├── HANDOFF.md                  where the work stood — one file, overwritten
+├── Handoff/DATE/<slug>.md      where the work stood; you pass its path on
 └── CODEMAP.md                  optional, for a repo too large to hold in one head
 CHANGELOG.md                    at the repo root, committed, release-facing
 ```
@@ -31,8 +31,8 @@ CHANGELOG.md                    at the repo root, committed, release-facing
   never shows which findings were argued down and why. **An audit is not a decision.**
 - **`Plan/`** — the only forward-looking tree. **Delete a plan when its work lands**, never
   `Plan/archive/`: a plan kept past its work reads as live to the next session.
-- **`HANDOFF.md`** — one file, overwritten, deleted when the work lands. A second one means
-  the next session reads the wrong one. See §Handoff.
+- **`Handoff/`** — one per piece of work, deleted when that work lands. Nothing reads one
+  automatically; you hand its path to the next session. See §Handoff.
 - **`CODEMAP.md`** — permitted on two conditions: **roles, not histories**, and a **named
   regeneration trigger** in the file. A budget keeps a map short; only a trigger keeps it
   true.
@@ -67,52 +67,44 @@ exists.
 
 ## Handoff
 
-**Read your own context, then decide.** Where the harness gives you a context-usage figure,
-use it — but it is not the number in the operator's status line. That one is computed from
-the last API response and handed to the status-line subprocess, which does not feed it back
-to you; the two measure the same window at different moments and by different accounting, so
-never quote one as the other. If you have no figure at all, fall back on the triggers below
-rather than inventing a percentage.
+**Watch your own context.** Where the harness gives you a usage figure, use it — it is not
+the number in the operator's status line, which is computed separately and never reaches you,
+so never quote one as the other.
 
-Before starting anything substantial, compare what remains against what the work needs — and
-say which way you went, in one line:
+When what is left will not carry the work to a reviewable end: **write the handoff, give the
+operator its path, and say to start a new session.** One line, then stop.
 
-- **Continue here** — the remaining work fits, with room left for the verify and the review.
-- **Hand off** — it doesn't. Write `Docs/HANDOFF.md`, then stop and ask for `/clear`.
+> Handoff written to `Docs/Handoff/2026-09-11/auth-migration.md` — start a new session and
+> paste that path.
 
-**The flow is three automatic steps and one keystroke.** You write the handoff, the user
-types `/clear`, `SessionStart` fires with source `clear`, and the hook tells the fresh session
-a handoff exists and how old it is — then **asks before loading it**, because `/clear` is also
-just how a fresh start is made and the file on disk may be finished or a week stale. After a
-compaction or a resume it loads without asking: those are not chosen, and the handoff is the
-work that was interrupted. You cannot do the clearing part:
-no tool, hook field or SDK call lets a session clear itself — it destroys the user's
-conversation, so it stays theirs. So end the turn by naming the file and asking for the
-clear, in one line. Don't spawn `claude -p` to fake it: that is a separate headless process
-whose work lands nowhere the user is looking.
+Deciding late is the only way to get this wrong. Once a compaction lands, the detail worth
+writing down is the detail that is gone; too early costs minutes, too late cannot be done.
 
-**This is your call, not a question for the user** — but state it so they can overrule it.
-Deciding late is the only way to get it wrong: once a compaction lands, the detail you would
-have written down is the detail that is gone. Too early costs minutes; too late cannot be
-done at all.
+You cannot do the rest yourself. `/compact` is not available to the model, assistant text is
+not submitted to the command parser, and no hook output or SDK call resets a conversation —
+so don't spawn `claude -p` to fake it, that is a headless process whose work lands nowhere
+the operator is looking. Nothing reads a handoff automatically either, and that is
+deliberate: guessing which of several belongs to this session reinstates finished work as
+live, while the operator naming a path answers it for free.
 
-Write one also when the user says to stop, when a phase lands with more to go, and when
-handing work to another session or another person.
+Write one also when the operator says to stop, when a phase lands with more to go, and when
+handing work to another person.
 
-**Shape:** `assets/templates/handoff.md`. Labelled lines and bullets, 45 lines, no headings —
-a handoff is read at a glance or it is not read. Omit no field; an empty one is information.
+**Resuming from one:** reconcile it against the repo before acting — `git status`, the suite,
+the plan file. Where they disagree the repo is right; a handoff is what the last session
+believed, not what is true. Say in one line where the work actually stands.
 
-- **`Written:` is a real date, not a guess.** It is what the /clear branch reports the
-  handoff’s age from; without it the age falls back to the file timestamp, which a copy or a
-  restore resets, so a fortnight-old handoff can read as minutes old.
+**Shape:** `assets/templates/handoff.md`, at `Docs/Handoff/<YYYY-MM-DD>/<slug>.md`. The
+folder is normative because `budget.sh` keys on it; the slug names the work, so three of them
+can be told apart at a glance. Labelled lines and bullets, 45 lines, no headings — a handoff
+is read at a glance or it is not read. Omit no field; an empty one is information.
+
 - **Every `Done` line names what proves it.** "Added tests" is not an entry; "added four
   notification tests, 40 pass" is. The next session cannot re-derive what you verified — and
   **say what you did *not* do**, which is usually the line that stops it assuming the obvious
   next step already happened.
 - **`Review rung` is not optional.** Without it a resumed session either re-reviews finished
   work or commits work that never had its Tier-2 pass, and the second one is silent.
-- **The repo outranks the handoff.** On resumption, reconcile against `git status`, the suite
-  and the plan file before acting. A handoff is what the last session believed.
 
 ## Sizing
 
@@ -174,7 +166,7 @@ In `${CLAUDE_PLUGIN_ROOT}/assets/templates/`:
 | `backlog.md` | `Docs/Plan/BACKLOG.md` |
 | `codemap.md` | `Docs/CODEMAP.md` |
 | `changelog-entry.md` | `<project>/CHANGELOG.md` |
-| `handoff.md` | `Docs/HANDOFF.md` |
+| `handoff.md` | `Docs/Handoff/<YYYY-MM-DD>/<slug>.md` |
 | `Docs-skeleton/` | `<project>/Docs/` — copy wholesale |
 
 `/setup` places `project-CLAUDE.md` and `Docs-skeleton/`, and offers `changelog-entry.md`

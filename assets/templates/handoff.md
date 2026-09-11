@@ -1,9 +1,10 @@
 # Handoff
 
-> Destination: `Docs/HANDOFF.md`. The name is normative — `budget.sh` reads it.
+> Destination: `Docs/Handoff/<YYYY-MM-DD>/<slug>.md`. The **folder** is normative —
+> `budget.sh` keys on it; the slug is yours to choose and should name the work.
 > **Budget: 45 lines.** This header is the single source of truth for that number.
-> One file, overwritten, deleted when the work lands. Two handoffs means the next
-> session reads the wrong one.
+> One per piece of work, deleted when that work lands. Nothing reads this
+> automatically: you hand its path to the next session yourself.
 > **Never here:** a narrative of the session · anything `git log` already records.
 
 Written: <YYYY-MM-DD>

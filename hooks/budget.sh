@@ -45,9 +45,6 @@ case "$BASE" in
   INDEX.md)
     BUDGET=100
     REMEDY="An index tracks; it does not narrate. What landed is in git log, binding rulings go to Docs/Decisions/ — a 'Session history' or 'What landed' section does not belong here at all." ;;
-  HANDOFF.md)
-    BUDGET=45
-    REMEDY="A handoff is a position, not a narrative. What happened is in git log; why it was decided goes to Docs/Decisions/. If it has grown past this, it is retelling the session instead of stating where the work stands." ;;
   GOVERNANCE.md)
     BUDGET=60
     REMEDY="Governance holds stable rules, not state. Anything that changes as work proceeds belongs in INDEX.md's phase table." ;;
@@ -66,6 +63,11 @@ case "$BASE" in
   *)
     # A bare .md in Plan/ is a single-file plan, which §3 still allows for small work.
     case "$FILE_N" in
+      # Keyed on the folder, not the filename: a handoff is named for the work
+      # it describes, so there is no fixed name to match on.
+      */[Hh]andoff/*.md)
+        BUDGET=45
+        REMEDY="A handoff is a position, not a narrative. What happened is in git log; why it was decided goes to Docs/Decisions/. If it has grown past this, it is retelling the session instead of stating where the work stands." ;;
       */[Pp]lan/*.md) BUDGET=200
         REMEDY="A single-file plan this long wants to be a folder: INDEX.md plus one phase file per phase." ;;
       *) shopt -u nocasematch; exit 0 ;;

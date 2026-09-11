@@ -5,6 +5,36 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.20.0] — 2026-09-11
+
+The handoff shipped with a pickup mechanism: a SessionStart hook that worked out whether a
+session had been compacted, resumed or cleared, found the handoff, decided whether to trust
+it, and loaded it. All of that existed to answer one question automatically — *which handoff,
+and can I trust it* — and the operator pasting a path answers it for free.
+
+So it is gone, and the feature is what it should have been: **the session judges its own
+context, writes the handoff, gives the operator the path, and says to start a new session.**
+
+### Removed
+
+- **`resumption_notice`, `_age` and `_repo_root` from `session-start.py`**, the payload-source
+  parsing in `main()`, and the whole handoff branch of `session-start.sh`'s jq fallback. That
+  file is 150 lines where it was ~330. Gone with them: the tracked-vs-local provenance check
+  and the case-insensitivity bypass it turned out to have, the symlink guard, the 4000-byte
+  cap, the truncation marker, the age arithmetic, and a second copy of all of it in bash.
+- **The `/clear` question.** It asked whether to resume from a handoff it had found. Nothing
+  looks for one now, so there is nothing to ask about.
+
+### Changed
+
+- **Handoffs live at `Docs/Handoff/<YYYY-MM-DD>/<slug>.md`**, not one overwritten file. One
+  file was wrong the moment two sessions worked on two features: the second overwrote the
+  first and that work was simply lost. Dated folders and a slug per piece of work cannot
+  collide, and the ambiguity that shape would have caused — which of three is mine? — costs
+  nothing now that a person names the path instead of a hook guessing it.
+- **`budget.sh` keys the handoff on its folder, not a filename**, since the file is named for
+  the work it describes.
+
 ## [1.19.0] — 2026-09-11
 
 The four findings 1.18.0 shipped with open, and a CI check that turned out never to have
@@ -30,15 +60,14 @@ worked on one of its two platforms.
   fires on *every* Bash call — paying a spawn per field, which is the exact cost `parse_all`
   was written to collapse when `guard.sh` stopped doing it. Removing it also orphaned
   `_have_jq`, so two implementations became one.
-- **Session start makes one git call where it made three.** `git_context()` and the handoff
-  lookup both wanted half of the same answer, so a single
-  `rev-parse --show-toplevel --abbrev-ref HEAD` now serves both and is cached for the process.
-  On a resumed session that is three spawns down to two, and on an ordinary one, two down to
-  one — against a repo whose own `lib-parse.sh` header measures spawns at 90–200ms on Windows.
+- **Session start resolves git once and caches it.** A single
+  `rev-parse --show-toplevel --abbrev-ref HEAD` answers both questions anything here asks of
+  git, against a repo whose own `lib-parse.sh` header measures process spawns at 90–200ms on
+  Windows and rewrote a parser to avoid three of them.
 - **The handoff's age comes from a `Written:` date in the file, not the filesystem.** mtime is
   a property of the file rather than of the handoff: a restore, a copy, or any tool that
   rewrites it resets the clock, so a fortnight-old handoff claimed to be minutes old at exactly
-  the moment `/clear` asks the operator to judge staleness. mtime remains the fallback and the
+  the moment the operator is judging whether it is still live. mtime remains the fallback and the
   answer now says which it used — an age you cannot source is one more thing to distrust.
 - **The handoff budget is 45 lines, not 30.** The template alone was 29, so a correctly filled
   handoff — three things done, two remaining, three artifacts — crossed the budget while being
@@ -74,43 +103,13 @@ the cut.
 - **`parse_stop` in `lib-parse.sh`** — `parse_field` returns `""` for a JSON boolean on its
   Python branch and `"true"` on its jq branch, so the loop guard would have read as absent on
   exactly the machines this plugin exists for.
-- **The handoff — `Docs/HANDOFF.md`, 30 lines, one file, overwritten.** A session that runs
-  out of room mid-work loses the detail behind it and leaves the next one inferring. Now the
-  session reads its own remaining context, decides *continue here* or *hand off*, and says
-  which — its call, stated so the operator can overrule it. Deciding late is the only way to
-  get it wrong: once a compaction lands, the detail worth writing down is the detail that is
-  gone. Labelled lines and bullets, no headings; `budget.sh` holds it to 30 with the remedy
-  *a handoff is a position, not a narrative*.
-- **Automatic pickup, via a `source` field the hook had been discarding.** `session-start.py`
-  read the payload only to drain it. It now reads `source` and, on `compact`, `resume` or
-  `clear` **and only when `Docs/HANDOFF.md` has something in it**, carries it into the fresh
-  session.
-
-  `compact` and `resume` are not chosen, so the handoff is the work that was interrupted and
-  its *contents* are injected — not a pointer to them — plus the instruction to reconcile it
-  against
-  `git status`, the suite and the plan file, the repo winning any disagreement, because a
-  handoff trusted without checking reads as verified. Naming the file would spend tokens
-  saying so and still depend on the session choosing to read it, and the session that just
-  lost its context is the one least likely to. The 30-line budget is what makes pasting it
-  inline affordable.
-
-  `clear` is different, and that difference is the point: it is typed on purpose, and often
-  for reasons that have nothing to do with the handoff sitting on disk. So that branch names
-  the file, says how old it is, and **asks** — a handoff written last week should not quietly
-  reinstate itself as the work in hand. Silent on an ordinary session, so nothing is paid for
-  a feature that isn't being used.
-
-  That makes the loop three automatic steps and one keystroke: write, the operator types
-  `/clear`, the hook reloads, work continues. The clear cannot be automated — no tool, hook
-  output field or SDK call lets a session clear itself, and `claude -p` only spawns a
-  headless process whose work lands where nobody is looking. `project-docs` says so rather
-  than leaving a future session to rediscover it.
-
-  `PreCompact` was the obvious event and is not used: exit 2 is not honoured for it, so it
-  cannot hold a session open long enough to write anything, and whether it can inject context
-  at all is undocumented — which is the silent-discard trap this repo's JSON-contract rule
-  already exists for.
+- **The handoff — `Docs/Handoff/<date>/<slug>.md`.** A session that runs out of room
+  mid-work loses the detail behind it and leaves the next one inferring. It now writes
+  down where the work stood — objective, what is done with the evidence that proves it,
+  what remains, what is blocked, which review rung it reached — and hands the operator
+  that path to open a fresh session with. Labelled lines and bullets, no headings;
+  `budget.sh` holds it to 45 lines with the remedy *a handoff is a position, not a
+  narrative*.
 
 ### Removed
 

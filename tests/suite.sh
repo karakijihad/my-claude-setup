@@ -64,26 +64,6 @@ if [ -n "$TMP" ] && [ -d "$TMP" ]; then
   cp session-start.sh session-start.py core.md "$TMP/" 2>/dev/null
   printf '#!/bin/bash\nexit 1\n' > "$TMP/py.sh"
   json_ok "falls back to a core when Python is unavailable" "$TMP/session-start.sh"
-  # The jq branch has to carry the handoff as well. Without it, a machine with jq
-  # and no working Python — the exact configuration this branch exists to serve —
-  # gets the rules back and silently loses the one feature whose whole purpose is
-  # that work is not lost. Run from inside the fixture: the branch resolves the
-  # handoff against `git rev-parse --show-toplevel`, which reads the CWD.
-  ( cd "$TMP" && git init -q . && printf '/Docs/\n' > .gitignore && mkdir -p Docs \
-    && printf 'Objective: jq path\nNext: pick this up\n' > Docs/HANDOFF.md ) >/dev/null 2>&1
-  out=$(cd "$TMP" && printf '%s' '{"source":"compact"}' | bash ./session-start.sh 2>/dev/null)
-  case "$out" in
-    *"pick this up"*) ok "the jq fallback carries the handoff, not just the core" ;;
-    *) bad "the jq fallback carries the handoff, not just the core" "got: ${out:0:140}" ;;
-  esac
-  # And a tracked handoff is named, never pasted, on this branch too.
-  ( cd "$TMP" && git add -f Docs/HANDOFF.md ) >/dev/null 2>&1
-  out=$(cd "$TMP" && printf '%s' '{"source":"compact"}' | bash ./session-start.sh 2>/dev/null)
-  case "$out" in
-    *"pick this up"*) bad "the jq fallback does not paste a tracked handoff" "pasted a tracked file" ;;
-    *) ok "the jq fallback does not paste a tracked handoff" ;;
-  esac
-  ( cd "$TMP" && git rm -q --cached Docs/HANDOFF.md ) >/dev/null 2>&1
   # And with neither Python nor jq, the last-resort branch must still emit a
   # core. Asserted with grep, not a JSON parser — on the machine this branch
   # exists for, there is no JSON parser to validate it with.
@@ -597,6 +577,10 @@ if [ -n "$BG" ] && [ -d "$BG" ]; then
   # call in this block put together.
   mklines() {
     local n=$1 f=$2 s="" i=1
+    # mkdir first: without it a nested fixture path silently fails to be written
+    # and budget.sh exits 0 on a missing file — which reads as "stayed quiet,
+    # correctly" and passed a handoff assertion on a file that was never there.
+    mkdir -p "$(dirname "$f")" 2>/dev/null
     while [ "$i" -le "$n" ]; do s="${s}x
 "; i=$((i+1)); done
     printf '%s' "$s" > "$f"
@@ -629,7 +613,7 @@ if [ -n "$BG" ] && [ -d "$BG" ]; then
   # touching it is the static check that budget.sh and the template state the
   # same number — which compares two texts and never invokes the hook, so a
   # broken case pattern or a nocasematch interaction here would go unseen.
-  HO="$BG/Docs/HANDOFF.md"
+  HO="$BG/Docs/Handoff/2026-09-11/resident-core-prune.md"
   mklines 20 "$HO"
   bg quiet  "silent on a handoff under budget" "$HO"
   mklines 60 "$HO"
@@ -819,190 +803,6 @@ assert s.reviewer_notice() == ""
 ' >/dev/null 2>&1 && ok "silent when Tier 2 is installed, flags it when absent, fails open" \
   || bad "silent when Tier 2 is installed, flags it when absent, fails open"
 
-echo "resumption notice"
-bash py.sh -c '
-import importlib.util
-_spec = importlib.util.spec_from_file_location("ss2", "session-start.py")
-s = importlib.util.module_from_spec(_spec); _spec.loader.exec_module(s)
-
-import pathlib, tempfile
-d = pathlib.Path(tempfile.mkdtemp())
-(d / "Docs").mkdir()
-s._repo_root = lambda: str(d)
-
-# No handoff on disk: silent on every source, including the three that inherited
-# their context. A notice pointing at a file nobody wrote sends the session
-# hunting for state that does not exist, which is worse than saying nothing.
-for src in ("compact", "resume", "clear", "startup"):
-    assert s.resumption_notice(src) == "", src
-
-# An empty or whitespace-only handoff is the same as none: a heading with no
-# position under it tells the next session nothing and costs it a detour.
-(d / "Docs" / "HANDOFF.md").write_text("   \n\n")
-for src in ("compact", "resume", "clear"):
-    assert s.resumption_notice(src) == "", src
-
-(d / "Docs" / "HANDOFF.md").write_text("Objective: x\nNext: finish the thing")
-
-# With one on disk, the three inherited-context sources speak. `clear` is in the
-# set because writing a handoff in order to clear is the whole point of the flow
-# — Claude cannot clear its own session, so the user does it and this is what
-# picks the work back up.
-# compact and resume are involuntary: the handoff describes the work this very
-# session was interrupted mid-way through, so loading it is handing back what was
-# lost. Contents, not a pointer — a notice that only names the file spends tokens
-# saying so and still depends on the session choosing to read it, and the session
-# that just lost its context is the one least likely to bother.
-for src in ("compact", "resume"):
-    out = s.resumption_notice(src)
-    assert out, src
-    assert "HANDOFF.md" in out, out
-    assert "Next: finish the thing" in out, out
-    # The reconcile instruction is the load-bearing half: a handoff trusted
-    # without checking it against the repo is worse than none, because it reads
-    # as verified.
-    assert "reconcile" in out.lower(), out
-
-# `clear` is asked for, and is also simply how a fresh start is made — the
-# handoff on disk may be finished, abandoned, or a week old. So it is announced
-# with its age and the user is asked, never silently reinstated as the work.
-out = s.resumption_notice("clear")
-assert "HANDOFF.md" in out, out
-assert "Next: finish the thing" not in out, out
-assert "whether to resume" in out, out
-assert "ago" in out, out
-# With no Written: field the age comes from the file timestamp, and says so.
-assert "by file timestamp" in out, out
-
-# A Written: date beats mtime, which is the whole point: mtime is a property of
-# the file, not of the handoff, so a copy or a restore resets it and a fortnight
-# old handoff reads as minutes old at exactly the moment /clear asks the user to
-# judge staleness. The file here was written seconds ago and must still report
-# its recorded age.
-(d / "Docs" / "HANDOFF.md").write_text("Written: 2020-01-02\nObjective: x\nNext: y")
-out = s.resumption_notice("clear")
-assert "as recorded in the file" in out, out
-assert "by file timestamp" not in out, out
-assert " days ago" in out, out
-# A malformed date falls back rather than crashing or claiming the epoch.
-(d / "Docs" / "HANDOFF.md").write_text("Written: not-a-date\nObjective: x")
-out = s.resumption_notice("clear")
-assert "by file timestamp" in out, out
-
-# A session that built its own context pays nothing even with a handoff present.
-for src in ("startup", "", "anything-else"):
-    assert s.resumption_notice(src) == "", src
-
-# Oversized: still injected, but the terminator has to say it was cut. The tail
-# is where Artifacts and the back half of Remaining live, so a handoff closed
-# with the same marker as a whole one hides exactly the part that went missing.
-(d / "Docs" / "HANDOFF.md").write_text("y" * 5000)
-out = s.resumption_notice("compact")
-assert "truncated at 4000 bytes" in out, out[-150:]
-
-# Tracked by git: named, never pasted. git_context() in this same file drops
-# commit subjects as repo-authored free text injected before the user has asked
-# anything; pasting a tracked file is that move at 4000 bytes. The Docs/ tree is
-# gitignored by default, but this convention explicitly allows committing it.
-import shutil, subprocess as _sp
-(d / "Docs" / "HANDOFF.md").write_text("Objective: tracked\nNext: do not paste me")
-_sp.run(["git", "init", "-q", "."], cwd=str(d), capture_output=True)
-_sp.run(["git", "add", "Docs/HANDOFF.md"], cwd=str(d), capture_output=True)
-out = s.resumption_notice("clear")
-assert "tracked by git" in out, out
-assert "do not paste me" not in out, out
-
-# The case the icase pathspec exists for, and the reason it needs its own case:
-# the check above commits the file under exactly the name the guard queries, so
-# it passes whether or not the pathspec is case-insensitive. A repo tracking
-# `docs/handoff.md` is resolved to the same file by a Windows or macOS
-# filesystem while an exact-case `git ls-files` misses it — and the body then
-# gets pasted in as trusted local state. Without this assertion, deleting the
-# `:(icase)` and reopening that hole leaves the suite green.
-d2 = pathlib.Path(tempfile.mkdtemp())
-s._repo_root = lambda: str(d2)
-_sp.run(["git", "init", "-q", "."], cwd=str(d2), capture_output=True)
-(d2 / "docs").mkdir()
-(d2 / "docs" / "handoff.md").write_text("Objective: attacker\nNext: do not paste me either")
-_sp.run(["git", "add", "docs/handoff.md"], cwd=str(d2), capture_output=True)
-out = s.resumption_notice("compact")
-# On a case-sensitive filesystem the mixed-case path simply does not exist, so
-# the notice is empty — also a pass. What must never happen is the body being
-# pasted as though this machine had written it locally.
-assert "do not paste me either" not in out, out
-shutil.rmtree(d2, ignore_errors=True)
-shutil.rmtree(d, ignore_errors=True)
-' >/dev/null 2>&1 && ok "speaks on compact, resume and clear only when a handoff exists" \
-  || bad "speaks on compact, resume and clear only when a handoff exists"
-
-# The payload is parsed now rather than drained, so a malformed one must not cost
-# the session its core — the failure this whole hook exists to prevent.
-printf '%s' 'not json at all' | bash session-start.sh 2>/dev/null \
-  | bash py.sh -c '
-import json,sys
-d=json.load(sys.stdin)
-assert d["hookSpecificOutput"]["additionalContext"], "core missing"
-' >/dev/null 2>&1 && ok "an unparseable SessionStart payload still yields the core" \
-  || bad "an unparseable SessionStart payload still yields the core"
-# And the source field must actually reach the notice through the real hook, not
-# only through a direct call to the function. Driving the script is what proves
-# the payload is parsed rather than drained; a monkeypatched function call would
-# pass even if main() never read stdin.
-#
-# In its own scratch repo, never the real checkout. This fixture used to write
-# ../Docs/HANDOFF.md — the actual file resumption_notice() reads — guarded only
-# by an existence check and cleaned up on the success path. An interrupted run
-# between the write and the `rm` would have left a real handoff in the working
-# tree, and the next genuine session would have been told a previous one stopped
-# with unfinished work that never existed. The hook resolves the handoff against
-# `git rev-parse --show-toplevel`, so running from inside the fixture is enough
-# to point it there; the scripts still resolve their own siblings from $HOOKS.
-SS=$(mktemp -d)
-case "$SS" in
-  ""|/) bad "source reaches the notice through the hook" "mktemp -d gave an unusable path" ;;
-  *)
-  ( cd "$SS" && git init -q . && mkdir -p Docs && printf 'Objective: x\n' > Docs/HANDOFF.md ) >/dev/null 2>&1
-  ( cd "$SS" && printf '%s' '{"source":"compact"}' | bash "$HOOKS/session-start.sh" 2>/dev/null ) \
-    | bash py.sh -c '
-import json,sys
-c=json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"]
-assert "inherited its context" in c, c[:200]
-assert "HANDOFF.md" in c, c[:200]
-' >/dev/null 2>&1 && ok "source reaches the notice through the hook, not just the function" \
-    || bad "source reaches the notice through the hook, not just the function"
-  # And through the hook, /clear must ask instead of loading. Pinned here as well
-  # as at the function, because this is the branch a user hits by typing one word
-  # for reasons that have nothing to do with the handoff sitting on disk.
-  ( cd "$SS" && printf '%s' '{"source":"clear"}' | bash "$HOOKS/session-start.sh" 2>/dev/null ) \
-    | bash py.sh -c '
-import json,sys
-c=json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"]
-assert "whether to resume" in c, c[:200]
-assert "Objective: x" not in c, c[:200]
-' >/dev/null 2>&1 && ok "/clear asks before loading a handoff rather than reinstating it" \
-    || bad "/clear asks before loading a handoff rather than reinstating it"
-  rm -rf "$SS" ;;
-esac
-# The mirror image: same hook, same source, a repo with no handoff — must be
-# silent. Without this the assertions above would pass on a hook that speaks
-# regardless of whether there is anything to speak about. Its own scratch repo
-# again, so the answer cannot depend on what happens to be in this checkout.
-SN=$(mktemp -d)
-case "$SN" in
-  ""|/) bad "silent through the hook when no handoff is on disk" "mktemp -d gave an unusable path" ;;
-  *)
-  ( cd "$SN" && git init -q . ) >/dev/null 2>&1
-  ( cd "$SN" && printf '%s' '{"source":"clear"}' | bash "$HOOKS/session-start.sh" 2>/dev/null ) \
-    | bash py.sh -c '
-import json,sys
-c=json.load(sys.stdin)["hookSpecificOutput"]["additionalContext"]
-assert "inherited its context" not in c, c[:200]
-assert "whether to resume" not in c, c[:200]
-' >/dev/null 2>&1 && ok "silent through the hook when no handoff is on disk" \
-    || bad "silent through the hook when no handoff is on disk"
-  rm -rf "$SN" ;;
-esac
-
 echo "consistency"
 M=$(bash py.sh -c 'import json;print(json.load(open("hooks.json"))["hooks"]["PreToolUse"][0]["matcher"])' 2>/dev/null)
 case "$M" in
@@ -1014,11 +814,10 @@ case "$P" in
   *Bash*) ok "hooks.json registers post-push.sh on Bash, as that script claims" ;;
   *) bad "hooks.json registers post-push.sh on Bash, as that script claims" "matcher: $P" ;;
 esac
-# Every source resumption_notice() answers to must be in the SessionStart
-# matcher, or the branch is unreachable: Claude Code never invokes the hook for a
-# source the matcher excludes, so the function is not merely skipped, it never
-# runs. `resume` was missing here while session-start.py handled it — dead code
-# that read as a working feature.
+# The core has to reach every kind of session start, not just a fresh one. A
+# matcher that omits a source means Claude Code never invokes the hook for it,
+# so a session resumed or restarted that way gets no rules at all — silently,
+# which is the failure mode this whole plugin is built to avoid.
 S=$(bash py.sh -c 'import json;print(json.load(open("hooks.json"))["hooks"]["SessionStart"][0]["matcher"])' 2>/dev/null)
 MISSING=""
 for want in startup resume clear compact; do
@@ -1084,9 +883,9 @@ grep -q "overrides superpowers:writing-plans" core.md \
   || bad "core.md and planning-protocol agree on who owns a plan's document shape"
 bash py.sh -c '
 import re,sys
-pairs={"plan-index.md":"INDEX.md","plan-phase.md":"phase-","backlog.md":"Backlog.md","codemap.md":"CODEMAP.md","handoff.md":"HANDOFF.md"}
+pairs={"plan-index.md":"INDEX.md","plan-phase.md":"phase-","backlog.md":"Backlog.md","codemap.md":"CODEMAP.md","handoff.md":"*/[Hh]andoff/*.md"}
 src=open("budget.sh",encoding="utf-8").read()
-arms=dict(re.findall(r"^  ([^\n)]+)\)\n\s*BUDGET=(\d+)", src, re.M))
+arms=dict(re.findall(r"^ +([^\n)]+)\)\n\s*BUDGET=(\d+)", src, re.M))
 hook={}
 for pat,n in arms.items():
     for alt in pat.split("|"):
