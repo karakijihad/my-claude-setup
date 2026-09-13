@@ -1683,6 +1683,28 @@ else
   ok "status line assertions skipped (no node on PATH)"
 fi
 
+# The Agent tool has no effort parameter, so these definitions are the only
+# place a subagent's effort is set. Losing `effort: high`, or giving the advisor
+# write tools, is silent at runtime. And the routing is prose in core.md and
+# agent-protocol: a renamed agent leaves both naming a type that doesn't exist.
+bash py.sh -c '
+import re,sys
+bad=[]
+for name in ("worker","advisor"):
+    txt=open("../agents/%s.md"%name,encoding="utf-8").read()
+    fm=txt.split("---")[1] if txt.startswith("---") else ""
+    if not re.search(r"^name: %s$"%name, fm, re.M): bad.append(name+": name")
+    if not re.search(r"^effort: high$", fm, re.M): bad.append(name+": effort")
+    for doc in ("core.md","../skills/agent-protocol/SKILL.md"):
+        if "my-claude-setup:"+name not in open(doc,encoding="utf-8").read(): bad.append(doc+" misses "+name)
+adv=open("../agents/advisor.md",encoding="utf-8").read().split("---")[1]
+m=re.search(r"^disallowedTools: (.*)$", adv, re.M)
+if not m or not {"Write","Edit","NotebookEdit"} <= {t.strip() for t in m.group(1).split(",")}: bad.append("advisor can write")
+print(bad)
+sys.exit(0 if not bad else 1)
+' >/dev/null 2>&1 && ok "worker and advisor pin effort high, advisor is read-only, and the docs route to both" \
+  || bad "worker and advisor pin effort high, advisor is read-only, and the docs route to both"
+
 # The Docs rule is prose in four places and one line in .gitignore. Prose drifts;
 # these two assertions are what notice. Anchored matters: a bare Docs/ also
 # matches a nested packages/*/Docs/.

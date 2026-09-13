@@ -14,9 +14,14 @@ you demand back, and how to read one.
 concurrently. Never edit a file an agent holds: you are a writer too, and the merge has no
 git behind it.
 
-**Model.** Agents that write code, gather information or run tests take the subagent default
-— don't pass `model`. An advice-only agent takes the advisor model when session start names
-one, and never writes code. With no tiers named, pass nothing and let the harness decide.
+**Agent type and effort.** The Agent tool has no effort parameter; effort comes only from an
+agent's definition. So route by type: work that writes code, gathers information or runs
+tests goes to `my-claude-setup:worker`, advice to `my-claude-setup:advisor` — both pin
+`effort: high`. `general-purpose` carries no effort of its own; don't use it for delegated work.
+
+**Model.** A worker takes the subagent default — don't pass `model`. An advisor takes the
+model the operator named ("consult fable" → `model: fable`), else the advisor tier when
+session start names one; it never writes code. With nothing named, pass nothing.
 
 ## The brief
 

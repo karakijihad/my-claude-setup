@@ -8,7 +8,7 @@
 ## Project
 
 A Claude Code plugin. It injects a small always-resident rule core, loads six protocol
-references on demand, and ships five hooks. Published as its own marketplace.
+references on demand, and ships five hooks and two agents. Published as its own marketplace.
 
 ## Key files
 
@@ -56,6 +56,10 @@ references on demand, and ships five hooks. Published as its own marketplace.
 - `skills/*/SKILL.md` — the `description:` field is the router (see Gotchas). Descriptions are
   resident in the system prompt for **every** session, so budget them like `core.md`: name the
   trigger situations, not the topic vocabulary, ~30–70 tokens each.
+- `agents/` — `worker` (delegated work) and `advisor` (consults, read-only). **They exist for
+  `effort: high`**: the Agent tool can pass `model` but not effort, so a definition is the only
+  place a subagent's effort is set. The model stays off both cards — a model passed on the
+  call wins, which is how "consult fable" reuses one advisor for any model.
 - `commands/` — `setup`, and it is the only one. Part 1 sets up a machine; Part 2 sets up a
   project, scaffolding a blank slate or surveying an existing repo before it writes.
 - `tests/suite.sh` — the whole test suite. Lives outside `hooks/` because `hooks/` is what ships;

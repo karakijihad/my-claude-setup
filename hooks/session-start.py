@@ -104,7 +104,7 @@ def model_tiers() -> str:
         "\n\nModel tiers, set by the user (edit in settings.json or rerun /setup): "
         + " · ".join(named)
         + ". Code, research and test agents take the subagent default; pass the advisor "
-        "as `model` only on advice-only agents, never on one that writes code."
+        "as `model` only on my-claude-setup:advisor, never on an agent that writes code."
     )
 
 

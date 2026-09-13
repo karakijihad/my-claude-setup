@@ -72,6 +72,7 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 .claude-plugin/     marketplace.json, plugin.json
 hooks/              hooks.json + 5 hooks and their shared helpers
 skills/             6 protocol skills
+agents/             worker and advisor — the delegated-work and consult agents, both effort high
 commands/           setup — machine setup (Part 1), project setup (Part 2)
 assets/templates/   project CLAUDE.md, decision / plan / backlog / codemap entries, handoff, changelog, Docs skeleton
 assets/             statusline.mjs, the status line /setup installs

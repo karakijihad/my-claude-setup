@@ -5,6 +5,25 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.22.0] — 2026-09-13
+
+The Agent tool can set a subagent's model but not its effort — effort comes only from an
+agent's definition. So a swarm or a consult ran at whatever the harness gave a
+`general-purpose` agent, which is undocumented. The plugin now ships the definitions.
+
+### Added
+
+- **`agents/worker.md`** — the default for delegated work (code on a file set, research,
+  tests), `effort: high`. Restates the brief-and-report contract `agent-protocol` sets.
+- **`agents/advisor.md`** — advice-only, read-only, `effort: high`. "Consult fable" dispatches
+  it with `model: fable`; a model passed on the call overrides the definition, so one card
+  serves any model. When Codex is named too, `trio:trio-consult` runs alongside, each blind to
+  the other.
+- `core.md` and `agent-protocol` route delegated work to `worker` and consults to `advisor`
+  instead of `general-purpose`.
+
+---
+
 ## [1.21.0] — 2026-09-13
 
 A full read-through by parallel agents found guard bypasses, a subagent gate that turned
