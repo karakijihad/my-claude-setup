@@ -9,10 +9,11 @@ records what changed and when, so anything restating that is cost without value.
 | [Audit/](./Audit/)         | Review findings **and** their adjudication — `claude/`, `codex/` |
 | [Plan/](./Plan/)           | In-flight work only; delete a plan when its work lands       |
 
-Three files may sit beside them: `Plan/BACKLOG.md` (identified, not yet planned), `CODEMAP.md`
+Three more may sit beside them: `Plan/BACKLOG.md` (identified, not yet planned), `CODEMAP.md`
 (a structural map, for a repo too large to hold in one head — roles not histories, and it
-carries its own regeneration trigger), and `HANDOFF.md` (where the work stood when a session
-ran out of room — one file, overwritten, deleted when the work lands).
+carries its own regeneration trigger), and `Handoff/<YYYY-MM-DD>/<slug>.md` (where the work
+stood when a session ran out of room — one file per piece of work, deleted when it lands;
+nothing reads it automatically, so you hand its path to the next session yourself).
 
 **This tree is gitignored by default** — all of it, including any subfolder added later. It is
 working evidence, and some of it is private. To version it instead, say so in the project's

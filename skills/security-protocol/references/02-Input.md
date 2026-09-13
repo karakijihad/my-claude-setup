@@ -21,12 +21,12 @@ Every piece of data that enters the system is untrusted until validated. This in
 ## Output Encoding
 
 - **Encode output for its rendering context.** The same data needs different encoding depending on where it appears:
-  - HTML body â†’ HTML-encode (`<` â†’ `&lt;`)
-  - HTML attributes â†’ attribute-encode (quote and encode)
-  - JavaScript â†’ JS-encode (or use JSON.stringify, never template into script tags)
-  - URLs â†’ URL-encode (`encodeURIComponent`)
-  - SQL â†’ parameterize (never encode manually)
-  - CSS â†’ CSS-encode or avoid dynamic CSS values entirely
+  - HTML body → HTML-encode (`<` → `&lt;`)
+  - HTML attributes → attribute-encode (quote and encode)
+  - JavaScript → JS-encode (or use JSON.stringify, never template into script tags)
+  - URLs → URL-encode (`encodeURIComponent`)
+  - SQL → parameterize (never encode manually)
+  - CSS → CSS-encode or avoid dynamic CSS values entirely
   - Markdown, CSV, XML, shell commands — each has its own escaping rules
 - **Never inject raw user content into any output context.**
 

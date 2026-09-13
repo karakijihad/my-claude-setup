@@ -1,6 +1,7 @@
 #!/bin/bash
-# PostToolUse (Bash — keep hooks.json's matcher in sync). Never blocks: this
-# event cannot stop a tool call that already ran, so every path exits 0.
+# PostToolUse (Bash|PowerShell — keep hooks.json's matcher in sync). Never
+# blocks: this event cannot stop a tool call that already ran, so every path
+# exits 0.
 #
 # Why a hook at all. Everything else in git-protocol happens while the work is
 # in hand; CI resolves minutes after the push, by which point the session has
@@ -8,7 +9,10 @@
 # finished is the kind that loses to context pressure — the same reason the
 # destructive-command rule ended up in guard.sh rather than in a skill.
 #
-# Fires on every Bash call, so the cheap rejections come first.
+# Fires on every Bash/PowerShell call, so the cheap rejections come first.
+# The PowerShell tool's payload carries its script in the same
+# tool_input.command field parse_all already reads, so no separate handling
+# is needed once hooks.json's matcher covers the tool.
 
 # `read`, not `$(cat)`. `cat` is an external binary, so this forked and exec'd
 # on every call — the one spawn every payload paid before any check ran. `-d ''`

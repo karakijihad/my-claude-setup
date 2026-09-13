@@ -1,5 +1,5 @@
 #!/bin/bash
-# PreToolUse (Bash|Edit|Write|NotebookEdit — keep hooks.json's matcher in sync).
+# PreToolUse (Bash|Edit|Write|NotebookEdit|PowerShell — keep hooks.json's matcher in sync).
 # Exit 2 = block.
 #
 # One script for what used to be three (block-destructive, check-secrets,
@@ -54,10 +54,48 @@ if [ -n "$CMD" ]; then
   # nothing here nudges anyone from the safe variant toward the blunt one; the
   # user is asked to run either by hand. Pinned by a test, because a reader who
   # assumed it was collateral would "fix" it back.
-  RE_DESTRUCTIVE='rm[[:space:]]+-[a-z]*r[a-z]*f[a-z]*[[:space:]]+(/|~|\*|"?\$HOME)|rm[[:space:]]+-[a-z]*f[a-z]*r[a-z]*[[:space:]]+(/|~|\*)|DROP[[:space:]]+(TABLE|DATABASE)|TRUNCATE[[:space:]]+TABLE|push[[:space:]]+--force'"$RE_WORD_END"'|push[[:space:]]+-f'"$RE_WORD_END"'|git[[:space:]]+reset[[:space:]]+--hard|git[[:space:]]+clean[[:space:]]+-[a-z]*f|git[[:space:]]+checkout[[:space:]]+--[[:space:]]'
+  #
+  # RE_Q: an optional quote in front of an rm target. `"?\$HOME` used to be the
+  # only quoted form — it guarded $HOME alone, so `rm -rf "/"` or `rm -rf '~'`
+  # went through unquoted-only. Built with a double-quoted assignment because
+  # the single-quoted RE_DESTRUCTIVE below cannot hold a literal `'` without
+  # the break-and-reopen trick; it is spliced in the same way RE_WORD_END is.
+  RE_Q="[\"']?"
+  # rm's flags used to be checked only fused into one token (-rf, -fr). `rm -r
+  # -f /` and `rm --recursive --force /` split them across two argv words, in
+  # either order, and passed. Each order and each spelling gets its own
+  # alternative, same reasoning as the two fused-order alternatives already
+  # here. git clean's flags get the equivalent split-flag tolerance: up to two
+  # unrelated leading flags before the one that carries `f`, which is what
+  # `git clean -d -f` and `git clean -x -d -f` actually are.
+  RE_DESTRUCTIVE='rm[[:space:]]+-[a-z]*r[a-z]*f[a-z]*[[:space:]]+'"$RE_Q"'(/|~|\*|\$HOME)|rm[[:space:]]+-[a-z]*f[a-z]*r[a-z]*[[:space:]]+'"$RE_Q"'(/|~|\*|\$HOME)|rm[[:space:]]+-[a-z]*r[a-z]*[[:space:]]+-[a-z]*f[a-z]*[[:space:]]+'"$RE_Q"'(/|~|\*|\$HOME)|rm[[:space:]]+-[a-z]*f[a-z]*[[:space:]]+-[a-z]*r[a-z]*[[:space:]]+'"$RE_Q"'(/|~|\*|\$HOME)|rm[[:space:]]+--recursive[[:space:]]+--force[[:space:]]+'"$RE_Q"'(/|~|\*|\$HOME)|rm[[:space:]]+--force[[:space:]]+--recursive[[:space:]]+'"$RE_Q"'(/|~|\*|\$HOME)|DROP[[:space:]]+(TABLE|DATABASE)|TRUNCATE[[:space:]]+TABLE|push[[:space:]]+--force'"$RE_WORD_END"'|push[[:space:]]+-f'"$RE_WORD_END"'|git[[:space:]]+reset[[:space:]]+--hard|git[[:space:]]+clean[[:space:]]+(-[a-z]*[[:space:]]+){0,2}-[a-z]*f|git[[:space:]]+checkout[[:space:]]+--[[:space:]]'
+
+  # PowerShell's rm -rf. Remove-Item takes -Recurse and -Force as separate,
+  # independently-ordered named switches with their own abbreviations (down to
+  # -r and -fo, the shortest prefixes that stay unambiguous), so it cannot
+  # reuse the rm patterns above — those key on one fused or space-split short
+  # flag, not named switches. Checked as three independent conditions ANDed
+  # together rather than folded into one alternation: an alternation would
+  # need every permutation of {cmdlet, -Recurse, -Force, target} enumerated to
+  # allow "any order", which is exactly what an AND of three regexes gets for
+  # free. Bash's own PowerShell tool carries its script in the same
+  # tool_input.command field CMD already comes from — no separate wiring
+  # needed once hooks.json's matcher covers the tool.
+  RE_PS_RECURSE='-r(e(c(u(r(s(e)?)?)?)?)?)?([^a-zA-Z]|$)'
+  RE_PS_FORCE='-fo(r(c(e)?)?)?([^a-zA-Z]|$)'
+  # Bounded by whitespace/start/end on both sides so `*.log` and `C:\Users\me`
+  # do not read as the bare wildcard or the drive root they merely contain —
+  # a dangerous target has to stand alone as its own argument.
+  # A quote around the target is the same target — `"C:\"` is how a path with
+  # nothing to escape still gets typed — so it is allowed on either side.
+  RE_PS_TARGET='(^|[[:space:]])["'"'"']?([A-Za-z]:[\\/]|/|~|\$HOME|\$env:USERPROFILE|\*)[\\/]?\*?["'"'"']?([[:space:]]|$)'
+
+  # The cmdlet by any of its built-in aliases: `rm -Recurse -Force C:\` is the
+  # same call, and matching only the full name let it through.
+  RE_PS_CMD='(^|[^A-Za-z-])(Remove-Item|ri|rm|rmdir|rd|del|erase)([[:space:]]|$)'
 
   shopt -s nocasematch
-  if [[ $CMD =~ $RE_DESTRUCTIVE ]]; then
+  if [[ $CMD =~ $RE_DESTRUCTIVE ]] || { [[ $CMD =~ $RE_PS_CMD ]] && [[ $CMD =~ $RE_PS_RECURSE ]] && [[ $CMD =~ $RE_PS_FORCE ]] && [[ $CMD =~ $RE_PS_TARGET ]]; }; then
     shopt -u nocasematch
     echo "BLOCKED: Destructive command. Review and run manually if intended." >&2
     exit 2
@@ -94,7 +132,17 @@ if [ -n "$CMD" ]; then
     exit 2
   fi
 
-  RE_COMMIT_SKIPS_HOOKS='git[[:space:]]+commit[^|;&]*([[:space:]]-n([[:space:]]|$)|--no-verify|--no-gpg-sign)'
+  # Same between-words tolerance RE_IS_COMMIT uses below, for the same reason:
+  # `git -c foo=bar commit --no-verify` has a global option sitting between
+  # `git` and `commit`, and requiring them adjacent missed it. `-c
+  # commit.gpgsign=false` and `-c core.hooksPath=...` get their own
+  # alternatives rather than folding into the flag group that follows
+  # `commit` — both take effect as part of `git` itself, before the
+  # subcommand, so the flag they represent can only ever appear ahead of
+  # `commit`, never after it.
+  RE_COMMIT_SKIPS_HOOKS='git[[:space:]]+([^|;&[:space:]]+[[:space:]]+)*commit[^|;&]*([[:space:]]-n([[:space:]]|$)|--no-verify|--no-gpg-sign)|git[[:space:]]+[^|;&]*-c["'"'"']?[[:space:]]+["'"'"']?commit\.gpgsign=false[^|;&]*commit|git[[:space:]]+[^|;&]*-c["'"'"']?[[:space:]]+["'"'"']?core\.hooksPath=[^|;&]*commit'
+  # The quotes above: git strips shell quotes before it reads `-c`, so
+  # `-c "commit.gpgsign=false"` is the same override and must block the same.
   if [[ $CMD =~ $RE_COMMIT_SKIPS_HOOKS ]]; then
     echo "BLOCKED: Commit skips git's own hooks. Fix what the hook objects to instead." >&2
     exit 2
@@ -105,7 +153,10 @@ if [ -n "$CMD" ]; then
   # The greps below survive on purpose: this branch runs on a commit, which is
   # rare and already pays for a `git diff`, and scanning a whole diff line by
   # line in bash would be slower than one grep over it.
-  RE_IS_COMMIT='(^|&&|;)[[:space:]]*git[[:space:]]+([a-z-]+[[:space:]]+)*commit'
+  # Any non-separator word may sit between git and commit, not just [a-z-]
+  # ones: `-c key=value` carries `.` and `=`, and a narrower class skipped the
+  # secret scan for every commit written that way.
+  RE_IS_COMMIT='(^|&&|;)[[:space:]]*git[[:space:]]+([^|;&[:space:]]+[[:space:]]+)*commit'
   [[ $CMD =~ $RE_IS_COMMIT ]] || exit 0
 
   ADDED=$(git diff --cached --no-color 2>/dev/null | grep -E "^\+" | grep -v '^+++')
@@ -149,18 +200,27 @@ fi
 # blocking, which is the safe direction for a guard.
 FILE_N=${FILE//\\//}
 
+# Case-insensitive the way the Bash checks above are: Windows treats .ENV,
+# Package-Lock.json and /.GIT/ as the same paths as their lowercase spellings,
+# and a case-sensitive `case` here waved all three through. Turned off before
+# every exit in this region, not just at the bottom — an option left set past
+# the last check that needs it is a latent bug for the next one added here.
+shopt -s nocasematch
 case "$(basename "$FILE_N")" in
   # security-protocol §04-Data requires an example env file to exist.
-  .env.example|.env.sample|.env.template) exit 0 ;;
+  .env.example|.env.sample|.env.template) shopt -u nocasematch; exit 0 ;;
   .env|.env.*|package-lock.json|yarn.lock|pnpm-lock.yaml)
+    shopt -u nocasematch
     echo "BLOCKED: Protected file. Edit manually if intended: $FILE" >&2
     exit 2 ;;
 esac
 
 case "$FILE_N" in
   */.git/*)
+    shopt -u nocasematch
     echo "BLOCKED: Refusing to edit inside .git/: $FILE" >&2
     exit 2 ;;
 esac
+shopt -u nocasematch
 
 exit 0

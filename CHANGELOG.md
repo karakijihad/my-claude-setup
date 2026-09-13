@@ -5,6 +5,47 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.21.0] — 2026-09-13
+
+A full read-through by parallel agents found guard bypasses, a subagent gate that turned
+itself off on common formatting, and stale docs. It also found that the orchestration model —
+run a swarm, keep your own context low, hand off when a fresh session would do better — was
+spread across skills instead of stated where every session reads it.
+
+### Added
+
+- **Model tiers, shipped blank.** `/setup` asks for an orchestrator, subagent and advisor model
+  and writes only what the user names (`model`, `env.CLAUDE_CODE_SUBAGENT_MODEL`,
+  `env.MY_CLAUDE_SETUP_ADVISOR_MODEL`). `session-start.py` names whichever are set in one
+  line; values must look like a model alias, so a config key can't carry instructions.
+- **`core.md` states the orchestration model**: you can run a swarm and choose it by file
+  sets; context is the orchestrator's budget; hand off when a fresh session serves the
+  objective better. Consult (advice before a choice) and audit (review of finished work) are
+  named as different jobs.
+
+### Fixed
+
+- **`guard.sh` bypasses**: the PowerShell tool skipped the guard and `post-push.sh` entirely
+  (both matchers now name it, and `Remove-Item -Recurse -Force` on a root is blocked); split flags
+  (`rm -r -f`), quoted targets and a root's children (`C:\*`, `~/*`) for `rm` and `Remove-Item`
+  alike, and its `rm`/`ri`/`del`/`rd` aliases), `git clean -d -f`, `--no-verify` behind any
+  `git -c key=value`, a quoted `-c "commit.gpgsign=false"`, and case-varied
+  protected files (`.ENV`, `Package-Lock.json`, `.GIT/`) all got through. The same `-c` gap
+  skipped the staged-secret scan for any commit written that way.
+- **`subagent-verify.sh`** only recognised `**Label:**`; `**Label**:` or plain `Label:` switched
+  the gate off. Now any of those count, while unbolded `PASS: 10` lines in pasted output stay
+  output.
+- **`selfheal.py`** said nothing when `settings.json` failed to parse and the status-line check
+  was skipped.
+- **Docs templates** described the old single `HANDOFF.md` and sent audit results to
+  `Doclog/` and `Sessions/`; a security reference pointed at a "session note"; mojibake arrows.
+- **Resuming a handoff** now says to continue from its `Next:`, not only to report status.
+
+### Changed
+
+- **Onboarding no longer flags an unset subagent model** — blank is the default now.
+- **`session-start.py`** drops the toplevel lookup left over from the deleted handoff pickup.
+
 ## [1.20.0] — 2026-09-11
 
 The handoff shipped with a pickup mechanism: a SessionStart hook that worked out whether a

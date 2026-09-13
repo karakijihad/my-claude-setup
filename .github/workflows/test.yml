@@ -44,9 +44,14 @@ jobs:
       - name: Line endings must be LF
         shell: bash
         run: |
-          # .gitattributes pins *.sh to LF. With core.autocrlf=true a CRLF
-          # checkout makes bash die on `bad interpreter`, and it fails in a way
-          # that looks like a missing file rather than a line-ending problem.
+          # .gitattributes pins *.sh, and hooks/core.md, to LF. With
+          # core.autocrlf=true a CRLF checkout makes bash die on `bad
+          # interpreter` for a script, and it fails in a way that looks like a
+          # missing file rather than a line-ending problem. core.md is pinned
+          # for a different reason: the no-Python fallback in
+          # session-start.sh pipes it through `jq -Rs`, which reads raw
+          # bytes, so a CRLF checkout would land inside the emitted JSON
+          # string.
           #
           # Counts CR bytes with tr. No nested shell and no carriage return
           # passed as an argument, because both of those broke it:
@@ -69,14 +74,14 @@ jobs:
           # clean — so the whole substitution failed and the step aborted with an
           # empty `bad` and nothing printed, which reads exactly like a CRLF
           # failure and is not one.
-          bad=$(find . -name '*.sh' -not -path './.git/*' -print \
+          bad=$(find . \( -name '*.sh' -o -path './hooks/core.md' \) -not -path './.git/*' -print \
             | while IFS= read -r f; do
                 if [ "$(tr -dc '\r' < "$f" | wc -c)" -gt 0 ]; then
                   printf '%s\n' "$f"
                 fi
               done)
           if [ -n "$bad" ]; then echo "CRLF found in:"; echo "$bad"; exit 1; fi
-          echo "all *.sh are LF"
+          echo "all *.sh and hooks/core.md are LF"
 
       - name: Run the suite
         shell: bash

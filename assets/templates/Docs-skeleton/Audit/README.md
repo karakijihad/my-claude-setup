@@ -125,8 +125,7 @@ Best use cases for Claude:
 
 1. Codex reviews implementation and writes audit
 2. Claude reads the audit and challenges/confirms it
-3. Final decisions go into `Docs/Doclog/YYYY-MM-DD.md`
-4. Work updates go into `Docs/Sessions/YYYY-MM-DD.md`
+3. Final decisions go into `Docs/Decisions/YYYY-MM-DD.md`
 
 With the `trio` plugin installed, `trio:trio-audit` runs Option A end to end — Codex reviews
 read-only through parallel lenses, Claude adjudicates each finding against the code — and a
@@ -152,8 +151,7 @@ Use audits as:
 
 Final accepted architecture or implementation decisions should be recorded in:
 
-- `Docs/Doclog/YYYY-MM-DD.md`
-- `Docs/Sessions/YYYY-MM-DD.md`
+- `Docs/Decisions/YYYY-MM-DD.md`
 - stage checklists under `Docs/Plan/`
 
 ---

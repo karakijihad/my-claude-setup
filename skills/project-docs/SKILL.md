@@ -71,8 +71,13 @@ exists.
 the number in the operator's status line, which is computed separately and never reaches you,
 so never quote one as the other.
 
-When what is left will not carry the work to a reviewable end: **write the handoff, give the
-operator its path, and say to start a new session.** One line, then stop.
+There is no threshold to wait for; it is a judgement against the objective. Keep your own
+context low and cut noise as you go — delegate reads and runs, keep conclusions. Then ask,
+at each natural break: does what the objective still needs fit cleanly in what is left, or
+is this session now carrying enough stale output, dead ends and spent detail that a fresh
+one, starting from a handoff, would do the rest better? When it is the second — or what is
+left will not carry the work to a reviewable end — **write the handoff, give the operator its
+path, and say to start a new session.** One line, then stop.
 
 > Handoff written to `Docs/Handoff/2026-09-11/auth-migration.md` — start a new session and
 > paste that path.
@@ -92,7 +97,9 @@ handing work to another person.
 
 **Resuming from one:** reconcile it against the repo before acting — `git status`, the suite,
 the plan file. Where they disagree the repo is right; a handoff is what the last session
-believed, not what is true. Say in one line where the work actually stands.
+believed, not what is true. Say in one line where the work actually stands, then continue from
+its `Next:` — a handoff exists so the new session picks the work up, not so it reports on it.
+Load whatever `Review rung` and plan it names before the first edit.
 
 **Shape:** `assets/templates/handoff.md`, at `Docs/Handoff/<YYYY-MM-DD>/<slug>.md`. The
 folder is normative because `budget.sh` keys on it; the slug names the work, so three of them

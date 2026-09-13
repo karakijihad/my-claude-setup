@@ -10,6 +10,7 @@ Invoked through py.sh, never as `python3` directly — see that script for why.
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -44,15 +45,11 @@ CORE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "core.md")
 _GIT_INFO = None
 
 
-def _git_info() -> tuple:
-    """(toplevel, branch) from a single git call, cached for this process.
+def _branch() -> str:
+    """Current branch from one git call, cached for this process.
 
-    One `rev-parse` answers both questions, and both callers here wanted one of
-    them: git_context needs the branch, the handoff lookup needs the toplevel.
-    They used to shell out separately, which on a resumed session meant three
-    git processes before the hook had said anything — and lib-parse.sh's own
-    header records this repo measuring spawns at 90-200ms apiece on Windows and
-    rewriting a parser to avoid exactly that.
+    lib-parse.sh's header records this repo measuring spawns at 90-200ms apiece
+    on Windows, so this stays a single call.
 
     `--abbrev-ref HEAD` prints the literal string `HEAD` on a detached head,
     which is not a branch name; it becomes "" here so callers see what
@@ -60,26 +57,60 @@ def _git_info() -> tuple:
     """
     global _GIT_INFO
     if _GIT_INFO is None:
-        top = branch = ""
+        branch = ""
         try:
             out = subprocess.run(
-                ["git", "rev-parse", "--show-toplevel", "--abbrev-ref", "HEAD"],
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
                 capture_output=True, text=True, timeout=5,
             )
-            if out.returncode == 0:
-                parts = [p.strip() for p in out.stdout.strip().splitlines()]
-                top = parts[0] if parts else ""
-                if len(parts) > 1 and parts[1] != "HEAD":
-                    branch = parts[1]
+            if out.returncode == 0 and out.stdout.strip() != "HEAD":
+                branch = out.stdout.strip()
         except Exception:
             pass
-        _GIT_INFO = (top, branch)
+        _GIT_INFO = branch
     return _GIT_INFO
+
+
+# A tier value is injected into context, so it must look like a model alias or
+# id and nothing more — settings.json is user-written, but a value carrying
+# sentences would be instructions arriving through a config key.
+_TIER_VALUE = re.compile(r"^[A-Za-z0-9._:\[\]-]{1,64}$")
+
+
+def model_tiers() -> str:
+    """One line naming the model tiers the user chose in /setup, or ''.
+
+    Tiers ship blank. Only keys the user set appear, so a machine that never
+    named models gets nothing here and the harness defaults stand. Orchestrator
+    is the `model` key, workers `env.CLAUDE_CODE_SUBAGENT_MODEL` (which the
+    harness applies itself), advisor `env.MY_CLAUDE_SETUP_ADVISOR_MODEL` (which
+    only this line makes visible).
+    """
+    try:
+        cfg = read_settings()
+        env = cfg.get("env") or {}
+        tiers = [
+            ("orchestrator", cfg.get("model")),
+            ("subagents", env.get("CLAUDE_CODE_SUBAGENT_MODEL")),
+            ("advisor", env.get("MY_CLAUDE_SETUP_ADVISOR_MODEL")),
+        ]
+        named = [f"{role} = {v}" for role, v in tiers
+                 if isinstance(v, str) and _TIER_VALUE.match(v)]
+    except Exception:
+        return ""
+    if not named:
+        return ""
+    return (
+        "\n\nModel tiers, set by the user (edit in settings.json or rerun /setup): "
+        + " · ".join(named)
+        + ". Code, research and test agents take the subagent default; pass the advisor "
+        "as `model` only on advice-only agents, never on one that writes code."
+    )
 
 
 def git_context() -> str:
     """Branch, or empty string outside a repo."""
-    branch = _git_info()[1]
+    branch = _branch()
     if not branch:
         return ""
     # Commit subjects used to be included here and no longer are. They are
@@ -130,7 +161,7 @@ def main() -> None:
     # one session after an update, and on that session it is the most
     # time-sensitive thing here — burying it behind ~800 tokens of standing
     # rules is how it got read as background and never mentioned to the user.
-    context = heal() + core + git_context() + reviewer_notice() + notice()
+    context = heal() + core + model_tiers() + git_context() + reviewer_notice() + notice()
     # The nesting is load-bearing. A bare top-level {"additionalContext": ...}
     # is the SDK/Copilot shape; Claude Code reads hookSpecificOutput and ignores
     # anything it does not recognise, so the wrong shape is not an error — it is

@@ -231,7 +231,7 @@ direction — an earlier version checked only one way, which passes happily when
 | Plugin | Its one job | Fires when |
 |-|-|-|
 | `feature-dev` | **Tier 2 reviewer** — `code-reviewer`, the ladder's default. **The one that matters most** | Any real change |
-| `trio` | **Tier 3 audit** — Codex reviews read-only through parallel lenses, Claude adjudicates each finding. Also second opinions via `trio-consult` | Auth, secrets, payments, migrations, deletion; >5 files; a release; or reviewer-vs-diff disagreement |
+| `trio` | **Tier 3 audit** — Codex reviews read-only through parallel lenses, Claude adjudicates each finding. `trio-consult` is the other job: advice on ideas and designs before a choice, never a review of finished work | Auth, secrets, payments, migrations, deletion; >5 files; a release; or reviewer-vs-diff disagreement |
 | `superpowers` | **Process** — brainstorming, writing-plans, test-driven-development, verification-before-completion | Larger tasks only — never the fast path |
 | `security-guidance` | **Tier 3 security pass** — not a general reviewer | `security-protocol` §9 gate |
 | `context7` | **Unfamiliar or version-sensitive APIs** — not settled ones | Reaching for an API you can't verify from the repo |

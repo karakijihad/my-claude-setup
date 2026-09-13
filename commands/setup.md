@@ -46,7 +46,7 @@ shipping.
 
 ```bash
 claude plugin install feature-dev@claude-plugins-official       # the Tier-2 reviewer
-claude plugin install trio@trio-cc                              # Tier-3 audit, second opinions
+claude plugin install trio@trio-cc                              # Tier-3 audit, and consults for advice
 claude plugin install security-guidance@claude-plugins-official # Tier-3 security pass
 claude plugin install superpowers@claude-plugins-official       # process on larger tasks only
 claude plugin install context7@claude-plugins-official          # version-sensitive APIs
@@ -86,7 +86,6 @@ and stop — this command is idempotent.
 
 | Key | Value | Why |
 |-|-|-|
-| `env.CLAUDE_CODE_SUBAGENT_MODEL` | `"sonnet"` | Sub-agents run faster and cheaper on Sonnet |
 | `permissions.defaultMode` | `"auto"` | |
 | `permissions.allow` | union with `["Bash(git:*)", "Bash(ls:*)", "Bash(node:*)", "Bash(npm:*)", "Bash(pnpm:*)", "Bash(python:*)", "Bash(xargs grep:*)"]` | Fewer prompts on what a normal session runs constantly. **Read the note below.** |
 | `effortLevel` | `"high"` | |
@@ -96,7 +95,29 @@ The `permissions.allow` union is asserted **exactly** in `tests/suite.sh` — ch
 the suite until that expected set is changed too. That is deliberate: a widening should cost a
 second, deliberate edit. Read the note below before making it.
 
-Do **not** set `model` — leave the user's choice alone.
+### Model tiers
+
+Ships blank: with nothing set, the harness defaults stand. Ask once, and make skipping the
+obvious answer:
+
+> Want to name models per role? Orchestrator (main session), subagents (code, research,
+> tests), advisor (consults and advice, never code). Use aliases like `opus`, `sonnet`,
+> `fable` — names that survive a release. Skip to keep the defaults.
+
+Write only the roles the user names, into the same diff as the table above:
+
+| Role | Key |
+|-|-|
+| Orchestrator | `model` |
+| Subagents | `env.CLAUDE_CODE_SUBAGENT_MODEL` |
+| Advisor | `env.MY_CLAUDE_SETUP_ADVISOR_MODEL` |
+
+Never suggest a model the user didn't name, and never overwrite a value already there without
+showing it in the diff. They are ordinary settings keys — edit them there, or rerun `/setup`.
+Session start names whatever is set, so the session knows its tiers. Trio's Codex models are
+trio's own config (`/trio:model`), not this table.
+
+Otherwise do **not** set `model` — leave the user's choice alone.
 
 Do **not** add `MAX_THINKING_TOKENS`, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`, or
 `CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING`. They have no effect on Claude 5 models; shipping them

@@ -34,24 +34,49 @@ parse_stop
 # files and has nothing to verify. Only a `done` that claims changed files is
 # asked for evidence.
 #
-# A bolded label at the start of a line always ends the open section, including
-# one this hook does not recognise. Letting an unrecognised header fall through
-# to the accumulator instead was a hole straight through the gate: an agent
+# A label at the start of a line always ends the open section, including one
+# this hook does not recognise. Letting an unrecognised header fall through to
+# the accumulator instead was a hole straight through the gate: an agent
 # writing `- **Note:** could not run the tests here` under an empty
 # `Verify output:` padded that section past the evidence threshold with the
 # text of its own excuse, and the report passed. Requiring the label to start
 # the line is what keeps a `**PASS:**` inside pasted output from closing a
 # section that is genuinely still open.
-VERDICT=$(printf '%s' "$MSG" | awk '
-  /^[[:space:]]*([-*][[:space:]]+)?\*\*[A-Za-z ]+:\*\*/ {
-    match($0, /\*\*[A-Za-z ]+:\*\*/)
-    lab = tolower(substr($0, RSTART + 2, RLENGTH - 5))
+#
+# The label itself is matched loosely on purpose: `**Label:**`, `**Label**:`
+# (colon outside the bold), `__Label:__`, and plain `Label:` with no bold at
+# all are all the same field to an agent that formats reports by hand. The
+# whitelist below is what stays strict — a header is only ever "status",
+# "changed", "verify output" or "assumptions". Any other *bolded* label closes the
+# open section like the unrecognised-header case above; an unbolded one is body
+# text, because pasted output is full of `PASS: 10` and `Error: x` lines.
+# A report that bolds its headers bolds all of them, so its style is read off
+# its *first* header — once that is bolded, an unbolded `Status: 200 OK` line is
+# pasted output, not a header reopening a section. First, not any: scanning the
+# whole message let a bolded label inside pasted output switch a plain report's
+# real headers off and wave an empty verify output through.
+BOLD=0
+FIRST=$(printf '%s' "$MSG" | grep -m1 -iE '^[[:space:]]*([-*][[:space:]]+)?(\*\*|__)?(status|changed|verify output|assumptions)(\*\*|__)?:')
+case "$FIRST" in *'**'*|*__*) BOLD=1 ;; esac
+VERDICT=$(printf '%s' "$MSG" | awk -v bold="$BOLD" '
+  /^[[:space:]]*([-*][[:space:]]+)?(\*\*|__)?[A-Za-z ]+(\*\*|__)?:(\*\*|__)?/ {
+    match($0, /(\*\*|__)?[A-Za-z ]+(\*\*|__)?:(\*\*|__)?/)
+    raw = substr($0, RSTART, RLENGTH)
+    lab = raw
+    gsub(/\*\*|__/, "", lab)
     sub(/:$/, "", lab)
-    if (lab == "status" || lab == "changed" || lab == "verify output" || lab == "assumptions") {
+    sub(/^[[:space:]]+/, "", lab)
+    sub(/[[:space:]]+$/, "", lab)
+    lab = tolower(lab)
+    if ((raw ~ /\*\*|__/ || !bold) && (lab == "status" || lab == "changed" || lab == "verify output" || lab == "assumptions")) {
       sec = lab
       body[sec] = body[sec] " " substr($0, RSTART + RLENGTH)
-    } else {
+    } else if (raw ~ /\*\*|__/) {
       sec = ""
+    } else if (sec != "") {
+      # An unbolded `PASS: 10` is pasted output, not a header. Only a bolded
+      # label or one of the four names above may close a section.
+      body[sec] = body[sec] " " $0
     }
     next
   }

@@ -34,4 +34,4 @@ Required if the change touches auth, endpoints, user input, file operations, dep
 ## Closeout
 
 - [ ] Security review completed (see [09-Review-Gate.md](./09-Review-Gate.md))
-- [ ] Findings recorded in session note under "Security Review"
+- [ ] Findings recorded in `Docs/Audit/` (or `Docs/Decisions/` if it's a decision, not a finding)

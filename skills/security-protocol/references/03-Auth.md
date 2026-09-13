@@ -18,7 +18,7 @@
 - **IDOR (Insecure Direct Object Reference):** Never trust user-supplied IDs to access resources. Always verify the requesting user owns or has permission to access the resource. `/api/invoices/123` must confirm the logged-in user owns invoice 123. This applies to GETs, PUTs, DELETEs — all verbs.
 - **Principle of least privilege.** Every user, service, token, and database connection gets the minimum access needed. No shared admin accounts. No wildcard permissions. No `SELECT *` from tables with sensitive columns unless every column is needed.
 - **Role-based or attribute-based access control:** Enforce at the middleware/decorator level, not scattered through business logic. Centralize permission checks.
-- **Privilege escalation testing:** Verify both vertical (user â†’ admin) and horizontal (user A â†’ user B's data) escalation paths. Test by replaying requests with different/no auth tokens.
+- **Privilege escalation testing:** Verify both vertical (user → admin) and horizontal (user A → user B's data) escalation paths. Test by replaying requests with different/no auth tokens.
 
 ## Session Management
 

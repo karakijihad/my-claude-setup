@@ -8,7 +8,7 @@ Before writing code for any feature, endpoint, or phase — answer these:
 - Who can reach it? (anonymous users, authenticated users, admins, internal services, automated bots)
 - What's the worst thing an attacker could do with it?
 - What's the blast radius if this component is compromised?
-- What trust boundaries does data cross? (client â†’ server, service â†’ service, server â†’ database, server â†’ third-party)
+- What trust boundaries does data cross? (client → server, service → service, server → database, server → third-party)
 
 If you can't answer these, stop and figure it out before coding. Assumptions here become vulnerabilities later.
 

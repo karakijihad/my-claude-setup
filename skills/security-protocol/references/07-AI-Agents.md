@@ -70,7 +70,7 @@
 
 - One agent session = one blast radius. Start fresh sessions for sensitive or cross-tenant work.
 - Don't mix customer-A context and customer-B context in the same session — residual context leaks across task boundaries.
-- Compact or clear context before switching repos with different trust levels (your personal project â†’ a client's private repo).
+- Compact or clear context before switching repos with different trust levels (your personal project → a client's private repo).
 - Subagents get their own context — use this to firewall sensitive data from parallel workers that don't need it.
 
 ## 7.10 Agent Team Blast Radius

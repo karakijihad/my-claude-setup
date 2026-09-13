@@ -14,6 +14,10 @@ you demand back, and how to read one.
 concurrently. Never edit a file an agent holds: you are a writer too, and the merge has no
 git behind it.
 
+**Model.** Agents that write code, gather information or run tests take the subagent default
+— don't pass `model`. An advice-only agent takes the advisor model when session start names
+one, and never writes code. With no tiers named, pass nothing and let the harness decide.
+
 ## The brief
 
 Every dispatched agent gets all six fields. A missing field is how an agent invents scope.

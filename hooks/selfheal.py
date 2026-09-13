@@ -175,9 +175,12 @@ def _repair_statusline(root) -> list:
         done.append("refreshed the status-line launcher at `~/.claude/statusline.mjs`")
 
     settings = CLAUDE / "settings.json"
+    if not settings.is_file():
+        return done  # nothing to check, and nothing wrong: stay silent
     try:
         cfg = _read_json(settings)
     except Exception:
+        done.append("`settings.json` didn't parse, so the `statusLine` pointer wasn't checked")
         return done
     if _statusline_pinned(cfg):
         cfg["statusLine"] = {

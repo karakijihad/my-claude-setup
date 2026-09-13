@@ -36,7 +36,7 @@ references on demand, and ships five hooks. Published as its own marketplace.
   one stop is an infinite loop. It reads `last_assistant_message` off the payload, never the
   transcript — that file is written asynchronously and its line schema is undocumented.
 - `hooks/post-push.sh` — the other PostToolUse hook, and the whole of the CI feature. Fires on
-  every Bash call, so its rejections are ordered cheapest-first. Prints nothing unless a push
+  every Bash and PowerShell call, so its rejections are ordered cheapest-first. Prints nothing unless a push
   landed *and* the repo has CI config; with no upstream configured it speaks but says landing is
   unverified. Exit 0 on every path — PostToolUse cannot block the call it follows.
 - `hooks/onboarding.py` — one-time first-run check, imported by `session-start.py`. Must never
@@ -85,7 +85,8 @@ references on demand, and ships five hooks. Published as its own marketplace.
   `text=auto` checks scripts out as CRLF and bash dies with `bad interpreter`.
 - **`hooks.json` paths are `${CLAUDE_PLUGIN_ROOT}`-relative.** Never `~/.claude/`. Commands
   already run under `"shell": "bash"`, so don't prefix `bash` — it spawns a nested shell.
-- **Don't ship personal config.** No absolute paths, no `enabledPlugins`, no model choice.
+- **Don't ship personal config.** No absolute paths, no `enabledPlugins`, no model choice —
+  model tiers ship blank and are written only when the user names them in `/setup`.
   `/setup` merges preferences into the user's `settings.json` with a diff and a prompt; a plugin
   cannot set those keys itself.
 
