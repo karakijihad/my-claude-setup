@@ -10,7 +10,6 @@ Invoked through py.sh, never as `python3` directly — see that script for why.
 import io
 import json
 import os
-import re
 import subprocess
 import sys
 import time
@@ -71,43 +70,6 @@ def _branch() -> str:
     return _GIT_INFO
 
 
-# A tier value is injected into context, so it must look like a model alias or
-# id and nothing more — settings.json is user-written, but a value carrying
-# sentences would be instructions arriving through a config key.
-_TIER_VALUE = re.compile(r"^[A-Za-z0-9._:\[\]-]{1,64}$")
-
-
-def model_tiers() -> str:
-    """One line naming the model tiers the user chose in /setup, or ''.
-
-    Tiers ship blank. Only keys the user set appear, so a machine that never
-    named models gets nothing here and the harness defaults stand. Orchestrator
-    is the `model` key, workers `env.CLAUDE_CODE_SUBAGENT_MODEL` (which the
-    harness applies itself), advisor `env.MY_CLAUDE_SETUP_ADVISOR_MODEL` (which
-    only this line makes visible).
-    """
-    try:
-        cfg = read_settings()
-        env = cfg.get("env") or {}
-        tiers = [
-            ("orchestrator", cfg.get("model")),
-            ("subagents", env.get("CLAUDE_CODE_SUBAGENT_MODEL")),
-            ("advisor", env.get("MY_CLAUDE_SETUP_ADVISOR_MODEL")),
-        ]
-        named = [f"{role} = {v}" for role, v in tiers
-                 if isinstance(v, str) and _TIER_VALUE.match(v)]
-    except Exception:
-        return ""
-    if not named:
-        return ""
-    return (
-        "\n\nModel tiers, set by the user (edit in settings.json or rerun /setup): "
-        + " · ".join(named)
-        + ". Code, research and test agents take the subagent default; pass the advisor "
-        "as `model` only on my-claude-setup:advisor, never on an agent that writes code."
-    )
-
-
 def git_context() -> str:
     """Branch, or empty string outside a repo."""
     branch = _branch()
@@ -161,7 +123,7 @@ def main() -> None:
     # one session after an update, and on that session it is the most
     # time-sensitive thing here — burying it behind ~800 tokens of standing
     # rules is how it got read as background and never mentioned to the user.
-    context = heal() + core + model_tiers() + git_context() + reviewer_notice() + notice()
+    context = heal() + core + git_context() + reviewer_notice() + notice()
     # The nesting is load-bearing. A bare top-level {"additionalContext": ...}
     # is the SDK/Copilot shape; Claude Code reads hookSpecificOutput and ignores
     # anything it does not recognise, so the wrong shape is not an error — it is

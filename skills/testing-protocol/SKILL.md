@@ -7,138 +7,82 @@ description: >
 
 # Testing & Verification Protocol
 
-> Applies to all project types — web apps, APIs, CLIs, mobile, serverless, microservices, libraries.
-> **Skip the checklist** for changes under ~50 lines with clear intent and no branching logic — verify by running the code, then commit.
+Generic testing advice is not here — deterministic tests, mocked boundaries, one behaviour
+per case, clean fixtures. This skill holds only what this setup decides differently, which
+is two things: **where the fast path ends**, and **what earns a test at all**.
 
-**Core principle: nothing ships without execution evidence. "I reviewed the code" is not verification.**
-
----
-
-## 1. When Tests Are Required
-
-Tests are **required** for:
-
-- Any new function, method, endpoint, or component with branching logic or edge cases
-- Any bug fix — write a regression test that fails without the fix, passes with it
-- Any refactor that changes behavior (not pure renames, moves, or formatting)
-- Any code that touches auth, payments, or data persistence
-- Any public API surface (exported functions, REST endpoints, GraphQL resolvers)
-
-**Exception:** changes under ~50 lines with clear, linear intent — run the code, confirm it works, commit. No formal test required unless the logic is non-obvious.
-
-Tests are **optional** for:
-
-- Pure configuration changes (env vars, build settings, CI config)
-- Documentation-only changes
-- One-off scripts that won't be reused
-- Cosmetic UI changes with no logic — but still verify with Playwright
-
-If you're unsure whether a change needs tests, it needs tests.
-
-### Where this and `superpowers:test-driven-development` disagree
-
-They do disagree, deliberately, and the boundary is the review tier. That skill's Iron Law —
-*no production code without a failing test first* — is written to admit no exceptions, and it
-names "skip TDD just this once" as rationalization. It is right, **from Tier 2 upward**: once
-work earns an independent reviewer it earns a failing test first, and you do not negotiate with
-the Iron Law there.
-
-At **Tier 1** — under ~50 lines, clear linear intent, nothing sensitive — this protocol wins and
-TDD is not invoked at all. That is the whole point of a fast path.
-
-Resolve it by tier, never by argument in the moment. Two skills reaching opposite conclusions on
-the same change means you got the tier wrong, not that one of them is broken.
+**Core principle: nothing ships without execution evidence. "I reviewed the code" is not
+verification.**
 
 ---
 
-## 2. Testing Workflow
+## 1. The tier boundary, and where TDD takes over
 
-Follow this order. Steps are not interchangeable.
+`superpowers:test-driven-development`'s Iron Law — *no production code without a failing
+test first* — is written to admit no exceptions, and names "skip TDD just this once" as
+rationalization. It is right, **from Tier 2 upward**: once work earns an independent
+reviewer it earns a failing test first, and you do not negotiate with the Iron Law there.
 
-1. **Before implementation:** Define test cases that capture the "done" criteria. Use `superpowers:test-driven-development` for non-trivial features. If the feature has edge cases, list them now — not after you've written the code.
-2. **During implementation:** Run tests incrementally as you build. Don't batch all testing to the end. If a test fails mid-implementation, fix the code — don't comment out the test.
-3. **After implementation, before simplification:** All tests must pass. If a test fails, fix the code — don't delete the test. If a test is wrong, fix the test and document why.
-4. **After simplification:** Run the full test suite again. the built-in `/simplify` must not introduce regressions. If it does, revert the simplification.
+At **Tier 1** — under ~50 lines, clear linear intent, nothing sensitive — this protocol wins
+and TDD is not invoked at all. Run the code, confirm it works, commit. That is the whole
+point of a fast path.
 
----
+Resolve it by tier, never by argument in the moment. Two skills reaching opposite
+conclusions on the same change means you got the tier wrong, not that one of them is broken.
 
-## 3. Test Quality Rules
-
-- **Deterministic.** No flaky tests. No `sleep()` or `setTimeout()` as synchronization. If you need to wait for async operations, use proper awaits, polling with timeouts, or event-driven signals.
-- **Isolated.** Tests must not depend on external services unless explicitly marked as integration tests. Unit tests mock external boundaries; integration tests use real (or containerized) dependencies.
-- **One thing per test.** Each test should test one behavior. Name it so the failure message tells you exactly what broke — `test_expired_token_returns_401` not `test_auth`.
-- **Mock boundaries, not internals.** Mock the network, filesystem, clock, and external APIs. Don't mock the class you're testing or its private methods.
-- **No test interdependence.** Tests must pass in any order. No test should depend on state left by a previous test.
-- **Clean up after yourself.** Tests that create files, database records, or network connections must clean them up.
+Regardless of tier, a test is **required** for: any bug fix (a regression test that fails
+without the fix), anything touching auth, payments or data persistence, and any public API
+surface.
 
 ---
 
-## 4. Coverage Expectations
+## 2. What earns a test — and what earns deletion
 
-No hard percentage target. Coverage must include:
+**The practical test, which decides both what to add and what to keep:** what plausible
+defect would make this test fail, what would that defect cost, and does an existing test
+already catch it?
 
-- All happy paths (the normal success case for every feature)
-- All error paths the user specified (what should happen on bad input, missing auth, network failure)
-- All edge cases identified during planning (empty inputs, boundary values, concurrent access)
+A scenario you can describe is not a reason on its own; most describable scenarios cost
+nothing when they break. Reuse or replace a case before adding another. Verifying something
+once does not oblige you to keep a regression test for it forever.
 
-**The practical test:** if you can describe a scenario that isn't tested, add a test for it.
+Hold the three classes at different strengths:
+
+- **Safety** — anything that blocks a destructive command, scans for a secret, preserves a
+  user's settings, or deletes files. Keeps every distinct failure mechanism, every known
+  regression, and the counterexamples proving it does not over-block. Never trimmed to hit
+  a line target.
+- **Contracts** — output a consumer actually reads, a registration, an interpreter
+  fallback, a file one component writes and another reads. One case per supported path and
+  per materially different failure.
+- **Advisory** — a reminder, a warning's wording, display formatting. Four cases: it works,
+  it stays quiet when it should, it fails gracefully, and any state transition that matters.
+  Past that, name the consequence or don't write it.
+
+A suite that outgrows the thing it tests stops being read, and a suite nobody reads is not
+coverage. When it does, cut advisory first and safety never.
 
 ---
 
-## 5. Verification Levels
+## 3. Verification
 
-Use the **strongest applicable level** from this table:
+Use the **strongest applicable level**, and put its output in the report:
 
-| Level | When to use | What it looks like |
-|-------|------------|-------------------|
-| **Automated tests** | Code with testable logic | Run the test suite, paste the output |
+| Level | When | What it looks like |
+|-------|------|-------------------|
+| **Automated tests** | Code with testable logic | Run the suite, paste the output |
 | **Playwright** | Any UI change | Navigate → snapshot → assert DOM state + zero console errors |
-| **Code trace** | Backend logic, data flow | Walk through the code path with concrete inputs, show expected vs actual |
-| **Manual check** | Config changes, infra, one-off scripts | Describe exactly what you checked and what you observed |
-| **Build/lint** | Any code change (minimum bar) | Compile/lint must pass with zero warnings in changed files |
+| **Code trace** | Backend logic, data flow | Walk the path with concrete inputs, show expected vs actual |
+| **Manual check** | Config, infra, one-off scripts | Say exactly what you checked and what you observed |
+| **Build/lint** | Any code change (minimum bar) | Zero warnings in changed files |
 
-Multiple levels can apply. A new API endpoint needs automated tests, a build check, and potentially a code trace.
-
----
-
-## 6. Verification Rules
-
-- Every task report must include which verification level was used and the output.
-- Pre-existing test failures are blockers — not a reason to skip testing.
-- "I reviewed the code" is not verification. Verification requires execution or concrete trace.
-- Multi-file changes require integration verification — not just individual file checks.
-- The orchestrator runs `superpowers:verification-before-completion` as a final pass, in addition to task-level verification.
+- Pre-existing failures are blockers, not an excuse to skip.
+- Multi-file changes need integration verification — separately-green does not compose.
+- Verification impossible here? Say exactly what couldn't be checked, why, and what would
+  be needed. Partial verification is fine when it is stated as partial.
+- If verification fails, the work goes back to implementation. Don't commit known failures,
+  and don't delete a test to make a suite green.
 
 ---
 
-## 7. Verification Failures
-
-- If verification fails, the task goes back to implementation. Do not commit with known failures.
-- If verification is impossible in the current environment, document exactly what can't be verified, why, and what would be needed. Flag it for the user.
-- Partial verification is acceptable when documented.
-
----
-
-## 8. Test Infrastructure Rules
-
-- Don't modify test infrastructure without explicit permission.
-- New test dependencies require justification — same scrutiny as production dependencies.
-- Test data lives with tests — fixtures and factories go in the test directory.
-- Integration tests must be clearly separated from unit tests.
-
----
-
-## 9. Verification Checklist — Testing & Verification Gate
-
-- [ ] Test cases defined before or during implementation
-- [ ] Tests written for all required scenarios (see §1)
-- [ ] All tests passing — zero failures
-- [ ] Verification level selected from §5 and evidence included in task report
-- [ ] Tests re-run after `/simplify` — no regressions
-- [ ] Multi-file changes verified at the integration level
-- [ ] `superpowers:verification-before-completion` invoked as final pass
-- [ ] Any unverifiable items documented with reason and flagged for user
-
----
-
-*This skill is the single source of truth for testing and verification. Where the resident session rules are terser, this skill wins.*
+*Where the resident session rules are terser, this skill wins.*

@@ -1,170 +1,128 @@
 # my-claude-setup
 
-> This is the plugin's *own* project file — conventions for working **on** this repo.
-> It is not the config the plugin ships. That lives in `hooks/core.md` and `skills/`.
+> Conventions for working **on** this repo. Not the config the plugin ships — that lives in
+> `hooks/core.md` and `skills/`.
 >
-> Rules and traps only. The history behind any of them is in `CHANGELOG.md`.
+> Rules and traps only. Every "why" is in `CHANGELOG.md` and belongs there, not here. This file
+> loads into every session in this repo, so a paragraph of history costs more than it teaches.
 
 ## Project
 
-A Claude Code plugin. It injects a small always-resident rule core, loads six protocol
-references on demand, and ships five hooks and two agents. Published as its own marketplace.
+A Claude Code plugin. A small always-resident rule core, six protocol skills loaded on demand,
+five hooks, two agents, one command. Published as its own marketplace.
+
+It sets a rail — how to plan, when to fan out, which companion owns which decision, what a
+review must clear — and it is not a place to carry expertise a companion already owns. Growth
+here is the failure mode: the security curriculum, the testing curriculum and a subagent report
+gate were all deleted for it.
 
 ## Key files
 
-- `hooks/core.md` — the resident core's text, and the single source for it. Every token is paid
-  on every session, so additions must earn their place. `session-start.py` reads it;
-  `session-start.sh` re-emits it via jq when Python is missing. Only the last-resort branch
-  (no Python *and* no jq) restates policy, deliberately reduced rather than mirrored.
-- `hooks/session-start.py` — wraps `core.md` with git context, the Tier-2 reviewer notice, and
-  the onboarding notice. The reviewer notice is conditional on `enabledPlugins`: when
-  feature-dev is absent it says so, because a review that never happened must not read like one
-  that did.
-- `hooks/session-start.sh` — dispatcher with the two fallback branches.
-- `hooks/guard.sh` — all PreToolUse blocking. One script, dispatches on which field is present.
-- `hooks/budget.sh` — PostToolUse on `Write|Edit`, the whole of the doc line-budget feature.
-  **The ratchet is the design**: warn on the first crossing, again only when an edit makes
-  the overage worse — a hook that re-warns on the corrective edit gets ignored. Its table is
-  keyed on file *names*, which is why `planning-protocol` §3 makes `INDEX.md` and
-  `phase-*.md` normative; a hook can't tell one from the other by reading it.
-- `hooks/subagent-verify.sh` — SubagentStop, and the whole of the delegation-verification
-  feature. **Exit 2 is deliberate here** — it is the documented block for this event and the only
-  sanctioned use outside `guard.sh`; stderr is fed back to the agent as a system message. Three
-  things keep it from being a nuisance: no `Status:` field means the agent isn't using the
-  protocol and the hook has no opinion; `Changed:` empty or `none` means a read-only agent with
-  nothing to verify; and `stop_hook_active` ends it after one nudge, because blocking twice on
-  one stop is an infinite loop. It reads `last_assistant_message` off the payload, never the
-  transcript — that file is written asynchronously and its line schema is undocumented.
-- `hooks/post-push.sh` — the other PostToolUse hook, and the whole of the CI feature. Fires on
-  every Bash and PowerShell call, so its rejections are ordered cheapest-first. Prints nothing unless a push
-  landed *and* the repo has CI config; with no upstream configured it speaks but says landing is
-  unverified. Exit 0 on every path — PostToolUse cannot block the call it follows.
-- `hooks/onboarding.py` — one-time first-run check, imported by `session-start.py`. Must never
-  nag a user who is already set up. Reads settings as **`utf-8-sig`**: Windows tooling writes a
-  BOM, and plain `utf-8` makes a healthy config look absent.
-- `hooks/selfheal.py` — the update path, imported by `session-start.py`. Silent except on the
-  first session after the installed version moves. The split is the design: **Python does what
-  is deterministic** (diff outgoing against incoming, repair status-line wiring, prune superseded
-  releases); **the session does what needs judgement**, via an instruction to reconcile `/setup`
-  Part 1 against the machine. It adds missing keys and never overwrites a user's value;
-  installing a companion is always asked about. **The diff runs before the prune** — the outgoing
-  release must still exist to compare against.
-- `hooks/py.sh` — interpreter resolver. Every Python entry point goes through it.
-- `assets/statusline-launcher.mjs` — the stable path `settings.json` points at, because the
-  plugin's own directory is version-pinned and pointing there directly fails *quietly*: old
-  versions stay cached, so the stale path keeps resolving and the bar renders from a dead release.
-- `skills/*/SKILL.md` — the `description:` field is the router (see Gotchas). Descriptions are
-  resident in the system prompt for **every** session, so budget them like `core.md`: name the
-  trigger situations, not the topic vocabulary, ~30–70 tokens each.
-- `agents/` — `worker` (delegated work) and `advisor` (consults, read-only). **They exist for
-  `effort: high`**: the Agent tool can pass `model` but not effort, so a definition is the only
-  place a subagent's effort is set. The model stays off both cards — a model passed on the
-  call wins, which is how "consult fable" reuses one advisor for any model.
-- `commands/` — `setup`, and it is the only one. Part 1 sets up a machine; Part 2 sets up a
-  project, scaffolding a blank slate or surveying an existing repo before it writes.
-- `tests/suite.sh` — the whole test suite. Lives outside `hooks/` because `hooks/` is what ships;
-  it still `cd`s there, since hooks resolve their siblings relative to themselves.
-- `.claude-plugin/` — `plugin.json` and `marketplace.json`. Bump `version` on release, and add
-  the `CHANGELOG.md` section in the same commit.
+| Path | The rule |
+|---|---|
+| `hooks/core.md` | The resident core, and the only copy of it. Paid every session — additions must earn it. |
+| `hooks/session-start.py` | Wraps the core with git context and notices. The reviewer notice is conditional on `enabledPlugins`: a review that never happened must not read like one that did. |
+| `hooks/session-start.sh` | Dispatcher. Two fallbacks; the last (no Python *and* no jq) restates policy deliberately reduced, never mirrored. |
+| `hooks/guard.sh` | All PreToolUse blocking. Dispatches on which field is present. |
+| `hooks/budget.sh` | Doc line budgets. **The ratchet is the design** — warn once, again only if an edit worsens it. A hook that re-warns on the corrective edit gets ignored. Keyed on file *names*, which is why `project-docs` makes `INDEX.md` and `phase-*.md` normative. |
+| `hooks/post-push.sh` | CI reminder. Fires on every Bash/PowerShell call, so rejections are ordered cheapest-first. Names the SHA and points at the repo's `## CI` line; it does **not** detect providers or claim a push landed, and is silent for a `-C` push at another repo. Exit 0 always — PostToolUse cannot block. |
+| `hooks/context-watch.sh` | PostToolBatch. Injects the session's context fill once per 5% crossing, escalating past a budget. Reads the state file `statusline.mjs` writes — no hook payload carries `context_window`. Silent for subagents. Exit 0 always. |
+| `hooks/onboarding.py` | One-time first-run check. Must never nag a user already set up. Reads settings as **`utf-8-sig`** — a BOM makes a healthy config look absent. |
+| `hooks/selfheal.py` | The update path. Python does what is deterministic; the session does what needs judgement. Never overwrites a user's value. **The diff runs before the prune.** |
+| `hooks/py.sh` | Interpreter resolver. Every Python entry point goes through it. |
+| `assets/statusline-launcher.mjs` | The stable path `settings.json` points at. The plugin's own directory is version-pinned, and pointing there fails *silently* — old versions stay cached, so the bar renders from a dead release. |
+| `assets/statusline.mjs` | The status line, and the only component the harness hands `context_window` to. Writes the context state file as a side effect. |
+| `skills/*/SKILL.md` | The `description:` is the router (see Gotchas). Resident in **every** session — budget like `core.md`, ~30–70 tokens, naming trigger situations rather than topic vocabulary. A skill holds what *this setup decides differently*; generic best practice is the model's job already. |
+| `skills/security-protocol/` | Escalation and agent/MCP tool authority only. The ten reference files were deleted: `core.md` assigns security expertise to the `security-guidance` companion, and shipping both was the plugin breaking its own one-job rule. |
+| `agents/` | `worker` and `advisor`. **They exist for `effort: high`** — the Agent tool passes `model` but not effort, so a definition is the only place to set it. Model stays off both cards so a call-site model wins. |
+| `tests/suite.sh` | The whole suite. Outside `hooks/` because `hooks/` is what ships; still `cd`s there. |
+| `.claude-plugin/` | Bump `version` on release, add the `CHANGELOG.md` section in the same commit. |
 
 ## Gotchas
 
-- **Never invoke `python3` directly**, in a hook, a skill, or a script. On Windows that name is
-  usually a 0-byte Microsoft Store alias stub that exits 9009, and installing Python does not
-  displace it. Route through `hooks/py.sh`, which executes candidates instead of trusting names.
-- **Hooks must fail open.** A hook that errors should exit 0, never 2. Exit 2 blocks the tool
-  call — reserve it for a deliberate, explained block. There are exactly two: a genuine safety
-  refusal in `guard.sh`, and `subagent-verify.sh` refusing an unverified `done`. Every other
-  path in every hook exits 0.
-- **Match the harness's JSON contract exactly.** SessionStart and PostToolUse output is read from
-  `hookSpecificOutput.additionalContext` **with `hookEventName` set**. Anything else — including
-  a bare top-level `additionalContext`, which is the SDK/Copilot shape — is discarded silently:
-  valid JSON, exit 0, nothing injected, nothing logged. Emit exactly one shape; Claude Code reads
-  `hookSpecificOutput` *and* snake_case `additional_context` without deduplicating, so hedging
-  double-injects.
-- **A skill's `description:` is the routing mechanism.** There is no keyword table; the old regex
-  router was deleted because descriptions do it better. If a protocol stops firing when it
-  should, fix the description — do not add a hook.
-- **`*.sh` must stay LF.** `.gitattributes` pins this. With `core.autocrlf=true` on Windows,
-  `text=auto` checks scripts out as CRLF and bash dies with `bad interpreter`.
-- **`hooks.json` paths are `${CLAUDE_PLUGIN_ROOT}`-relative.** Never `~/.claude/`. Commands
-  already run under `"shell": "bash"`, so don't prefix `bash` — it spawns a nested shell.
-- **Don't ship personal config.** No absolute paths, no `enabledPlugins`, no model choice —
-  model tiers ship blank and are written only when the user names them in `/setup`.
-  `/setup` merges preferences into the user's `settings.json` with a diff and a prompt; a plugin
-  cannot set those keys itself.
+- **Never invoke `python3` directly** — anywhere. On Windows it is usually a 0-byte Store alias
+  that exits 9009, and installing Python does not displace it. Route through `hooks/py.sh`.
+- **Hooks fail open.** A hook that errors exits 0. Exit 2 blocks the call, and `guard.sh` is now
+  the only sanctioned use. `subagent-verify.sh` was the other and is gone: it could check that a
+  report's text *looked* like evidence, never that a command ran, so it bought the feeling of a
+  gate. The report contract is prose in `agent-protocol`; the orchestrator is the check.
+- **Match the harness's JSON contract exactly.** Output is read from
+  `hookSpecificOutput.additionalContext` **with `hookEventName` set**. Anything else — including a
+  bare top-level `additionalContext`, the SDK shape — is discarded silently: valid JSON, exit 0,
+  nothing injected, nothing logged. Emit exactly one shape; hedging double-injects.
+- **A skill's `description:` is the routing mechanism.** If a protocol stops firing, fix the
+  description — don't add a hook.
+- **`*.sh` must stay LF.** `.gitattributes` pins it; CRLF kills the shebang.
+- **`hooks.json` paths are `${CLAUDE_PLUGIN_ROOT}`-relative**, never `~/.claude/`. Commands already
+  run under `"shell": "bash"` — don't prefix `bash`.
+- **Don't ship personal config.** No absolute paths, no `enabledPlugins`, no model choice.
 
 ## Verifying a change
 
 ```bash
-bash tests/suite.sh   # exit 0 means every assertion passed
+bash tests/suite.sh context-watch   # one section, ~60s — use this while iterating
+bash tests/suite.sh                 # all sections; exit 0 means every assertion passed
 ```
+
+A full run takes minutes because process spawn dominates on Windows — `bash -c true` alone can
+cost over a second under on-launch AV scanning. The suite takes an atomic lock, so a second
+concurrent run refuses rather than colliding in the shared temp root.
+
+## Tests
+
+**What earns a test:** what plausible defect would make it fail, what would that defect cost, and
+does an existing test already catch it? A describable scenario is not a reason by itself. Reuse or
+replace a case before adding one. `testing-protocol` holds the three classes and how hard to hold
+each — safety keeps everything, contracts get one case per path, advisory gets four.
+
+**The suite is held to that, and the advisory sections are the ones that grow.** It was 2,241
+lines and 192 cases before the 1.24.0 prune; anything approaching that again means advisory
+permutations have crept back. Cut those first and safety never.
+
+Traps, all learned the hard way:
+
+- **Never put a literal destructive string in a test file** — `guard.sh` inspects the command that
+  invokes it, so the literal blocks the test run. Assemble it at runtime. Same for value-shaped
+  secrets: `guard.sh` scans the staged diff on commit.
+- **Redirect stdin from `/dev/null`** — `session-start.py` drains stdin and will hang otherwise.
+- **Don't assert against a reimplementation of the thing you're testing.** Drive the real script
+  and inspect what it produced. **And assert the consumer's contract, not the producer's output** —
+  `json_ok` once certified a hook whose core never loaded.
+- **Guard `mktemp`, and stay inside it.** `TMP=$(mktemp -d) && cp ...` does not stop the script,
+  and `$TMP/../thing` is the shared temp root, not a private path.
+- **Strip ANSI before matching status-line output** — every value carries its own escape, so a
+  label and its number are never adjacent in the raw bytes.
+- **Use synthetic payload values, never a real model id.**
 
 ## CI
 
-GitHub Actions — `.github/workflows/test.yml`, on push to `main`, on every PR, and on demand.
-Runs this suite on **ubuntu-latest and windows-latest**, plus a CRLF check on `*.sh`. Match a run
-by SHA: `gh run list -c <sha> -L 5`.
+GitHub Actions — `.github/workflows/test.yml`, on push to `main`, on PRs, on demand. Runs the
+suite on **ubuntu-latest and windows-latest** plus a CRLF check on `*.sh`. Match a run by SHA:
+`gh run list -c <sha> -L 5`.
 
-Both platforms deliberately. This plugin exists largely because Windows breaks assumptions Unix
-tooling makes — a `python3` that is a Store stub, a CRLF checkout that kills a shebang, a BOM
-that hides a healthy config — and every one is invisible on ubuntu. A green ubuntu run proves the
-logic; only the Windows leg proves the plugin. Run the suite locally before pushing anyway.
-
-Roughly 4s per assertion on Windows, since each spawns bash plus an interpreter.
-
-**Add a case for anything you change.** Traps worth knowing before you write one:
-
-- **Never edit `tests/suite.sh` while a run of it is in flight.** Bash reads a script
-  incrementally, not all at once, so an edit lands under the running interpreter: it fails at
-  a syntax error in a region it had not reached yet, or — worse — reports a plausible count
-  and a green tally for a file that no longer exists in that form. The suite takes minutes on
-  Windows, which is exactly how long the window is. Wait for it, or copy the file and run the
-  copy.
-- **Never put a literal destructive string in a test file.** `guard.sh` inspects the text of the
-  command that invokes it, so a literal `rm -rf /` blocks the test run itself. Assemble such
-  fixtures at runtime.
-- **Never write a literal value-shaped secret either.** `guard.sh` scans the staged diff on
-  commit, so a real-looking `key = "..."` in a fixture blocks the commit that adds it.
-- **Redirect stdin from `/dev/null`.** `session-start.py` drains stdin, so a test that runs it
-  without an EOF hangs rather than failing.
-- **Don't assert against a reimplementation of the thing you're testing** — an assertion that
-  recomputes `subagent-verify.sh`'s report parsing stays green after the awk is deleted. Drive
-  the script and inspect what it produced. **And assert against the consumer's contract, not the producer's
-  output**: `json_ok` once asserted the exact key `session-start.py` emitted, so it certified a
-  hook whose core never loaded. Driving the real script is necessary and not sufficient.
-- **Guard `mktemp`, and stay inside it.** `TMP=$(mktemp -d) && cp ...` does not stop the script;
-  a later `> "$TMP/x"` with an empty `TMP` writes to `/x`. And `$TMP/../thing` is the shared temp
-  root, not a private path — two suites running at once collide there.
-- **Strip ANSI before matching status-line output.** Every value carries its own colour escape,
-  so a label and its number are never adjacent in the raw bytes.
-- **Use synthetic payload values, never a real model id** — a fixture carrying one reads as a
-  claim about which models exist, then quietly stops testing anything when naming changes.
+Both platforms deliberately. This plugin exists largely because Windows breaks Unix assumptions —
+a Store-stub `python3`, a CRLF checkout, a BOM hiding a config — and every one is invisible on
+ubuntu. A green ubuntu run proves the logic; only Windows proves the plugin.
 
 ## Docs
 
-**The whole `Docs/` tree is gitignored — `/Docs/`, root-anchored, subfolders included**, so a
-subfolder invented later is covered without anyone remembering a `.gitignore` edit. The tree is
+**The whole `Docs/` tree is gitignored — `/Docs/`, root-anchored, subfolders included.** It is
 working evidence and some of it is private. Committing it is a legitimate choice, but it must be
 written into *that* project's `CLAUDE.md` under a `Docs policy` heading, or the next session
-re-adds the line. This is the shipped default: `project-docs` owns the rule, `/setup` writes it
-on a blank slate and offers it as a choice on an existing repo, and both templates repeat it.
+re-adds the line.
 
 Two ignore traps, both verified with `git check-ignore -v`. The anchor matters: bare `Docs/` also
 swallows a nested `packages/*/Docs/`. And `core.ignorecase=true` is the default on Windows and
-macOS, so `/Docs/` matches lowercase `docs/` too — anchoring does **not** save you — silently
-ignoring a published mkdocs/Docusaurus site. Hence `assets/templates/Docs-skeleton/`: name it
-`Docs/` and the plugin stops shipping its own templates.
+macOS, so `/Docs/` matches lowercase `docs/` too — anchoring does **not** save you. Hence
+`assets/templates/Docs-skeleton/`: name it `Docs/` and the plugin stops shipping its own templates.
 
-This repo's tree is `Docs/Audit/`, and it is the only one. Trio promotes finished runs there —
-`codex/<date>/` is what Codex reported, `claude/<date>/` is the adjudication. Worth keeping
-because an audit's *refutations* are what git history loses: a commit shows what changed, not
-which findings were argued down and why.
+This repo's tree is `Docs/Audit/` — `codex/<date>/` is what Codex reported, `claude/<date>/` the
+adjudication. Worth keeping because an audit's *refutations* are what git history loses.
 
-Two quirks when reading one. Trio's top-level `findings` reads `0` on a `ceiling_reached` run
-even when that pass's lenses reported plenty — check `.trio/runs/<id>/pass-N/reconcile.json`, not
-the summary. And a `response.json` written after the run ended is never ingested, so the
-generated `claude/` file lists everything as open; correct it by hand before promoting.
+Two quirks when reading one: Trio's top-level `findings` reads `0` on a `ceiling_reached` run, so
+check `.trio/runs/<id>/pass-N/reconcile.json` instead. And a `response.json` written after the run
+ended is never ingested, so the generated `claude/` file lists everything as open — correct it by
+hand before promoting.
 
-`CHANGELOG.md` is the exception: a changelog is read by people who don't have your working copy,
-so it lives at the **repo root**, committed, never under the gitignored `Docs/`.
+`CHANGELOG.md` is the exception — read by people without your working copy, so it lives at the
+**repo root**, committed, never under the gitignored `Docs/`.

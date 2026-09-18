@@ -1,166 +1,29 @@
-# Audit Folder Usage
+# Audit
 
-## Purpose
-
-This folder stores code audits from different agents.
-
-The goal is to make reviews:
-
-- persistent
-- comparable
-- easy to hand off
-- easy to present back into the main design discussion
-
----
-
-## Structure
+Code audits, kept so reviews are persistent, comparable, and easy to hand back into a design
+discussion.
 
 ```text
 Docs/Audit/
-├── README.md
-├── codex/
-│   └── YYYY-MM-DD/
-│       ├── audit-1.md
-│       ├── audit-2.md
-│       └── supporting-note.md
-└── claude/
-    └── YYYY-MM-DD/
-        └── audit-1.md
+├── codex/YYYY-MM-DD/audit-N.md     what the auditor reported
+└── claude/YYYY-MM-DD/audit-N.md    the adjudication
 ```
 
-Use one dated folder per review day. Within that folder:
+One folder per agent, one folder per date, numbered within the day.
 
-- primary audit passes use `audit-{N}.md`
-- supporting notes may use descriptive names
+## What an entry holds
 
----
+**Findings plus adjudication.** The refutations are the point — a commit shows which findings
+were fixed and never which were argued down, or why. That is the only part of an audit git
+cannot reconstruct.
 
-## Naming Rule
+Per finding: what was claimed · the verdict (confirmed / refuted / deferred) · the evidence for
+that verdict, as `file:line` · what was done about it, or why nothing was.
 
-Use:
+**An audit is not a decision.** A ruling that changes how the project works goes to
+`Docs/Decisions/` as well, in one line.
 
-```text
-Docs/Audit/<agent>/YYYY-MM-DD/audit-{N}.md
-```
+## Keep it short
 
-Example:
-
-```text
-Docs/Audit/codex/2026-04-03/audit-1.md
-Docs/Audit/codex/2026-04-03/audit-2.md
-```
-
-This keeps review history chronological, grouped by day, and easy to diff.
-
----
-
-## What Each Audit Should Contain
-
-Recommended structure:
-
-```markdown
-# [Agent] Audit — YYYY-MM-DD
-
-## Scope
-## Executive Summary
-## Findings
-## Verification Notes
-## Most Important Corrections
-## Overall Assessment
-```
-
-The audit should focus on:
-
-- defects
-- architectural mismatches
-- pipeline/logical issues
-- missing wiring
-- verification gaps
-- priority corrections
-
-Avoid using the audit as a brainstorming note or future roadmap unless clearly marked.
-
----
-
-## How To Use With Codex
-
-Ask Codex to:
-
-- inspect the live implementation
-- compare docs against code
-- identify wiring gaps and defects
-- write findings to `Docs/Audit/codex/YYYY-MM-DD/audit-{N}.md`
-
-Best use cases for Codex:
-
-- implementation review
-- runtime path scrutiny
-- tool/pipeline defects
-- packaging/config problems
-- verification and test gaps
-
----
-
-## How To Use With Claude
-
-Ask Claude to:
-
-- read the latest Codex audit
-- cross-check findings against the architecture intent
-- challenge weak conclusions
-- write its own review to `Docs/Audit/claude/YYYY-MM-DD/audit-{N}.md`
-
-Best use cases for Claude:
-
-- architecture-level review
-- plan/design corrections
-- prioritization
-- reconciling design intent with implementation reality
-
----
-
-## Recommended Review Workflow
-
-### Option A — Codex first
-
-1. Codex reviews implementation and writes audit
-2. Claude reads the audit and challenges/confirms it
-3. Final decisions go into `Docs/Decisions/YYYY-MM-DD.md`
-
-With the `trio` plugin installed, `trio:trio-audit` runs Option A end to end — Codex reviews
-read-only through parallel lenses, Claude adjudicates each finding against the code — and a
-promoted run lands in exactly the layout above.
-
-### Option B — Claude first
-
-1. Claude reviews architecture/design intent
-2. Codex verifies against live code
-3. Differences become explicit action items
-
----
-
-## Important Rule
-
-An audit is not a decision by itself.
-
-Use audits as:
-
-- evidence
-- review input
-- handoff material
-
-Final accepted architecture or implementation decisions should be recorded in:
-
-- `Docs/Decisions/YYYY-MM-DD.md`
-- stage checklists under `Docs/Plan/`
-
----
-
-## Practical Guidance
-
-- Keep findings concrete.
-- Prefer evidence over opinion.
-- Separate confirmed defects from unverified concerns.
-- Mark severity when useful.
-- Add a new `audit-{N}.md` inside the current date folder instead of rewriting old audits.
-- Keep supporting design notes beside the same day's audits when they are directly related.
+Don't paste whole findings blocks, tool output, or the diff. Cite them. An audit file nobody
+rereads is the same as no audit file, and length is what stops them being reread.

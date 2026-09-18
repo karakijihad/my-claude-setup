@@ -5,6 +5,75 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.24.0] — 2026-09-18
+
+The plugin had drifted from what it is for. It exists to set a rail — when to plan, when to fan
+out, which companion owns which decision, what a review must clear, where a project's documents
+live. It had also acquired a ten-file application-security curriculum, a generic testing
+curriculum, a report gate that could not check what it claimed to, and a test suite of 2,241
+lines that was the largest thing in the repo. This release removes all of that. Every hook that
+keeps the plugin *working* — the status line, the context watch, self-heal, onboarding — stays,
+and so does every safety test.
+
+The one-job rule the plugin enforces on its companions was the thing it had stopped applying to
+itself.
+
+### Removed
+
+- **`skills/security-protocol/references/` — all ten files, 4,423 words.** `core.md` already
+  assigns security expertise to the `security-guidance` companion, so shipping a parallel
+  curriculum was this plugin contending for a decision it had given away. The skill survives at
+  a fifth the size: when to escalate, and the agent/MCP tool-authority rules a code reviewer
+  won't cover, because there the attack surface is the agent itself.
+- **`hooks/subagent-verify.sh`, its `SubagentStop` registration, and `parse_stop` in
+  `lib-parse.sh`.** It read a subagent's report and blocked a `done` that pasted no verify
+  output. But it accepted a report with no `Status:`, took `Changed: none` at its word, and could
+  only test whether text *resembled* evidence — never that a command ran. A gate that cannot fail
+  honestly is worse than no gate, because you stop reading the reports yourself. The report
+  contract stays in `agent-protocol` as the shape to follow; the orchestrator is the check, and
+  `core.md` now says so in a line.
+- **Model tiers** — the `/setup` questionnaire, `model_tiers()` in `session-start.py`, and the
+  70-line test section. It wrote up to three settings keys and announced them each session, but
+  **nothing read `MY_CLAUDE_SETUP_ADVISOR_MODEL`**: setup wrote it, session start printed it, no
+  code anywhere acted on it. `CLAUDE_CODE_SUBAGENT_MODEL` is a stock harness key, settable in
+  `/config` without this plugin.
+- **`post-push.sh`'s provider detection and cross-repo inference** — seven filenames, a `gh`/
+  `glab` branch, an upstream check, and `-C`/`--git-dir` resolution, all to guess a check command
+  it could not verify. It now names the SHA and points at the repo's own `## CI` line in its
+  `CLAUDE.md`, which `git-protocol` already says to record; a push aimed at another repo produces
+  silence rather than this repo's SHA. 159 lines to 67, and it no longer claims a push landed
+  when nothing confirmed it did.
+
+### Changed
+
+- **`tests/suite.sh`: 2,241 lines and 192 cases → 1,075 and 143.** Held to `testing-protocol`'s
+  own classes, which the suite had stopped obeying. Every safety case survives untouched —
+  destructive commands, the PowerShell forms, protected files, the staged-secret scan, the
+  Windows interpreter layout, the planted-symlink write, the path-shaped `session_id`, and
+  self-heal's settings rewrite. What went was advisory permutation: `post-push` 189 lines to 44,
+  the `HOME`/`USERPROFILE` matrix and jq-vs-python output parity in `context-watch`, render
+  permutations in the status line, the allowlist-wording assertions in `consistency`, and three
+  near-identical 28-line self-heal fixtures collapsed into one parameterised run. `json_cmd` and
+  `json_file` moved into the harness, where they belong.
+- **Prose across `core.md`, the skills and the README: 13,660 words → 7,127.** `core.md` 889 →
+  824 resident words. `testing-protocol` 1,322 → 688, keeping the two rules that are genuinely
+  local: where the fast path ends and `superpowers:test-driven-development`'s Iron Law takes
+  over, and the three test classes. `git-protocol` 967 → 622, dropping the conventional-commit
+  table that restates a convention nobody needs taught. `project-docs` 1,624 → 1,313. README
+  2,908 → 1,851, including a measured-cost section whose numbers no longer described the code.
+- **`planning-protocol` §3 is new: a plan is a guide, not a specification.** Cite `file:line`,
+  never paste the code; a phase is a handful of lines, and one needing three paragraphs is two
+  phases. Plan files were the one document class with no rule against restating the diff.
+
+### Fixed
+
+- **The `Handoff/` contradiction.** `project-docs` shipped `Docs/Handoff/` as part of the
+  convention while `setup.md` and `project-CLAUDE.md` both said "there is no fourth folder" —
+  two live answers to whether a folder the plugin itself creates is allowed. All three now name
+  the same tree.
+
+---
+
 ## [1.23.0] — 2026-09-16
 
 A session has no idea how full it is. The figure exists — `context_window`, in the status-line

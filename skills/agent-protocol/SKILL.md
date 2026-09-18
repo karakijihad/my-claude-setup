@@ -20,8 +20,8 @@ tests goes to `my-claude-setup:worker`, advice to `my-claude-setup:advisor` — 
 `effort: high`. `general-purpose` carries no effort of its own; don't use it for delegated work.
 
 **Model.** A worker takes the subagent default — don't pass `model`. An advisor takes the
-model the operator named ("consult fable" → `model: fable`), else the advisor tier when
-session start names one; it never writes code. With nothing named, pass nothing.
+model the operator named ("consult fable" → `model: fable`); it never writes code. With
+nothing named, pass nothing.
 
 ## The brief
 
@@ -51,22 +51,17 @@ file-list fields: they hold nothing, so nothing collides.
 `done` requires pasted verify output. Couldn't run the command → `partial`, and say why.
 Needs something you don't have → `blocked`.
 
-**This is enforced, not requested.** `hooks/subagent-verify.sh` fires on `SubagentStop` and
-reads the report itself: a `done` that lists changed files but whose **Verify output** is
-empty, a placeholder, or a sentence saying the command didn't run is blocked, and the agent
-resumes to produce one. So a brief that omits **Verify with** doesn't produce a lax agent — it
-produces a stuck one.
-
-It judges the *report*, not the transcript — an agent's own `Changed: none` is taken at its
-word, because the transcript is written asynchronously and its line schema is undocumented.
-That makes this a gate against forgetting to verify, not against an agent that misreports. The
-orchestrator still reads what came back.
+Nothing enforces this shape but you. A hook once read these reports and blocked a `done`
+with no verify output; it was deleted because it could only check that text *looked* like
+evidence, which is the part that was never in doubt. The brief asks for the block; **you**
+are the check that it came back.
 
 ## Reading reports
 
-Check each report's verify output *before* dispatching anything that depends on it, and run
-the whole project's verify yourself at the end. Separately-green does not compose; the hook
-proves each agent ran its own command, not that the pieces fit.
+Read each report's verify output *before* dispatching anything that depends on it, and run
+the whole project's verify yourself at the end. Separately-green does not compose.
+
+An agent's `Changed: none` is its own claim. When it matters, `git status` costs nothing.
 
 Non-trivial assumptions go to the user before the commit, not after.
 

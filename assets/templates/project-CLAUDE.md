@@ -69,12 +69,14 @@ This project follows the global `Docs/` convention (see the `project-docs` skill
 Docs/
 ├── Decisions/YYYY-MM-DD.md            why, and what was rejected
 ├── Audit/{agent}/YYYY-MM-DD/audit-{N}.md
-└── Plan/                              in-flight work only
+├── Plan/                              in-flight work only
+└── Handoff/YYYY-MM-DD/<slug>.md       where the work stood; deleted when it lands
 CHANGELOG.md                           repo root, committed
 ```
 
-Only what git cannot reconstruct. There is no fourth folder — anything this project must do
-differently from a protocol belongs in **this file**, which is loaded every session.
+Only what git cannot reconstruct. That tree is the whole convention — anything this project
+must do differently from a protocol belongs in **this file**, loaded every session, not in a
+folder of its own.
 
 `Docs/` is gitignored (`/Docs/`), whole tree, subfolders included: it holds working evidence,
 some of it private. To version it instead, delete the ignore line and replace this paragraph

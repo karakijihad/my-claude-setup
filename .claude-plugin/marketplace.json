@@ -1,6 +1,6 @@
 {
   "name": "my-claude-setup",
-  "description": "Security, testing, git, and delegation discipline for Claude Code.",
+  "description": "A rail for how Claude Code works — review ladder, delegation, planning, per-project docs.",
   "owner": {
     "name": "karakijihad",
     "url": "https://github.com/karakijihad"

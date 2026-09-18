@@ -11,11 +11,9 @@ Decide which the user wants before doing anything. A bare `/setup` on a fresh ma
 Part 1; a bare `/setup` inside a repo that already has `~/.claude/settings.json` configured
 means Part 2. When it is genuinely ambiguous, ask — don't run both.
 
-**This plugin is opinionated on purpose.** It carries its author's plugin set, keybind-level
-preferences and companion tuning, and it writes them without pretending to be neutral. That is
-the point: install it on a new machine and the machine works the way the last one did. Anyone
-else installing it is adopting those choices knowingly. What it must *never* do is write them
-silently — every part below shows a diff and asks first.
+**This plugin is opinionated on purpose** — install it on a new machine and the machine works
+the way the last one did. What it must *never* do is write those choices silently: every part
+below shows a diff and asks first.
 
 ---
 
@@ -91,32 +89,6 @@ and stop — this command is idempotent.
 | `effortLevel` | `"high"` | |
 | `enabledPlugins` | every plugin from 1.2, `true` | |
 
-The `permissions.allow` union is asserted **exactly** in `tests/suite.sh` — changing it here fails
-the suite until that expected set is changed too. That is deliberate: a widening should cost a
-second, deliberate edit. Read the note below before making it.
-
-### Model tiers
-
-Ships blank: with nothing set, the harness defaults stand. Ask once, and make skipping the
-obvious answer:
-
-> Want to name models per role? Orchestrator (main session), subagents (code, research,
-> tests), advisor (consults and advice, never code). Use aliases like `opus`, `sonnet`,
-> `fable` — names that survive a release. Skip to keep the defaults.
-
-Write only the roles the user names, into the same diff as the table above:
-
-| Role | Key |
-|-|-|
-| Orchestrator | `model` |
-| Subagents | `env.CLAUDE_CODE_SUBAGENT_MODEL` |
-| Advisor | `env.MY_CLAUDE_SETUP_ADVISOR_MODEL` |
-
-Never suggest a model the user didn't name, and never overwrite a value already there without
-showing it in the diff. They are ordinary settings keys — edit them there, or rerun `/setup`.
-Session start names whatever is set, so the session knows its tiers. Trio's Codex models are
-trio's own config (`/trio:model`), not this table.
-
 Otherwise do **not** set `model` — leave the user's choice alone.
 
 Do **not** add `MAX_THINKING_TOKENS`, `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE`, or
@@ -130,35 +102,19 @@ active as soon as it is enabled. A hook copied into `settings.json` would run tw
 
 Four of these run code the user did not write: `node`, `npm`, `pnpm`, `python`. Don't present
 the list as least-privilege. `npm run <anything>` executes whatever `package.json` defines, and
-`node`/`python` one-liners spawn any OS command.
-
-**Two of them reach the network.** `npm exec <pkg>` and `pnpm dlx <pkg>` fetch from the registry
-and run it, and under `defaultMode: "auto"` with these entries that happens with **no prompt** —
-observed during this release's audit, not reasoned about. So the list auto-approves arbitrary
-remote code. Say that plainly to anyone adopting it.
+**`npm exec <pkg>` and `pnpm dlx <pkg>` fetch from the registry and run it with no prompt** under
+`defaultMode: "auto"`. So the list auto-approves arbitrary remote code. Say that plainly to
+anyone adopting it.
 
 They stay in the default because a Node or Python session prompts constantly without them, and
 prompt fatigue causes worse decisions than the widening does. That is a judgment, not a security
 argument, and it is the operator's to overturn: **dropping `npm` and `pnpm` closes the
-remote-fetch path**, at the cost of a prompt on every `npm run`, `npm ci` and `npm test`.
-`guard.sh` still applies its patterns, but it inspects command *text* — it cannot see what a
-fetched package does.
-
-`npx` is absent. Rules match command **text**, so `Bash(npm:*)` matches `npm exec <pkg>` but not
-`npx <pkg>`. A literal `npx` call prompts; the capability is still reachable via `npm exec`.
-Worth doing, not a safety measure.
+remote-fetch path**, at the cost of a prompt on every `npm run` and `npm test`.
 
 **Never allowlist a wrapper.** `Bash(timeout:*)`, `Bash(env:*)`, `Bash(sudo:*)`, `Bash(sh:*)`,
 `Bash(bash:*)`, `Bash(command:*)`, `Bash(eval:*)` and bare `Bash(xargs:*)` each match a word that
-says nothing about what runs after it, so one entry silently allows everything. `Bash(xargs grep:*)`
-is in the list and `Bash(xargs:*)` is not; `tests/suite.sh` asserts that distinction. The package
-runners resolve against `node_modules/.bin` and the registry, never ambient `PATH`, so they aren't
-wrappers — their risk is the remote fetch above.
-
-An allow entry only helps once Claude Code resolves the command well enough to match a rule, which
-is why `core.md` carries a rule about command *shape*. Don't enumerate which constructs the
-analyzer currently rejects — that tightens every release, and this week's list is stale config that
-reads like fact.
+says nothing about what runs after it, so one entry silently allows everything. That is why the
+list carries `Bash(xargs grep:*)` and not `Bash(xargs:*)`.
 
 ## 1.5 Companion tuning — stop the double-fire
 
@@ -225,9 +181,9 @@ writes nothing until the user agrees. When in doubt, survey; it is read-only.
 1. Copy `${CLAUDE_PLUGIN_ROOT}/assets/templates/project-CLAUDE.md` to `./CLAUDE.md`. If one
    exists, leave it alone and say so — never overwrite a project's existing instructions.
 2. Copy `${CLAUDE_PLUGIN_ROOT}/assets/templates/Docs-skeleton/` to `./Docs/`. If it exists,
-   report which of `Decisions/ Audit/ Plan/` are missing and offer only those. A project using
-   the older `Doclog/` name keeps it — don't rename an append-only history. Those three are the
-   whole convention; never invent a fourth folder. A project-specific deviation goes in that
+   report which of `Decisions/ Audit/ Plan/ Handoff/` are missing and offer only those. A project
+   using the older `Doclog/` name keeps it — don't rename an append-only history. That tree is
+   the whole convention; never invent a folder outside it. A project-specific deviation goes in that
    project's `CLAUDE.md`, which is loaded every session.
 3. If `./CHANGELOG.md` does not exist, offer to add it from `changelog-entry.md`. It lives at the
    **repo root** and is committed — a changelog is read by people without your working copy.
@@ -245,7 +201,7 @@ writes nothing until the user agrees. When in doubt, survey; it is read-only.
 | Check | Looking for |
 |-|-|
 | `CLAUDE.md` | Present at the root? Does it cover purpose, stack, key files, commands, gotchas? |
-| `Docs/` | Which of `Decisions/ Audit/ Plan/` exist |
+| `Docs/` | Which of `Decisions/ Audit/ Plan/ Handoff/` exist |
 | Old layout | `Doclog/`, `Sessions/`, `Docs/Changelog/`, `Logs/`, `Protocols/` |
 | `CHANGELOG.md` | At the **repo root**, committed |
 | `.gitignore` | Covers `.env*`; whether `/Docs/` is ignored; whether `git ls-files -- Docs` shows tracked files; whether a `Docs policy` section in `CLAUDE.md` opts out |
@@ -262,7 +218,7 @@ with the survey — the point of this half is that the user sees the list before
 - **Existing `CLAUDE.md`** → **never rewrite it.** Name the sections it lacks, show the exact
   text you'd append, let the user accept per section. A project's instructions are theirs.
 - **Missing `Docs/` trees** → add only the missing ones. Three is the whole convention; don't
-  add a fourth because the repo happens to have one.
+  add one outside the tree because the repo happens to have it.
 - **`Logs/` or `Protocols/`** → leave them exactly as they are and don't recreate them
   elsewhere. `Protocols/` was dropped because nothing ever loaded it: a project deviation
   belongs in `CLAUDE.md`, which *is* loaded. If it holds real content, offer to move it there —

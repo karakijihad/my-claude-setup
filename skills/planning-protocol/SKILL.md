@@ -8,8 +8,8 @@ description: >
 
 # Planning Protocol
 
-Where a plan lives, what each file may hold, and its line budgets: `project-docs`.
-This skill covers when to write one and how to execute it.
+Where a plan lives and its line budgets: `project-docs`. This skill covers when to write
+one, what it may say, and how to execute it.
 
 ## 1. When to offer
 
@@ -17,10 +17,9 @@ Both must hold: the work breaks into **ordered phases** (N can't start until N-1
 and it **won't fit one context window**. Either alone is not enough — a 20-file rename is
 one phase; a 3-file change can be four.
 
-**Four phases is the tripwire.** The context estimate errs one way only — "this will fit"
-is how a plan doesn't get written, and the cost lands on the session resuming from a
-summary. At four, offer unless you can name why it all fits one window. Counting phases is
-checkable; predicting context is not.
+**Four phases is the tripwire.** At four, offer unless you can name why it all fits one
+window. Counting phases is checkable; predicting context is not, and "this will fit" is how
+a plan doesn't get written — the cost landing on the session that resumes from a summary.
 
 Don't offer when the work is under ~50 lines, is pure research, finishes in one commit, or
 already has a plan file — extend that one.
@@ -36,7 +35,24 @@ Declined → proceed, no gate, no second mention. Re-offer **once**, only on a c
 overrun: more phases than estimated, or one phase spills the context. A second decline is
 final.
 
-## 3. Drafting
+## 3. A plan is a guide, not a specification
+
+This is the rule that keeps plan files worth reading. A phase says where the work stands and
+what "done" looks like — it does not restate the code, and it does not explain the codebase
+to a reader who has one.
+
+- **Cite, don't copy.** `src/auth/token.ts:40-88`, not the function pasted in. The file is
+  the source of truth and the plan goes stale the moment it disagrees.
+- **A phase is a handful of lines.** Scope in, scope out, exit criteria, rollback. If a
+  phase needs three paragraphs to state, it is two phases.
+- **No inline implementation.** A plan that contains the diff has become a worse copy of
+  the diff.
+- **Nothing a reader could get from `git log`** — it holds the *plan*, not the history.
+
+`budget.sh` warns when `INDEX.md` passes 100 lines or a `phase-*.md` passes 200. Treat the
+first warning as the ceiling, not the target.
+
+## 4. Drafting
 
 `INDEX.md` opens with the resumption header — the reason the folder exists:
 
@@ -49,15 +65,13 @@ Updated: YYYY-MM-DD
 ```
 
 Directly under it, verbatim — a rule living only in this skill is one the resuming session
-may never read:
+may never read. Keep it a pointer, never a copy of §5: a plan written months ago would carry a
+stale mechanism and be believed.
 
 ```markdown
 > Before starting any phase, scout it against the codebase first — brief and skip
-> condition in `my-claude-setup:planning-protocol` §4. The plan is older than the code.
+> condition in `my-claude-setup:planning-protocol` §5. The plan is older than the code.
 ```
-
-Keep it a pointer, never a copy of §4: a plan written months ago would carry a stale
-mechanism and be believed.
 
 Each phase carries **scope in · scope out · exit criteria · rollback**. Scope-out is what
 stops the plan growing. Exit criteria cite evidence — `file:line`, test output, a
@@ -67,12 +81,11 @@ Status vocabulary is fixed: `not-started` · `in-progress` · `awaiting-review` 
 `blocked`. It lives in the header, not in prose.
 
 **This overrides `superpowers:writing-plans` on document shape.** Take its scope check,
-right-sizing, no-placeholders rule and self-review. Not "assume the engineer has zero
-context", the inline code per step, or "repeat the code" — those build a standalone
-document, right for a one-shot handoff and wrong for a file read across many sessions,
-which cites `file:line` instead.
+right-sizing, no-placeholders rule and self-review. Not "assume the engineer has zero context",
+the inline code per step, or "repeat the code" — those build a standalone document, wrong for a
+file read across many sessions, which cites `file:line` instead.
 
-## 4. Executing
+## 5. Executing
 
 Read the header, **verify its "Verified" claims against current code** before trusting
 them, then work only the current phase.
@@ -87,11 +100,9 @@ else:
 4. Has adjacent work appeared that it must now account for — a new caller, a second
    implementation, a module overlapping its scope?
 
-The fourth is the only one that catches what arrived while you weren't looking. Keep the
-brief to these: a scout that reviews or proposes is a phase being redesigned by an agent
-that cannot see the plan. Use `Explore` rather than grepping here — the plan exists
-*because* context is scarce. Exception: a phase naming two or three concrete files, where
-the round-trip costs more than the answer.
+The fourth is the only one that catches what arrived while you weren't looking. Keep the brief
+to these: a scout that reviews or proposes is a phase being redesigned by an agent that cannot
+see the plan. Exception: a phase naming two or three concrete files.
 
 Reconcile before the first edit — rewrite the phase to match what the scout found, then
 stamp `Scouted: <date> @ <sha> — <drift, or "no drift">`. Drift that changes scope-out,
