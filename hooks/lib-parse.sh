@@ -13,7 +13,16 @@
 # this parser then returns "" for every field, and guard.sh reads that as a tool
 # call with no command and no file_path — silently skipping every check it makes.
 
-_LIB_PARSE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Parameter expansion, not `$(cd "$(dirname ...)" && pwd)`. That idiom forks a
+# subshell AND spawns dirname, and this file is sourced by every PreToolUse and
+# PostToolUse hook — so it was two process spawns on every tool call in the
+# session, before any check ran. Measured on Windows 2026-09-18: a dirname spawn
+# alone ran 0.4-1.4s under on-launch AV scanning, against ~0.0007ms for the
+# expansion below. The `= "$src"` guard is the case with no slash to strip,
+# which is how the suite invokes these hooks (`bash guard.sh` from hooks/).
+_LIB_PARSE_SRC="${BASH_SOURCE[0]}"
+_LIB_PARSE_DIR="${_LIB_PARSE_SRC%/*}"
+[ "$_LIB_PARSE_DIR" = "$_LIB_PARSE_SRC" ] && _LIB_PARSE_DIR="."
 
 
 # parse_all — sets CMD, FILE and NBPATH from one interpreter call.

@@ -7,7 +7,7 @@
 # old CLAUDE.md had, which loaded regardless of interpreters. So: try Python,
 # and fall back to a compact core rather than emitting nothing.
 
-DIR="$(dirname "$0")"
+DIR="${0%/*}"; [ "$DIR" = "$0" ] && DIR="."
 
 if OUT=$(bash "$DIR/py.sh" "$DIR/session-start.py" 2>/dev/null) && [ -n "$OUT" ]; then
   printf '%s\n' "$OUT"

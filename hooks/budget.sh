@@ -17,7 +17,10 @@ shopt -s nocasematch
 [[ $INPUT == *docs* ]] || { shopt -u nocasematch; exit 0; }
 shopt -u nocasematch
 
-. "$(dirname "$0")/lib-parse.sh"
+# `${0%/*}`, not `$(dirname "$0")` — one fewer process spawn on every tool
+# call. See lib-parse.sh for the measurement; the guard is the no-slash case.
+_HOOK_DIR="${0%/*}"; [ "$_HOOK_DIR" = "$0" ] && _HOOK_DIR="."
+. "$_HOOK_DIR/lib-parse.sh"
 parse_all
 [ -z "$FILE" ] && exit 0
 

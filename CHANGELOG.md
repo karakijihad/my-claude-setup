@@ -5,6 +5,48 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.25.0] — 2026-09-18
+
+`/doctor` reported that `guard.sh` hit its 10s `PreToolUse` timeout on 235 of 247 runs — every
+`Edit` (67/67), every `PowerShell` (4/4), 145 of 156 `Bash`. A `PreToolUse` guard that always
+times out is cancelled before it returns, so for those runs **nothing was being guarded**. That
+is the serious half; the ~40 minutes of blocked wall-clock over five days is the cheap half.
+
+The cause was not the guard's logic. It was process spawns, on a machine where a spawn is not
+cheap: measured here 2026-09-18, `bash -c true` cost **296ms warm and 1,748–3,374ms cold** under
+on-launch AV scanning, against the 5–30ms a spawn costs elsewhere. `guard.sh` was paying four of
+them before any rule ran.
+
+### Changed
+
+- **`hooks/lib-parse.sh`** — `_LIB_PARSE_DIR` was `$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)`,
+  which forks a subshell *and* spawns `dirname`. It is sourced by `guard.sh`, `budget.sh` and
+  `post-push.sh`, so that idiom was two spawns on **every tool call in the session**. Now
+  parameter expansion, with a guard for the no-slash case the suite invokes with.
+- **`$(dirname "$0")` → `${0%/*}`** in `guard.sh`, `budget.sh`, `post-push.sh`,
+  `context-watch.sh` and `session-start.sh`. One spawn each.
+- **`$(basename "$FILE_N")` → `${FILE_N##*/}`** in `guard.sh`. Separators are already normalised
+  to `/` on the line above, so the expansion is exactly equivalent — and this was the last spawn
+  on the file-path branch, the one every `Edit` and `Write` pays. A trailing separator is now
+  stripped first, because `${x##*/}` yields `""` where `basename` yields the last segment, and
+  `""` matches nothing — the unsafe direction for a guard.
+- **`guard.sh`'s timeout: 10s → 20s.** The advisory `PostToolUse` hooks stay at 10s; timing one
+  of those out loses a reminder, while timing the guard out loses the guard. The worst case is
+  now a longer wait in exactly the cases where the alternative was no protection at all.
+
+**Measured on the same machine, same payloads, before and after:** an `Edit`-shaped payload
+1,345–2,001ms → **638–722ms**; a `Bash`-shaped payload 2,922–4,045ms → **630–702ms**. Three to
+four spawns removed per call. 143 passed, 0 failed.
+
+Two things this does **not** fix. The remaining spawns are bash itself, which the harness owns,
+and one `jq` call in `parse_all` (~410ms warm) — removable with a bash-regex fast path like the
+one `context-watch.sh` already uses, but that is security-relevant parsing and is not being
+changed without a decision. And the root cause is environmental: a 296ms warm process spawn is
+pathological, and AV exclusions for the Git Bash, Python and `jq` binaries would speed up every
+tool call, not only this plugin's hooks.
+
+---
+
 ## [1.24.0] — 2026-09-18
 
 The plugin had drifted from what it is for. It exists to set a rail — when to plan, when to fan

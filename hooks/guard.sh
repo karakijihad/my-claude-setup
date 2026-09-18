@@ -27,7 +27,10 @@
 # reads to EOF and returns non-zero having set INPUT, which is why the status is
 # not checked. See budget.sh for the same note.
 IFS= read -r -d '' INPUT
-. "$(dirname "$0")/lib-parse.sh"
+# `${0%/*}`, not `$(dirname "$0")` — one fewer process spawn on every tool
+# call. See lib-parse.sh for the measurement; the guard is the no-slash case.
+_HOOK_DIR="${0%/*}"; [ "$_HOOK_DIR" = "$0" ] && _HOOK_DIR="."
+. "$_HOOK_DIR/lib-parse.sh"
 
 parse_all
 
@@ -199,6 +202,10 @@ fi
 # box, which this would misread. That is vanishingly rare and errs toward
 # blocking, which is the safe direction for a guard.
 FILE_N=${FILE//\\//}
+# Trailing separator stripped so the expansion below behaves like basename on a
+# path that ends in one: `${x##*/}` would yield "" where basename yields the last
+# segment, and "" matches nothing — the unsafe direction for a guard.
+FILE_N=${FILE_N%/}
 
 # Case-insensitive the way the Bash checks above are: Windows treats .ENV,
 # Package-Lock.json and /.GIT/ as the same paths as their lowercase spellings,
@@ -206,7 +213,12 @@ FILE_N=${FILE//\\//}
 # every exit in this region, not just at the bottom — an option left set past
 # the last check that needs it is a latent bug for the next one added here.
 shopt -s nocasematch
-case "$(basename "$FILE_N")" in
+# `${FILE_N##*/}`, not `$(basename ...)`. Separators are already normalised
+# above, so the expansion is exactly equivalent here — and it removes the last
+# process spawn from the file-path branch, which every Edit and Write pays.
+# Measured on Windows 2026-09-18: a basename spawn ran ~0.4s under on-launch
+# AV scanning.
+case "${FILE_N##*/}" in
   # An example env file is meant to be committed; the real one never is.
   .env.example|.env.sample|.env.template) shopt -u nocasematch; exit 0 ;;
   .env|.env.*|package-lock.json|yarn.lock|pnpm-lock.yaml)

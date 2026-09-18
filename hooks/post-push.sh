@@ -16,7 +16,10 @@
 # reads to EOF and returns non-zero having set INPUT, which is why the status is
 # not checked. See budget.sh for the same note.
 IFS= read -r -d '' INPUT
-. "$(dirname "$0")/lib-parse.sh"
+# `${0%/*}`, not `$(dirname "$0")` — one fewer process spawn on every tool
+# call. See lib-parse.sh for the measurement; the guard is the no-slash case.
+_HOOK_DIR="${0%/*}"; [ "$_HOOK_DIR" = "$0" ] && _HOOK_DIR="."
+. "$_HOOK_DIR/lib-parse.sh"
 
 parse_all
 [ -z "$CMD" ] && exit 0

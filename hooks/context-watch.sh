@@ -19,6 +19,9 @@
 # at all before the ratchet's own cheap integer compare.
 
 # `read`, not `$(cat)` -- see post-push.sh's note; same cost, same fix.
+# `${0%/*}`, not `$(dirname "$0")` — one fewer process spawn per call. See
+# lib-parse.sh for the measurement; the guard is the no-slash case.
+_HOOK_DIR="${0%/*}"; [ "$_HOOK_DIR" = "$0" ] && _HOOK_DIR="."
 IFS= read -r -d '' INPUT
 
 # --- 1. Subagent check --------------------------------------------------
@@ -91,7 +94,7 @@ else
   if [ -z "$SESSION_ID$AGENT_ID" ]; then
     SESSION_ID=""; AGENT_ID=""
     { IFS= read -r SESSION_ID; IFS= read -r AGENT_ID; } \
-      < <(printf '%s' "$INPUT" | bash "$(dirname "$0")/py.sh" -c "$_PY_TOP" 2>/dev/null | tr -d '\r')
+      < <(printf '%s' "$INPUT" | bash "$_HOOK_DIR/py.sh" -c "$_PY_TOP" 2>/dev/null | tr -d '\r')
   fi
 fi
 
@@ -153,7 +156,7 @@ ST_SID=""; USED=""; SIZE=""; PCT=""
 if [ -z "$ST_SID$USED$SIZE$PCT" ]; then
   ST_SID=""; USED=""; SIZE=""; PCT=""
   { IFS= read -r ST_SID; IFS= read -r USED; IFS= read -r SIZE; IFS= read -r PCT; } \
-    < <(bash "$(dirname "$0")/py.sh" -c "$_PY_STATE" < "$STATE_FILE" 2>/dev/null | tr -d '\r')
+    < <(bash "$_HOOK_DIR/py.sh" -c "$_PY_STATE" < "$STATE_FILE" 2>/dev/null | tr -d '\r')
 fi
 
 # Malformed content, a torn write that produced valid-but-empty JSON, or a
