@@ -1,7 +1,7 @@
 {
   "name": "my-claude-setup",
   "description": "A rail for how Claude Code works: the review ladder, delegation, planning, and per-project docs. Protocol skills that load on demand, safety hooks, and scaffolding.",
-  "version": "1.25.0",
+  "version": "1.26.0",
   "author": {
     "name": "karakijihad"
   },

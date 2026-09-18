@@ -170,13 +170,32 @@ case "$PCT"  in ''|*[!0-9]*) exit 0 ;; esac
 [ "$SIZE" -le 0 ] && exit 0
 
 # --- 3. Budget in tokens -------------------------------------------------
+# Two knobs, both optional, absolute winning over percentage when both are set:
+#
+#   CLAUDE_HANDOFF_BUDGET  an absolute number of tokens
+#   CLAUDE_HANDOFF_PCT     a percentage of whatever window the session reports
+#
+# The percentage is the one most people want, because it keeps meaning the same
+# thing when the window changes; the absolute is kept for pinning a figure that
+# has nothing to do with window size. Both are validated the same way and both
+# fail to the 60% default rather than erroring — a hook that refuses to run
+# because a config value is malformed is a hook that stopped reporting the one
+# number the session cannot otherwise see.
+PCT_LIMIT=""
+case "${CLAUDE_HANDOFF_PCT:-}" in
+  ''|*[!0-9]*) ;;
+  0) ;;
+  *) [ "$CLAUDE_HANDOFF_PCT" -le 100 ] && PCT_LIMIT="$CLAUDE_HANDOFF_PCT" ;;
+esac
+[ -z "$PCT_LIMIT" ] && PCT_LIMIT=60
+
 BUDGET=""
 case "${CLAUDE_HANDOFF_BUDGET:-}" in
   ''|*[!0-9]*) ;;
   0) ;;
   *) BUDGET="$CLAUDE_HANDOFF_BUDGET" ;;
 esac
-[ -z "$BUDGET" ] && BUDGET=$((SIZE * 60 / 100))
+[ -z "$BUDGET" ] && BUDGET=$((SIZE * PCT_LIMIT / 100))
 
 # --- 4. Ratchet on the 5%-of-context bucket -------------------------------
 BUCKET=$((PCT / 5))
@@ -216,7 +235,7 @@ read -r KU KB SM KS < <(awk -v u="$USED" -v b="$BUDGET" -v s="$SIZE" \
 if [ "$SIZE" -ge 1000000 ]; then WIN="${SM}M"; else WIN="${KS}k"; fi
 
 if [ "$USED" -ge "$BUDGET" ]; then
-  MSG="[context] ${KU}k/${WIN} (${PCT}%) — past the ${KB}k handoff budget. Write the handoff per my-claude-setup:project-docs now, and in your next reply give the operator its path and tell them to start a fresh session; you cannot start one yourself. If this budget is wrong, it is the CLAUDE_HANDOFF_BUDGET environment variable."
+  MSG="[context] ${KU}k/${WIN} (${PCT}%) — past the ${KB}k handoff budget. Write the handoff per my-claude-setup:project-docs now, and in your next reply give the operator its path and tell them to start a fresh session; you cannot start one yourself. If this budget is wrong, set CLAUDE_HANDOFF_PCT (a percentage) or CLAUDE_HANDOFF_BUDGET (absolute tokens)."
 else
   MSG="[context] ${KU}k/${WIN} (${PCT}%) · handoff budget ${KB}k"
 fi

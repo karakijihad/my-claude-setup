@@ -5,7 +5,7 @@ A rail for how Claude Code works, packaged as a plugin.
 It doesn't add capabilities — it decides how the ones you have get used: when to plan, when to
 fan out agents, which companion plugin owns which decision, what a review must clear before the
 work is called done, and where a project's documents live. A small resident core, six protocol
-skills that load on demand, six hooks, two agents, one command.
+skills that load on demand, five hooks, two agents, two commands.
 
 ```
 /plugin marketplace add karakijihad/my-claude-setup
@@ -69,7 +69,7 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 hooks/              hooks.json + 5 hooks and their shared helpers
 skills/             6 protocol skills, loaded on demand
 agents/             worker and advisor — delegated work and consults, both effort high
-commands/           setup — machine setup (Part 1), project setup (Part 2)
+commands/           setup (machine + project), status (what the plugin is doing now)
 assets/             statusline.mjs and the document templates
 ```
 
@@ -79,9 +79,9 @@ assets/             statusline.mjs and the document templates
 |-|-|-|
 | `session-start.sh` → `.py` → `core.md` | SessionStart | Injects the resident core — brevity, code discipline, the fast path, the review ladder, the fan-out rule, the companion roster. Its text lives in `core.md`, so the no-Python fallback emits the same bytes rather than a second copy that drifts. Adds the branch, the Tier-2 reviewer notice, and the one-time onboarding check |
 | `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `checkout -- `, `branch -D` (but not `-d`), `DROP TABLE`/`DROP DATABASE`/`TRUNCATE TABLE`, and the PowerShell equivalents; blocks writes to `.env*` (except `.env.example`), lockfiles and `.git/`; scans the **staged diff** on commit for value-shaped secrets and credential material |
-| `budget.sh` | PostToolUse | Warns when a project doc outgrows its line budget. Ratcheted: it speaks on the first crossing and again only when an edit makes the overage worse, so the edits that fix the file never nag. Never blocks |
+| `budget.sh` | PostToolUse | Warns when a project doc outgrows its budget — lines for plans, backlogs and code maps; estimated tokens for a handoff, which is the one document written to be read by a model. Ratcheted: it speaks on the first crossing and again only when an edit makes the overage worse, so the edits that fix the file never nag. Never blocks |
 | `post-push.sh` | PostToolUse | After a push, names the SHA and points at the repo's own CI command in its `CLAUDE.md`. It doesn't detect providers and doesn't claim the push landed — a confident wrong pointer is worse than silence. Exits 0 on every path |
-| `context-watch.sh` | PostToolBatch | Reads the context fill `statusline.mjs` writes to a state file each render — no hook payload carries it — and injects a `[context] 350k/1.0M (35%)` line once per 5%-of-window crossing. Past the handoff budget (`$CLAUDE_HANDOFF_BUDGET`, else 60% of the window) it says to write the handoff instead. Never blocks |
+| `context-watch.sh` | PostToolBatch | Reads the context fill `statusline.mjs` writes to a state file each render — no hook payload carries it — and injects a `[context] 350k/1.0M (35%)` line once per 5%-of-window crossing. Past the handoff threshold (60% of the window by default; see **Configuration**) it says to write the handoff instead. Never blocks |
 
 ### Skills
 
@@ -99,6 +99,7 @@ assets/             statusline.mjs and the document templates
 | | |
 |-|-|
 | `/setup` **Part 1** | Sets up a machine: adds the marketplaces, installs the companion plugins, merges the recommended `settings.json` keys, tunes the companions so their triggers don't double-fire, installs the status line. Shows a diff, asks first, idempotent |
+| `/my-claude-setup:status` | Shows what the plugin is currently doing: hooks active, settings in effect, the three knobs and their current values, which companions are enabled, and how this project's `Docs/` tree stands. Read-only |
 | `/setup` **Part 2** | Sets up a project: scaffolds `CLAUDE.md` and the `Docs/` tree, or surveys an existing repo and reports before writing. Never rewrites a `CLAUDE.md` you already have |
 
 ## The status line
@@ -119,6 +120,39 @@ generated from the script's real ANSI output, so it cannot quietly drift from th
 
 It also writes the session's context fill to a state file, which is the only way
 `context-watch.sh` can know it — no hook payload carries `context_window`.
+
+## Configuration
+
+Three knobs, all optional, all read from the environment. Set them in `env` in
+`~/.claude/settings.json` (or a project's `.claude/settings.json`), then restart the session:
+
+```json
+{
+  "env": {
+    "CLAUDE_HANDOFF_PCT": "50",
+    "CLAUDE_HANDOFF_DOC_TOKENS": "8000"
+  }
+}
+```
+
+| Variable | Controls | Default |
+|-|-|-|
+| `CLAUDE_HANDOFF_PCT` | When the handoff becomes due, as a percentage of the context window | `60` |
+| `CLAUDE_HANDOFF_BUDGET` | The same threshold as an absolute token count. Wins over the percentage when both are set — use it to pin a figure that has nothing to do with window size | unset |
+| `CLAUDE_HANDOFF_DOC_TOKENS` | How long the written handoff may be before `budget.sh` says to cut it, in estimated tokens (4 characters each) | `5000` |
+
+Two things worth knowing:
+
+- **The `[context]` reading fires once per 5% of the window, and that cadence is not
+  configurable.** Only the handoff threshold is. The reading is a number, not an instruction,
+  and it stays quiet inside a bucket it has already reported.
+- **A malformed value falls back to the default, silently.** All three take digits only —
+  `50`, not `50%` or `8k`. The hooks fail open by design, which means a typo looks exactly
+  like an unset variable. `/my-claude-setup:status` prints the values actually in effect,
+  which is the fastest way to catch one.
+
+To see everything at once — hooks, settings, knobs, companions, and where this project's
+`Docs/` tree stands — run `/my-claude-setup:status`. It is read-only.
 
 ## The review ladder
 

@@ -478,10 +478,30 @@ assert d["additionalContext"]
   # Budget is per file kind: the INDEX arm budgets 100 and warns, the phase arm
   # budgets 200 and stays silent at the same length.
   mklines 250 "$PHASE"; bg speaks "warns when a phase crosses its own budget" "$PHASE"
-  # The handoff arm, driven rather than trusted to the static budget check below.
+  # The handoff arm is the one budgeted in TOKENS, estimated at 4 chars each, and
+  # the only budget the operator can move. 60 two-character lines is ~30 tokens,
+  # well under the 5000 default; the fat one below is ~7200.
   HO="$BG/Docs/Handoff/2026-09-11/resident-core-prune.md"
   mklines 60 "$HO"
-  bg speaks "warns when a handoff crosses its budget" "$HO"
+  bg quiet "silent on a handoff well under its token budget" "$HO"
+  fatlines() {
+    local n=$1 f=$2 s="" i=1
+    mkdir -p "$(dirname "$f")" 2>/dev/null
+    while [ "$i" -le "$n" ]; do s="${s}xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+"; i=$((i+1)); done
+    printf '%s' "$s" > "$f"
+  }
+  fatlines 400 "$HO"
+  bg speaks "warns when a handoff crosses its token budget" "$HO"
+  case "$BG_OUT" in
+    *tokens*) ok "the warning names the unit it measured in" ;;
+    *) bad "the warning names the unit it measured in" "got: ${BG_OUT:0:120}" ;;
+  esac
+  # Raising it with the override must silence exactly that file.
+  HO2="$BG/Docs/Handoff/2026-09-11/raised.md"
+  fatlines 400 "$HO2"
+  OUT=$(printf '{"tool_input":{"file_path":"%s"}}' "$HO2"     | TMPDIR="$BG/state" CLAUDE_HANDOFF_DOC_TOKENS=20000 bash "$HOOKS/budget.sh" 2>/dev/null)
+  [ -z "$OUT" ] && ok "CLAUDE_HANDOFF_DOC_TOKENS raises the handoff budget"     || bad "CLAUDE_HANDOFF_DOC_TOKENS raises the handoff budget" "expected silence, got: ${OUT:0:120}"
 
   # Safety: the mark path is predictable, so on a shared /tmp it can be planted
   # as a symlink and the write would truncate its target. The mark is created BY
@@ -589,6 +609,35 @@ assert d["additionalContext"], "empty additionalContext"
   case "$OUT" in
     *"past the 50k handoff budget"*) ok "CLAUDE_HANDOFF_BUDGET overrides the default 60% budget" ;;
     *) bad "CLAUDE_HANDOFF_BUDGET overrides the default 60% budget" "got: ${OUT:0:160}" ;;
+  esac
+
+  # The percentage knob, which is the one most people want: it keeps meaning the
+  # same thing when the window changes. 20% of 1M is 200k, so this state is past
+  # it where the 60% default would have stayed quiet.
+  SID4B="watch-session-four-b"
+  write_state "$SID4B" 300000 1000000 30
+  OUT=$(printf '%s' "$(sidjson "$SID4B")"     | HOME="$CWH" USERPROFILE="$CWH" CLAUDE_HANDOFF_PCT=20 bash context-watch.sh 2>/dev/null)
+  case "$OUT" in
+    *"past the 200k handoff budget"*) ok "CLAUDE_HANDOFF_PCT moves the threshold off the 60% default" ;;
+    *) bad "CLAUDE_HANDOFF_PCT moves the threshold off the 60% default" "got: ${OUT:0:160}" ;;
+  esac
+
+  # Absolute beats percentage when both are set, and a malformed value falls back
+  # to the default rather than erroring — a hook that refuses to run because a
+  # config value is wrong stops reporting the one number nothing else carries.
+  SID4C="watch-session-four-c"
+  write_state "$SID4C" 300000 1000000 30
+  OUT=$(printf '%s' "$(sidjson "$SID4C")"     | HOME="$CWH" USERPROFILE="$CWH" CLAUDE_HANDOFF_PCT=20 CLAUDE_HANDOFF_BUDGET=250000 bash context-watch.sh 2>/dev/null)
+  case "$OUT" in
+    *"past the 250k handoff budget"*) ok "an absolute budget wins over a percentage when both are set" ;;
+    *) bad "an absolute budget wins over a percentage when both are set" "got: ${OUT:0:160}" ;;
+  esac
+  SID4D="watch-session-four-d"
+  write_state "$SID4D" 650000 1000000 65
+  OUT=$(printf '%s' "$(sidjson "$SID4D")"     | HOME="$CWH" USERPROFILE="$CWH" CLAUDE_HANDOFF_PCT="sixty%" bash context-watch.sh 2>/dev/null)
+  case "$OUT" in
+    *"past the 600k handoff budget"*) ok "a malformed CLAUDE_HANDOFF_PCT falls back to 60%, silently" ;;
+    *) bad "a malformed CLAUDE_HANDOFF_PCT falls back to 60%, silently" "got: ${OUT:0:160}" ;;
   esac
 
   # A state file at the expected name but carrying a different session_id inside
@@ -863,7 +912,9 @@ sys.exit(0 if not bad else 1)
 # the hook keeps warning, just at a threshold the documents no longer state.
 bash py.sh -c '
 import re,sys
-pairs={"plan-index.md":"INDEX.md","plan-phase.md":"phase-","backlog.md":"Backlog.md","codemap.md":"CODEMAP.md","handoff.md":"*/[Hh]andoff/*.md"}
+# handoff.md is deliberately absent: it is the one arm budgeted in tokens
+# rather than lines, and its own case below pins that contract.
+pairs={"plan-index.md":"INDEX.md","plan-phase.md":"phase-","backlog.md":"Backlog.md","codemap.md":"CODEMAP.md"}
 src=open("budget.sh",encoding="utf-8").read()
 arms=dict(re.findall(r"^ +([^\n)]+)\)\n\s*BUDGET=(\d+)", src, re.M))
 hook={}
@@ -881,6 +932,28 @@ for tpl,key in pairs.items():
 sys.exit(0 if not bad else 1)
 ' >/dev/null 2>&1 && ok "every template budget matches the number budget.sh enforces" \
   || bad "every template budget matches the number budget.sh enforces"
+
+# The handoff is budgeted in tokens, so it is pinned separately: the template
+# header, the hook's default and the env var must all name the same number. A
+# figure stated in two places drifts, and the drift is invisible — the hook goes
+# on warning, just at a threshold the document no longer states.
+bash py.sh -c '
+import re,sys
+tpl=open("../assets/templates/handoff.md",encoding="utf-8").read()
+src=open("budget.sh",encoding="utf-8").read()
+m=re.search(r"\*\*Budget: (\d+) tokens", tpl)
+d=re.search(r"BUDGET=5000|\[ -z .\$BUDGET. \] && BUDGET=(\d+)", src)
+bad=[]
+if not m: bad.append("handoff.md states no token budget")
+if not d: bad.append("budget.sh states no handoff default")
+if m and d:
+    hook=d.group(1) or d.group(0).split("=")[-1]
+    if m.group(1)!=hook: bad.append("template %s vs hook %s"%(m.group(1),hook))
+for f,t in (("handoff.md",tpl),("budget.sh",src)):
+    if "CLAUDE_HANDOFF_DOC_TOKENS" not in t: bad.append(f+" does not name the override")
+sys.exit(0 if not bad else 1)
+' >/dev/null 2>&1 && ok "the handoff token budget agrees between template, hook and override" \
+  || bad "the handoff token budget agrees between template, hook and override"
 
 # core.md is resident in every session, so a routing claim there outranks the
 # same claim in a skill that loads on demand. Two live answers to "who owns a

@@ -86,7 +86,7 @@ believed, not what is true. Say in one line where the work actually stands, then
 its `Next:` — a handoff exists so the new session picks the work up, not so it reports on it.
 
 **Shape:** `assets/templates/handoff.md`, at `Docs/Handoff/<YYYY-MM-DD>/<slug>.md`. The folder
-is normative because `budget.sh` keys on it. Labelled lines and bullets, 45 lines, no headings
+is normative because `budget.sh` keys on it. Labelled lines and bullets, no headings
 — a handoff is read at a glance or it is not read. Omit no field; an empty one is information.
 
 - **Every `Done` line names what proves it.** "Added tests" is not an entry; "added four

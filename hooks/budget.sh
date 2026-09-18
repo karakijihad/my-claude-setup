@@ -43,6 +43,10 @@ BASE=${FILE_N##*/}
 #
 # REMEDY is the half that matters. "Over budget" alone tells a session to compress
 # prose, which is the wrong repair for every file here.
+# Every arm below is budgeted in lines except the handoff, which sets UNIT to
+# tokens. Declared here so the measurement block has one variable to switch on.
+UNIT=lines
+
 shopt -s nocasematch
 case "$BASE" in
   INDEX.md)
@@ -69,8 +73,21 @@ case "$BASE" in
       # Keyed on the folder, not the filename: a handoff is named for the work
       # it describes, so there is no fixed name to match on.
       */[Hh]andoff/*.md)
-        BUDGET=45
-        REMEDY="A handoff is a position, not a narrative. What happened is in git log; why it was decided goes to Docs/Decisions/. If it has grown past this, it is retelling the session instead of stating where the work stands." ;;
+        # The one arm budgeted in tokens rather than lines, and configurable.
+        # A handoff is the only document here written to be READ BY A MODEL
+        # rather than by a person scanning a table, so what constrains it is
+        # context, not screen height — and how much detail survives the gap
+        # between two sessions is the operator's call, not a fixed number.
+        # Every other arm stays in lines; see the measurement block below.
+        UNIT=tokens
+        BUDGET=""
+        case "${CLAUDE_HANDOFF_DOC_TOKENS:-}" in
+          ''|*[!0-9]*) ;;
+          0) ;;
+          *) BUDGET="$CLAUDE_HANDOFF_DOC_TOKENS" ;;
+        esac
+        [ -z "$BUDGET" ] && BUDGET=5000
+        REMEDY="A handoff is a position, not a narrative. What happened is in git log; why it was decided goes to Docs/Decisions/. If it has grown past this, it is retelling the session instead of stating where the work stands. Raise it with CLAUDE_HANDOFF_DOC_TOKENS if the work genuinely needs more." ;;
       */[Pp]lan/*.md) BUDGET=200
         REMEDY="A single-file plan this long wants to be a folder: INDEX.md plus one phase file per phase." ;;
       *) shopt -u nocasematch; exit 0 ;;
@@ -79,11 +96,23 @@ esac
 shopt -u nocasematch
 
 [ -f "$FILE_N" ] || exit 0
-# `grep -ac`, not `wc -l`: wc counts newline BYTES, so an unterminated last line
-# reads one short. `-a` stops grep's binary heuristic miscounting a stray NUL.
-LINES=$(grep -ac '' "$FILE_N" 2>/dev/null)
-LINES=${LINES// /}
-case "$LINES" in ''|*[!0-9]*) exit 0 ;; esac
+if [ "$UNIT" = tokens ]; then
+  # Estimated, not counted: there is no tokeniser here and shipping one for a
+  # warning would cost more than the warning is worth. Four characters per token
+  # is the conventional approximation for English prose and is close enough for a
+  # threshold — this decides whether to print a reminder, never whether to block.
+  # Deliberately generous: under-counting would nag on a handoff that is fine.
+  LINES=$(wc -c < "$FILE_N" 2>/dev/null)
+  LINES=${LINES// /}
+  case "$LINES" in ''|*[!0-9]*) exit 0 ;; esac
+  LINES=$((LINES / 4))
+else
+  # `grep -ac`, not `wc -l`: wc counts newline BYTES, so an unterminated last line
+  # reads one short. `-a` stops grep's binary heuristic miscounting a stray NUL.
+  LINES=$(grep -ac '' "$FILE_N" 2>/dev/null)
+  LINES=${LINES// /}
+  case "$LINES" in ''|*[!0-9]*) exit 0 ;; esac
+fi
 
 # Ratchet state: the count this file was last warned at. Sanitised path, not a
 # hash — bash has no builtin digest and a collision costs one warning, never a
@@ -133,6 +162,6 @@ ESCAPED=${FILE_N//\"/\\\"}
 ESCAPED=${ESCAPED//[[:cntrl:]]/ }   # POSIX class, not a byte range: ranges are collation-dependent.
 
 printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":"%s"}}\n' \
-"Doc budget: $ESCAPED is now $LINES lines against a budget of $BUDGET. $REMEDY Cut it before moving on. If the overage is deliberate, say why in one line and carry on; this will not warn again until the file grows further."
+"Doc budget: $ESCAPED is now $LINES $UNIT against a budget of $BUDGET. $REMEDY Cut it before moving on. If the overage is deliberate, say why in one line and carry on; this will not warn again until the file grows further."
 
 exit 0

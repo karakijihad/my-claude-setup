@@ -5,6 +5,49 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.26.0] — 2026-09-18
+
+The continuity threshold and the handoff's own size were both fixed numbers, and the one knob
+that did exist was documented in a table cell describing something else. You had to read the
+hook to find it. This makes both configurable and says so where someone would look.
+
+### Added
+
+- **`CLAUDE_HANDOFF_PCT`** — when the handoff becomes due, as a percentage of whatever window
+  the session reports. Default 60. This is the knob most people want: it keeps meaning the same
+  thing when the window size changes, which `CLAUDE_HANDOFF_BUDGET` does not. The absolute
+  variable still wins when both are set, for pinning a figure that has nothing to do with
+  window size.
+- **`CLAUDE_HANDOFF_DOC_TOKENS`** — how long a written handoff may be. Default 5000.
+- **`/my-claude-setup:status`** — read-only. Prints the version, every registered hook and
+  whether its script exists, the three knobs with the values actually in effect and where each
+  came from, which companions are enabled, and how this project's `Docs/` tree stands. It
+  writes nothing and offers to run nothing. A malformed knob value falls back to its default
+  silently, so the printed value is the fastest way to catch a typo.
+- **A `Configuration` section in the README.** `CLAUDE_HANDOFF_BUDGET` has existed since
+  1.23.0 and appeared in exactly two places a user might see: one table cell about
+  `context-watch.sh`, and a changelog entry. The runtime message named it to the *model* when
+  the handoff fired, and to nobody else.
+
+### Changed
+
+- **The handoff is now budgeted in tokens, not lines — 5000, up from 45 lines (~600 tokens).**
+  It is the one document here written to be read by a model resuming the work rather than by a
+  person scanning a table, so what constrains it is context, not screen height; and how much
+  detail survives the gap between two sessions is the operator's call. Every other arm of
+  `budget.sh` stays in lines. The estimate is 4 characters per token — deliberately rough,
+  because this decides whether to print a reminder, never whether to block. The warning now
+  names the unit it measured in.
+- **`assets/templates/handoff.md`** states the token budget and the override; the suite pins
+  the template, the hook default and the variable name against each other, the way it already
+  pins every line budget.
+
+The `[context]` reading itself still fires once per 5% of the window, and that cadence stays
+fixed — it is a reading, not a threshold, and a configurable one would only ever be turned
+down until it stopped arriving. 150 passed, 0 failed.
+
+---
+
 ## [1.25.0] — 2026-09-18
 
 `/doctor` reported that `guard.sh` hit its 10s `PreToolUse` timeout on 235 of 247 runs — every
