@@ -61,6 +61,18 @@
           }
         ]
       }
+    ],
+    "PostToolBatch": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/context-watch.sh\"",
+            "shell": "bash",
+            "timeout": 10
+          }
+        ]
+      }
     ]
   }
 }

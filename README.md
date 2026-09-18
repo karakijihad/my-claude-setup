@@ -70,7 +70,7 @@ Exit code 1618 during install means another MSI holds the installer mutex. Don't
 
 ```
 .claude-plugin/     marketplace.json, plugin.json
-hooks/              hooks.json + 5 hooks and their shared helpers
+hooks/              hooks.json + 6 hooks and their shared helpers
 skills/             6 protocol skills
 agents/             worker and advisor — the delegated-work and consult agents, both effort high
 commands/           setup — machine setup (Part 1), project setup (Part 2)
@@ -87,6 +87,7 @@ assets/             statusline.mjs, the status line /setup installs
 | `post-push.sh` | PostToolUse | After a push that actually landed, and only if the repo has CI config, names the pushed SHA and the provider's check command. Verifies nothing and exits 0 on every path — PostToolUse runs after the call and cannot block it |
 | `budget.sh` | PostToolUse | Warns when a project doc outgrows its line budget — a plan index, a phase file, a backlog, a code map. Ratcheted: it speaks on the first crossing and again only when an edit makes the overage worse, so the edits that fix the file are never the ones that nag. Never blocks |
 | `subagent-verify.sh` | SubagentStop | Blocks a sub-agent that reports `done` with changed files but pastes no verify output, and feeds it back the reason so it can produce one. Read-only agents and honest `partial` reports pass untouched; it never blocks the same stop twice |
+| `context-watch.sh` | PostToolBatch | Reads the context fill `statusline.mjs` writes to a state file each render — no hook payload carries it — and injects a `[context] 350k/1.0M (35%)` line once per 5%-of-window crossing. Past the handoff budget (`$CLAUDE_HANDOFF_BUDGET`, else 60% of the window) it injects a directive to write the handoff instead. Never blocks |
 
 `guard.sh` is one script doing what three used to. The old ones each spawned a shell and a JSON
 parse on *every* Bash call just to determine they had nothing to do.

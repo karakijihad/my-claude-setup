@@ -41,6 +41,7 @@
 
 import {
   readFileSync, writeFileSync, openSync, fstatSync, readSync, closeSync,
+  mkdirSync, renameSync, readdirSync, statSync, unlinkSync, chmodSync,
 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { freemem, totalmem } from "node:os";
@@ -133,6 +134,73 @@ function activeSkill(path) {
   return found;
 }
 
+// ── context-fill sensor ─────────────────────────────────────────────────────
+//
+// The status line is the only component the harness hands `context_window`
+// to — no hook event carries it — so every render drops the figure into a
+// state file a hook running in a separate process can read. A side effect
+// only: nothing here changes what renders, and any failure is swallowed the
+// same way the rest of this file degrades rather than throws.
+//
+// Written under `.claude/cache`, not a temp dir — the reader is a bash script
+// under Git Bash on Windows, where `os.tmpdir()` and `$TMPDIR` disagree.
+// Written atomically (temp file + rename) because the reader can run while
+// this is mid-write and must never see a torn file.
+function writeContextState(sessionId, used, size, pct) {
+  // The id becomes a filename. Harness ids are uuids, but a value that is not
+  // is a path, not a session — refuse rather than write somewhere surprising.
+  if (!/^[A-Za-z0-9._-]+$/.test(sessionId)) return;
+  try {
+    // `||`, not `??`: some shells and CI images export USERPROFILE as an
+    // empty string, and `??` falls through only on null/undefined — so `??`
+    // picks the empty value and every path below resolves against the
+    // process cwd instead of a home directory.
+    const home = process.env.USERPROFILE || process.env.HOME || "";
+    if (!home) return;
+    const dir = join(home, ".claude", "cache", "my-claude-setup");
+    // 0o700 / 0o600 rather than the umask default: the body carries session
+    // ids and token counts, and this path is predictable. No secrets in it,
+    // but nothing here needs to be world-readable either.
+    //
+    // The chmod is not redundant: mkdirSync with recursive:true is a no-op
+    // when the directory already exists, and does not touch the mode of one
+    // it did not create. A cache directory made earlier under a permissive
+    // umask would otherwise keep its permissions for good.
+    mkdirSync(dir, { recursive: true, mode: 0o700 });
+    try { chmodSync(dir, 0o700); } catch {}
+
+    const target = join(dir, `${sessionId}.json`);
+    const tmp = join(dir, `.${sessionId}.${process.pid}.tmp`);
+    const body = JSON.stringify({
+      session_id: sessionId,
+      used: Math.trunc(used),
+      size: Math.trunc(size),
+      pct: Math.trunc(pct),
+    });
+    writeFileSync(tmp, body, { mode: 0o600 });
+    renameSync(tmp, target);
+
+    // Prune on write rather than on a timer — there is no timer, only renders.
+    // But *not* on every write: this sweep is O(files in the directory), and
+    // this script runs far more often than a hook does, where the cost is
+    // visible terminal lag (see the header). A 7-day cutoff does not need
+    // enforcing to the render, so pay for it roughly one render in fifty.
+    if (Math.random() < 0.02) {
+      const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+      for (const name of readdirSync(dir)) {
+        const p = join(dir, name);
+        try {
+          if (statSync(p).mtimeMs < cutoff) unlinkSync(p);
+        } catch {
+          // raced with another render's rename/unlink — next sweep retries
+        }
+      }
+    }
+  } catch {
+    // cache dir unwritable, or some other surprise — never let this break the render
+  }
+}
+
 // ── render ──────────────────────────────────────────────────────────────────
 
 let raw = "";
@@ -222,6 +290,7 @@ process.stdin.on("end", () => {
     const pct = win.used_percentage ?? 0;
     const used = win.total_input_tokens ?? 0;
     const size = win.context_window_size ?? 0;
+    if (used && j.session_id) writeContextState(j.session_id, used, size, pct);
     l2.push(`${lab("Context")} ${c(up(pct, 60, 85), `${k(used)}/${k(size)}`)} ${c(RULE, `(${pct}%)`)}`);
     // Session totals, not the last turn's. `in` is the same figure the Context
     // widget uses as its numerator — kept because the pair only reads as a pair

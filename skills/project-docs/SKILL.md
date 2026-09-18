@@ -67,11 +67,11 @@ exists.
 
 ## Handoff
 
-**Watch your own context.** Where the harness gives you a usage figure, use it — it is not
-the number in the operator's status line, which is computed separately and never reaches you,
-so never quote one as the other.
+**Watch your own context.** A `[context]` line arrives injected each 5%-of-window
+crossing, carrying the status line's own fill and a handoff budget.
 
-There is no threshold to wait for; it is a judgement against the objective. Keep your own
+Short of that budget it is still a judgement against the objective, not a threshold to wait
+for. Past it, write the handoff — the injection now says so. Keep your own
 context low and cut noise as you go — delegate reads and runs, keep conclusions. Then ask,
 at each natural break: does what the objective still needs fit cleanly in what is left, or
 is this session now carrying enough stale output, dead ends and spent detail that a fresh

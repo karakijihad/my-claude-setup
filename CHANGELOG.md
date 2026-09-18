@@ -5,6 +5,104 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.23.0] — 2026-09-16
+
+A session has no idea how full it is. The figure exists — `context_window`, in the status-line
+payload — but no hook event carries it, so `core.md`'s rule about handing off to a fresh session
+was asking the model to judge a number it could not see. Sessions ran to 900k of a 1M window and
+read as indifference; they were blindness. This ships the number.
+
+### Added
+
+- **`hooks/context-watch.sh`** — `PostToolBatch`. Injects `[context] 350k/1.0M (35%) · handoff
+  budget 600k` once per 5%-of-window crossing, and a handoff directive once past budget. The
+  routine line is deliberately state, not instruction: an order repeated twenty times becomes
+  noise, a number does not. `PostToolBatch` rather than `PostToolUse` because the latter fires
+  per tool call and runs concurrently for a parallel batch, which would race the ratchet.
+  Silent on subagent payloads (`agent_id` present), silent with no state file, exit 0 everywhere.
+- **The sensor in `assets/statusline.mjs`** — the status line is the only component the harness
+  hands `context_window` to, so every render drops the fill into
+  `~/.claude/cache/my-claude-setup/<session_id>.json`, written atomically because the reader is a
+  separate process. Under `.claude/cache` rather than a temp dir: the reader is bash under Git
+  Bash, where `os.tmpdir()` and `$TMPDIR` disagree. A side effect only — nothing renders
+  differently, and every failure is swallowed.
+- **`CLAUDE_HANDOFF_BUDGET`** — the budget, in tokens. Unset means 60% of whatever window the
+  session reports, so it needs no configuration to work, and none to be right on a 200k window.
+
+### Changed
+
+- **`hooks/core.md`, the swarm rule** — it was the only line in the file phrased as a capability,
+  "you *can* run a swarm", while every rule around it is imperative; and its test, "holding the
+  files would cost more than holding the answer", had no anchor to check against. It now counts:
+  four or more files means fan out, decided before the first file is opened. "Context you already
+  hold" is gone — it was self-fulfilling after any inline reading, which made it the first thing
+  a model reached for to justify not delegating.
+- **`hooks/core.md`, the context rule** — points at the `[context]` reading rather than an
+  internal estimate, and drops the compaction clause.
+
+- **`README.md`, `skills/project-docs/SKILL.md`** — the README documented five hooks; there are
+  six. And `project-docs` still told the model the status-line figure "never reaches you" and that
+  "there is no threshold to wait for" — both true when written, both false as of this release.
+
+### Audit
+
+Trio, two passes, all five lenses plus a Claude lane each time. Pass one: fifteen findings,
+fourteen confirmed, one duplicate. Pass two, on the fixed tree: ten more. The ones worth naming:
+
+- **The sensor and the hook did not agree on where home is.** The sensor is node, spawned by the
+  harness, and reads `USERPROFILE ?? HOME`; the hook is bash and read `$HOME`. On a stock Git Bash
+  these name the same directory in different notations, which is why every test passed. A pinned
+  `HOME`, a redirected corporate profile, or a CI image setting only one separates them — and the
+  reader then looked in a directory the writer never wrote to, silently, disabling the whole
+  feature. The hook now falls back to `USERPROFILE` via `cygpath`. Raised independently by two
+  lenses and by neither of the two agents who wrote the code.
+- **The prune swept the whole cache directory on every render** — an O(files) sweep in the one path
+  this change was required not to slow, and the file's own header says cost here is visible
+  terminal lag. Now sampled at roughly one render in fifty.
+- **The hook paid an interpreter spawn before it could decide to stay quiet.** It fires on every
+  tool batch and almost always exits silently at the ratchet; `lib-parse.sh` documents those spawns
+  at 90-200ms on Windows. `session_id` and `agent_id` now come from a bash regex, with the
+  interpreter kept as the fallback it should always have been.
+- **Declined:** the ratchet degrades toward noise rather than silence if its `-O` ownership test
+  misreports on Git Bash. `budget.sh` has carried the identical guard and the identical degradation
+  since it shipped; fixing one and not the other would be worse than the fault. It is a known edge,
+  not a regression, and belongs to whichever release fixes both.
+
+Pass two found that the fix for the first pass was half a fix:
+
+- **The cheap payload read trusted a guess.** Reading `session_id` with a regex is free, but a
+  regex takes the first match and a `PostToolBatch` payload carries the whole `tool_calls` array —
+  so a tool whose *structured* input has a `session_id` key of its own wins. Pass one's answer was
+  to re-read properly when the guessed id had no state file. Pass two pointed out the hole in that:
+  a nested id naming a *different session still inside the prune window* does have one, and its
+  fill was then reported as this session's. The count decides now, not the match — exactly one
+  `"session_id"` key and zero `"agent_id"` keys means the match is unambiguous, anything else goes
+  to the interpreter. Still no process in the common case, and the guess is provably safe rather
+  than hopefully safe. Fixing it also deleted the two retry paths pass two's simplifier lane had
+  flagged as fragile.
+- **`??` is not `||`.** `USERPROFILE ?? HOME` falls through only on null or undefined, so a shell
+  or CI image exporting `USERPROFILE=""` selected the empty value and every path resolved against
+  the process cwd. The same line was in `statusline-launcher.mjs`, where it blanks the entire
+  status line rather than just the sensor — a pre-existing bug this audit found by accident.
+- **A mode on `mkdirSync` does nothing to a directory that already exists.** The `0700` only ever
+  applied to a cache directory this release created; one left from before kept whatever the umask
+  gave it. It is chmodded explicitly now.
+- **The end-to-end fixture was not end-to-end.** The HOME/USERPROFILE test wrote the cache file
+  with `printf` and never invoked the sensor, so it pinned the read side of a two-process contract
+  and called it both.
+- **`at` is gone.** Pass one answered "nothing reads this field" by documenting it. Pass two raised
+  it again and was right to: a comment explains a field, it does not justify one. `mtime` already
+  says when the file was written.
+
+### Known
+
+- `lib-parse.sh` gains a CR on every newline inside a multi-line field on Windows: this `jq`
+  opens piped stdout in text mode. Verified harmless today — `guard.sh`'s patterns are
+  substring-based and still block a token on a second line, and `subagent-verify.sh` still
+  refuses an unverified `done` — and both are now pinned by tests. It becomes a live bug the day
+  a pattern is end-anchored. `context-watch.sh` strips CR on every branch rather than reuse that
+  scheme.
+
 ## [1.22.0] — 2026-09-13
 
 The Agent tool can set a subagent's model but not its effort — effort comes only from an
