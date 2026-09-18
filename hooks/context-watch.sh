@@ -1,7 +1,6 @@
 #!/bin/bash
-# PostToolBatch. Never blocks: exit 2 is reserved for guard.sh's safety refusal
-# and subagent-verify.sh's unverified-done block, and this is neither, so every
-# path here exits 0.
+# PostToolBatch. Never blocks: exit 2 is reserved for guard.sh's safety refusal,
+# the only sanctioned use left, and this is not it — so every path here exits 0.
 #
 # The model cannot see its own token usage -- no hook payload carries it. A
 # sibling piece (assets/statusline.mjs) writes the session's fill to a state

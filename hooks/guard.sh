@@ -7,7 +7,7 @@
 # call just to decide they had nothing to do. This dispatches on which field is
 # present, so an Edit never pays for the Bash checks and vice versa.
 #
-# Covers the confirmation-gated operations in security-protocol §7.2 / §7.6.
+# Covers the operations git-protocol says to confirm before running.
 #
 # Every match below is bash's own [[ =~ ]], not `echo | grep`. The patterns are
 # unchanged; only the engine is. Profiled on Windows 2026-08-12, this hook cost
@@ -113,7 +113,7 @@ if [ -n "$CMD" ]; then
 
   # Supply chain. A remote script piped straight into a shell runs code nobody
   # read, from a URL that can serve something different the second time.
-  # security-protocol §06 argues this in prose; here it is enforceable.
+  # A staged secret is the one security rule worth enforcing rather than stating.
   RE_PIPE_TO_SHELL='(curl|wget)[^|]*\|[[:space:]]*(sudo[[:space:]]+)?(ba|z|k)?sh'
   shopt -s nocasematch
   if [[ $CMD =~ $RE_PIPE_TO_SHELL ]]; then
@@ -207,7 +207,7 @@ FILE_N=${FILE//\\//}
 # the last check that needs it is a latent bug for the next one added here.
 shopt -s nocasematch
 case "$(basename "$FILE_N")" in
-  # security-protocol §04-Data requires an example env file to exist.
+  # An example env file is meant to be committed; the real one never is.
   .env.example|.env.sample|.env.template) shopt -u nocasematch; exit 0 ;;
   .env|.env.*|package-lock.json|yarn.lock|pnpm-lock.yaml)
     shopt -u nocasematch

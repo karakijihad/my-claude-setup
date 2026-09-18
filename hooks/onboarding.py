@@ -96,8 +96,8 @@ def _missing_companions(cfg: dict) -> list:
 
 
 def _unapplied_settings(cfg: dict) -> list:
-    # Model tiers are not a gap: they ship blank and are set only when the user
-    # names models in /setup, so an unset subagent model is a healthy default.
+    # Only what /setup actually writes counts as a gap. A key the user was never
+    # asked for is a default, not something missing.
     gaps = []
     if not (cfg.get("permissions") or {}).get("allow"):
         gaps.append("no permissions.allow entries")

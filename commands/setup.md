@@ -205,7 +205,7 @@ writes nothing until the user agrees. When in doubt, survey; it is read-only.
 | Old layout | `Doclog/`, `Sessions/`, `Docs/Changelog/`, `Logs/`, `Protocols/` |
 | `CHANGELOG.md` | At the **repo root**, committed |
 | `.gitignore` | Covers `.env*`; whether `/Docs/` is ignored; whether `git ls-files -- Docs` shows tracked files; whether a `Docs policy` section in `CLAUDE.md` opts out |
-| `.env.example` | Exists if the project reads env vars — `security-protocol` §04 requires it |
+| `.env.example` | Exists if the project reads env vars, so the real `.env` never has to be committed |
 | CI | Any of `.github/workflows/`, `.gitlab-ci.yml`, `Jenkinsfile`, `azure-pipelines.yml`, `.circleci/config.yml`, `.travis.yml`, `bitbucket-pipelines.yml`, `appveyor.yml`, `.buildkite/`; and whether `CLAUDE.md` records it under `## CI` |
 | Stale plans | Anything in `Docs/Plan/` whose work already landed |
 
