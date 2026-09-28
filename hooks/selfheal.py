@@ -223,6 +223,50 @@ def _prune(root, keep: str) -> list:
     return removed
 
 
+# ── what's new, for the user ────────────────────────────────────────────────
+
+RELEASE = re.compile(r"^## \[(\d+(?:\.\d+)*)\]")
+LEAD = re.compile(r"^- \*\*(.+?)\*\*")
+KIND = re.compile(r"^### (\w+)")
+MAX_HIGHLIGHTS = 6
+
+
+def _vtuple(v: str):
+    try:
+        return tuple(int(x) for x in v.split("."))
+    except Exception:
+        return ()
+
+
+def _highlights(root, previous: str, version: str) -> list:
+    """The bold lead of each CHANGELOG bullet in the releases this update spans.
+
+    Only the current release on a first install, or when either version is unreadable.
+    """
+    lo, hi = _vtuple(previous), _vtuple(version)
+    if not lo or not hi or lo >= hi:
+        lo = hi[:-1] + (hi[-1] - 1,) if hi else ()
+    out, take, kind = [], False, ""
+    try:
+        text = io.open(Path(root) / "CHANGELOG.md", encoding="utf-8-sig").read()
+    except Exception:
+        return out
+    for line in text.splitlines():
+        m = RELEASE.match(line)
+        if m:
+            v = _vtuple(m.group(1))
+            take, kind = bool(v) and lo < v <= hi, ""
+            continue
+        k = KIND.match(line)
+        if k:
+            kind = k.group(1) + ": "
+            continue
+        m = take and LEAD.match(line)
+        if m:
+            out.append(kind + m.group(1).rstrip(" .:—-"))
+    return out
+
+
 # ── entry point ─────────────────────────────────────────────────────────────
 
 def heal() -> str:
@@ -237,6 +281,7 @@ def heal() -> str:
         # Diff before pruning — the outgoing release has to still exist.
         old_root = Path(root).parent / previous if previous else None
         summary = _summarise(_changes(old_root, root))
+        news = _highlights(root, previous, version)
 
         repairs = _repair_statusline(root)
         pruned = _prune(root, version)
@@ -247,6 +292,12 @@ def heal() -> str:
             % (previous or "an unrecorded version", version)
         )
         block = ["\n\n<my-claude-setup-updated>", head, ""]
+        if news:
+            more = len(news) - MAX_HIGHLIGHTS
+            block += ["**What's new** (from CHANGELOG.md):"] + ["- " + n for n in news[:MAX_HIGHLIGHTS]]
+            if more > 0:
+                block += ["- and %d more in CHANGELOG.md" % more]
+            block += [""]
         if summary:
             block += ["**What changed in the plugin:**", summary, ""]
         if repairs:
@@ -272,9 +323,10 @@ def heal() -> str:
             "",
             "**Say all of this to the user before anything else.** An update they were not told "
             "about is indistinguishable from one that did not happen — they watched files change "
-            "and heard nothing, which is the failure this whole mechanism exists to remove. Lead "
-            "with what changed, what was repaired, what was pruned, and anything still needing "
-            "their decision. Then get on with what they actually asked for. A full copy is at "
+            "and heard nothing, which is the failure this whole mechanism exists to remove. Open "
+            "with the What's new list in a few plain lines, then what changed, "
+            "what was repaired, what was pruned, and anything still needing their decision. "
+            "Then get on with what they actually asked for. A full copy is at "
             "`~/.claude/.my-claude-setup-last-update.md` if this gets lost.",
             "</my-claude-setup-updated>",
         ]

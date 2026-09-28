@@ -9,7 +9,7 @@
 
 DIR="${0%/*}"; [ "$DIR" = "$0" ] && DIR="."
 
-if OUT=$(bash "$DIR/py.sh" "$DIR/session-start.py" 2>/dev/null) && [ -n "$OUT" ]; then
+if OUT=$(. "$DIR/py.sh" "$DIR/session-start.py" 2>/dev/null) && [ -n "$OUT" ]; then
   printf '%s\n' "$OUT"
   exit 0
 fi
@@ -27,5 +27,5 @@ fi
 
 # Neither interpreter. This is the only place the policy is restated, and it is
 # deliberately reduced — keep it short rather than trying to mirror core.md.
-printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Brevity: no preamble, no restatement of the ask, no closing summary; under 100 words unless the task needs more. Code discipline: write the minimum that solves the problem, touch only what is necessary, every changed line traces to the request. Confirm first on anything affecting more than two files or hard to reverse. Under ~50 lines: implement, verify, review your own diff, commit. Review escalates with stakes: your own diff on a small change, a fresh reviewer agent by default, an independent Codex audit when the change touches auth, secrets, migrations, or a release. Evidence before assertions. Ordered phases that will not fit one context: ask whether to write a plan first before the first edit. Fan out by file sets, not task count: parallel agents for reads that span more files than the answer needs, and for writes only when they split into disjoint file sets each with its own verify command. Protocol skills load on demand: my-claude-setup:security-protocol, testing-protocol, git-protocol, agent-protocol, planning-protocol, project-docs. (Python was unavailable, so this is the reduced core — install Python 3 for the full rules.)"}}'
+printf '%s\n' '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"Brevity: no preamble, no restatement of the ask, no closing summary; under 100 words unless the task needs more. Code discipline: write the minimum that solves the problem, touch only what is necessary, every changed line traces to the request. Confirm first on anything hard to reverse. Under ~50 lines: implement, verify, review your own diff, commit. Review escalates with stakes: your own diff on a small change, a fresh reviewer agent by default, an independent Codex audit when the change touches auth, secrets, migrations, or deletion, or spans more than five files. Evidence before assertions. Ordered phases that will not fit one context: ask whether to write a plan first before the first edit. Fan out by file sets, not task count: parallel agents for reads that span more files than the answer needs, and for writes only when they split into disjoint file sets each with its own verify command. Protocol skills load on demand: my-claude-setup:security-protocol, testing-protocol, git-protocol, agent-protocol, planning-protocol, project-docs. (Python was unavailable, so this is the reduced core — install Python 3 for the full rules.)"}}'
 exit 0

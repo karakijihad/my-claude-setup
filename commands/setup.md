@@ -83,6 +83,8 @@ and stop — this command is idempotent.
 | `permissions.defaultMode` | `"auto"` | |
 | `permissions.allow` | union with `["Bash(git:*)", "Bash(ls:*)", "Bash(node:*)", "Bash(npm:*)", "Bash(pnpm:*)", "Bash(python:*)", "Bash(xargs grep:*)"]` | Fewer prompts on what a normal session runs constantly. **Read the note below.** |
 | `effortLevel` | `"high"` | |
+| `env.CLAUDE_CODE_SUBAGENT_MODEL` | `"sonnet"`, only if absent | The model every dispatch passes. A repo overrides it in `.claude/settings.local.json` |
+| `env.CLAUDE_ADVISOR_MODEL` | `"fable"`, only if absent | The advisor's model, overridable the same way |
 | `enabledPlugins` | every plugin from 1.2, `true` | |
 
 Otherwise do **not** set `model` — leave the user's choice alone.

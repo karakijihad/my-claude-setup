@@ -123,7 +123,7 @@ It also writes the session's context fill to a state file, which is the only way
 
 ## Configuration
 
-Three knobs, all optional, all read from the environment. Set them in `env` in
+Three continuity knobs, all optional, all read from the environment. Set them in `env` in
 `~/.claude/settings.json` (or a project's `.claude/settings.json`), then restart the session:
 
 ```json
@@ -140,6 +140,18 @@ Three knobs, all optional, all read from the environment. Set them in `env` in
 | `CLAUDE_HANDOFF_PCT` | When the handoff becomes due, as a percentage of the context window | `50` |
 | `CLAUDE_HANDOFF_BUDGET` | The same threshold as an absolute token count. Wins over the percentage when both are set — use it to pin a figure that has nothing to do with window size | unset |
 | `CLAUDE_HANDOFF_DOC_TOKENS` | How long the written handoff may be before `budget.sh` says to cut it, in estimated tokens (4 characters each) | `5000` |
+
+Two more pick the models agents are dispatched with. Session start seeds both into each git
+repo's `.claude/settings.local.json` (missing keys only, kept out of git via `.git/info/exclude`),
+so a repo can differ from your user settings — edit that file to change them:
+
+| Variable | Controls | Default |
+|-|-|-|
+| `CLAUDE_CODE_SUBAGENT_MODEL` | Claude Code's own subagent model. The plugin has every dispatch pass it explicitly — worker, reviewer, any subagent — so none falls back to the session's model. Empty or `ask`: Claude asks first | `sonnet` |
+| `CLAUDE_ADVISOR_MODEL` | Model for `my-claude-setup:advisor` consults. "Consult <model>" overrides it for one consult | `fable` |
+
+Both agent cards run at effort high — effort can only be set on a card, never per dispatch.
+A job that needs a stronger model is proposed to you first. Every dispatch is announced with its model and effort.
 
 Two things worth knowing:
 

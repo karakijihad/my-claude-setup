@@ -24,6 +24,9 @@ Run these first, in one batch. Read `${CLAUDE_PLUGIN_ROOT}` from the environment
 5. **This project** — whether `./CLAUDE.md` exists, which of `Docs/Decisions/ Audit/ Plan/
    Handoff/` exist, whether `/Docs/` is in `./.gitignore`, and whether `CLAUDE.md` has a
    `## CI` line.
+6. **Models** — `CLAUDE_CODE_SUBAGENT_MODEL` and `CLAUDE_ADVISOR_MODEL`: the value in effect
+   and which file set it (`./.claude/settings.local.json`, `./.claude/settings.json`,
+   `~/.claude/settings.json`), or the default (`sonnet` / `fable`) when none does.
 
 ## Report
 
@@ -53,8 +56,9 @@ plugin's own versioned directory, the continuity nudge has no sensor behind it �
 **Companions.** One line each: name, its one job, and enabled or not. A missing companion is
 worth one line naming the rung it leaves empty, no more.
 
-**Skills and agents.** Just the names — the six protocol skills, and `worker` / `advisor`.
-One line total each.
+**Skills and agents.** The six protocol skills' names, one line. Then the subagent model and
+the advisor model, one line each, with the file that set it. Empty or `ask` is reported as
+unset, not guessed.
 
 **This project.** `CLAUDE.md` present or not, which `Docs/` folders exist, whether `Docs/` is
 ignored or versioned, and whether CI is recorded. If the repo has none of it, say `/setup`

@@ -44,26 +44,44 @@ CORE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "core.md")
 _GIT_INFO = None
 
 
-def _branch() -> str:
-    """Current branch from one git call, cached for this process.
+def _repo():
+    """(worktree root, git dir) found by walking up from the project dir, or (None, None).
 
-    lib-parse.sh's header records this repo measuring spawns at 90-200ms apiece
-    on Windows, so this stays a single call.
-
-    `--abbrev-ref HEAD` prints the literal string `HEAD` on a detached head,
-    which is not a branch name; it becomes "" here so callers see what
-    `git branch --show-current` used to give them.
+    Read from disk rather than by running git: a process start costs seconds under
+    on-launch AV scanning, and this hook runs under a timeout. A worktree's `.git`
+    is a file naming the real git dir.
     """
+    try:
+        d = os.path.abspath(os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd())
+        while True:
+            g = os.path.join(d, ".git")
+            if os.path.isfile(g):
+                with open(g, encoding="utf-8") as fh:
+                    ref = fh.read().strip()
+                if ref.startswith("gitdir:"):
+                    g = os.path.join(d, ref[7:].strip())
+            if os.path.isdir(g):
+                return d, g
+            parent = os.path.dirname(d)
+            if parent == d:
+                return None, None
+            d = parent
+    except Exception:
+        return None, None
+
+
+def _branch() -> str:
+    """Current branch from .git/HEAD, cached; "" on a detached head or outside a repo."""
     global _GIT_INFO
     if _GIT_INFO is None:
         branch = ""
         try:
-            out = subprocess.run(
-                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                capture_output=True, text=True, timeout=5,
-            )
-            if out.returncode == 0 and out.stdout.strip() != "HEAD":
-                branch = out.stdout.strip()
+            _, g = _repo()
+            if g:
+                with open(os.path.join(g, "HEAD"), encoding="utf-8") as fh:
+                    head = fh.read().strip()
+                if head.startswith("ref: refs/heads/"):
+                    branch = head[len("ref: refs/heads/"):]
         except Exception:
             pass
         _GIT_INFO = branch
@@ -115,6 +133,122 @@ def reviewer_notice() -> str:
     )
 
 
+# Subagent models come from settings `env`, so a repo's .claude/settings.local.json
+# can differ from the user's settings.json. CLAUDE_CODE_SUBAGENT_MODEL is Claude
+# Code's own variable; CLAUDE_ADVISOR_MODEL is ours. Effort lives on the cards.
+DEFAULT_MODELS = (("CLAUDE_CODE_SUBAGENT_MODEL", "sonnet"), ("CLAUDE_ADVISOR_MODEL", "fable"))
+
+
+def _model(name: str, default: str):
+    """The env value, the default when absent, None when set empty or to "ask"."""
+    if name not in os.environ:
+        return default
+    v = os.environ[name].strip()
+    return None if v in ("", "ask") else v
+
+
+def seed_local_settings() -> str:
+    """Give this repo a .claude/settings.local.json carrying the model keys.
+
+    Adds missing keys only — a value already there, even an empty one, is the
+    user's. Seeds from the session's current env so it mirrors what is in effect
+    now. Git repos only; the file is kept out of git through .git/info/exclude,
+    which is local and never committed. A malformed file is left alone.
+    """
+    try:
+        top, _ = _repo()
+        if not top:
+            return ""
+        path = os.path.join(top, ".claude", "settings.local.json")
+        data = {}
+        if os.path.exists(path):
+            with open(path, encoding="utf-8-sig") as fh:
+                data = json.load(fh)
+        env = data.setdefault("env", {}) if isinstance(data, dict) else None
+        if not isinstance(env, dict):
+            return ""
+        added = [(k, os.environ.get(k) or d) for k, d in DEFAULT_MODELS if k not in env]
+        if not added:
+            return ""
+        env.update(added)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(json.dumps(data, indent=2) + "\n")
+        ignored = subprocess.run(
+            ["git", "-C", top, "check-ignore", "-q", ".claude/settings.local.json"],
+            capture_output=True, timeout=5,
+        ).returncode == 0
+        if not ignored:
+            exclude = subprocess.run(
+                ["git", "-C", top, "rev-parse", "--git-path", "info/exclude"],
+                capture_output=True, text=True, timeout=5,
+            ).stdout.strip()
+            if exclude:
+                exclude = os.path.join(top, exclude) if not os.path.isabs(exclude) else exclude
+                os.makedirs(os.path.dirname(exclude), exist_ok=True)
+                with open(exclude, "a", encoding="utf-8") as fh:
+                    fh.write("\n/.claude/settings.local.json\n")
+        return (
+            "\n\nSeeded .claude/settings.local.json with %s. Tell the operator once, and that "
+            "they can edit it per repo." % ", ".join("%s=%s" % kv for kv in added)
+        )
+    except Exception:
+        return ""
+
+
+def dispatch_line() -> str:
+    """Which model every dispatch passes, so no subagent falls back to the session's."""
+    try:
+        sub, adv = (_model(k, d) for k, d in DEFAULT_MODELS)
+        sub_s = sub or "not set — ask the operator before the first dispatch"
+        adv_s = adv or "not set — ask the operator before the first consult"
+        eg = sub or "<model>"
+        return (
+            "\n\nSubagent model: %s (CLAUDE_CODE_SUBAGENT_MODEL). Pass it as `model` on every "
+            "dispatch — the worker and any other subagent, feature-dev:code-reviewer included, "
+            "whose card would otherwise pin its own. Advisor model: %s (CLAUDE_ADVISOR_MODEL). "
+            "Both cards run at effort high, fixed. If a job needs a stronger model, ask the "
+            "operator first. A model the operator names for one dispatch applies to that dispatch only; "
+            "change their settings only when they ask. Announce each dispatch in one line: "
+            "\"Dispatched worker (model: %s, effort: high)\". Both values come from settings "
+            "env — per repo in .claude/settings.local.json." % (sub_s, adv_s, eg)
+        )
+    except Exception:
+        return ""
+
+
+# In ~/.claude/, not the plugin directory: that one is version-pinned and pruned
+# on update, which would reset the cadence every release.
+_MODEL_NEWS_MARKER = os.path.join(os.path.expanduser("~"), ".claude", ".my-claude-setup-model-news")
+_MODEL_NEWS_INTERVAL_S = 7 * 24 * 60 * 60
+
+
+def model_news_nudge() -> str:
+    """At most weekly: surface newer models, without a model list here to go stale."""
+    try:
+        try:
+            with open(_MODEL_NEWS_MARKER, encoding="utf-8-sig") as fh:
+                last = json.loads(fh.read() or "{}").get("last", 0)
+        except Exception:
+            last = 0
+        now = time.time()
+        if now - last < _MODEL_NEWS_INTERVAL_S:
+            return ""
+        try:
+            os.makedirs(os.path.dirname(_MODEL_NEWS_MARKER), exist_ok=True)
+            with open(_MODEL_NEWS_MARKER, "w", encoding="utf-8") as fh:
+                fh.write(json.dumps({"last": now}))
+        except OSError:
+            pass
+        return (
+            "\n\nOnce this session: if your environment information lists a newer Claude model "
+            "than the subagent or advisor model above, tell the operator in one line so they "
+            "can update their settings."
+        )
+    except Exception:
+        return ""
+
+
 def main() -> None:
     sys.stdin.read()  # drain payload; nothing in it is needed
     with open(CORE_FILE, encoding="utf-8") as fh:
@@ -123,7 +257,10 @@ def main() -> None:
     # one session after an update, and on that session it is the most
     # time-sensitive thing here — burying it behind ~800 tokens of standing
     # rules is how it got read as background and never mentioned to the user.
-    context = heal() + core + git_context() + reviewer_notice() + notice()
+    context = (
+        heal() + core + git_context() + reviewer_notice() + notice()
+        + seed_local_settings() + dispatch_line() + model_news_nudge()
+    )
     # The nesting is load-bearing. A bare top-level {"additionalContext": ...}
     # is the SDK/Copilot shape; Claude Code reads hookSpecificOutput and ignores
     # anything it does not recognise, so the wrong shape is not an error — it is

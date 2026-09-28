@@ -36,7 +36,7 @@ gate were all deleted for it.
 | `skills/security-protocol/` | Escalation and agent/MCP tool authority only. The ten reference files were deleted: `core.md` assigns security expertise to the `security-guidance` companion, and shipping both was the plugin breaking its own one-job rule. |
 | `agents/` | `worker` and `advisor`. **They exist for `effort: high`** — the Agent tool passes `model` but not effort, so a definition is the only place to set it. Model stays off both cards so a call-site model wins. |
 | `tests/suite.sh` | The whole suite. Outside `hooks/` because `hooks/` is what ships; still `cd`s there. |
-| `.claude-plugin/` | Bump `version` on release, add the `CHANGELOG.md` section in the same commit. |
+| `.claude-plugin/` | Bump `version` on release, add the `CHANGELOG.md` section in the same commit. Each bullet's **bold lead** is what users see on update — write it to stand alone. |
 
 ## Gotchas
 
@@ -55,13 +55,15 @@ gate were all deleted for it.
 - **`*.sh` must stay LF.** `.gitattributes` pins it; CRLF kills the shebang.
 - **`hooks.json` paths are `${CLAUDE_PLUGIN_ROOT}`-relative**, never `~/.claude/`. Commands already
   run under `"shell": "bash"` — don't prefix `bash`.
-- **Don't ship personal config.** No absolute paths, no `enabledPlugins`, no model choice.
+- **Don't ship personal config.** No absolute paths, no `enabledPlugins`. Model defaults ship only
+  as values the user can override (`CLAUDE_CODE_SUBAGENT_MODEL`, `CLAUDE_ADVISOR_MODEL`).
 
 ## Verifying a change
 
 ```bash
+bash tests/suite.sh --changed       # only the sections covering your working-tree changes
 bash tests/suite.sh context-watch   # one section, ~60s — use this while iterating
-bash tests/suite.sh                 # all sections; exit 0 means every assertion passed
+bash tests/suite.sh                 # all sections; exit 0 means every assertion passed — CI's job
 ```
 
 A full run takes minutes because process spawn dominates on Windows — `bash -c true` alone can
