@@ -5,6 +5,45 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.28.0] — 2026-09-28
+
+### Added
+
+- **Subagent models come from your settings, and every dispatch names them.** The worker and
+  every other subagent, `feature-dev:code-reviewer` included, are dispatched with
+  `CLAUDE_CODE_SUBAGENT_MODEL` passed explicitly, so none falls back to the session's model
+  or to a model its card pins. The advisor uses `CLAUDE_ADVISOR_MODEL`. Defaults are `sonnet`
+  and `fable`, and effort stays high, because a card is the only place subagent effort can be
+  set. A stronger model for one job is proposed to you first. Each dispatch is announced
+  with its model and effort.
+- **Each git repo gets a `.claude/settings.local.json` holding both model keys.** It is
+  seeded from the values in effect, adding missing keys only and never touching yours, and
+  kept out of git through `.git/info/exclude`. Edit it to give one repo different models.
+- **A weekly note when a newer Claude model is out** than the ones you have configured.
+- **Plugin updates open with a short What's new**, taken from this changelog's bold leads for
+  every release since your last session.
+- **`bash tests/suite.sh --changed`** runs only the sections covering the files you changed.
+
+### Changed
+
+- **Hooks start fewer processes, which matters on machines with on-launch AV scanning.**
+  `py.sh` caches the interpreter it finds instead of starting Python twice per call.
+  Session start reads the branch from `.git/HEAD` instead of running git, and sources
+  `py.sh` instead of starting another bash. `post-push.sh` skips its `jq` parse for any
+  command that doesn't mention a push.
+- **The session-start timeout is 30s, up from 10s.** On a slow machine the hook was overrunning
+  it, and the core rules silently never loaded.
+- **Guard test cases run in parallel** (`SUITE_JOBS`, default 8). The four guard sections
+  went from ~680s to ~170s on a machine with a slow AV.
+- **Testing protocol: run only the tests covering the files you changed.** The full suite is
+  CI's job.
+- **Tier-3 audits are triggered by risk alone.** "Released or merged to main" no longer
+  triggers one, because in a repo that commits to main it fired on every change.
+- **`core.md`:** confirm only hard-to-reverse or structural decisions, not every change over
+  two files, and state which reading you took rather than listing interpretations.
+
+---
+
 ## [1.27.0] — 2026-09-28
 
 A pass against the Opus 5.5 prompting guidance. Nothing in the plugin told the model to think

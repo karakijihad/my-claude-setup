@@ -21,6 +21,9 @@ IFS= read -r -d '' INPUT
 _HOOK_DIR="${0%/*}"; [ "$_HOOK_DIR" = "$0" ] && _HOOK_DIR="."
 . "$_HOOK_DIR/lib-parse.sh"
 
+# Most Bash calls are not pushes. Checking the raw payload first costs no process;
+# parsing it costs a jq start, which is seconds under on-launch AV scanning.
+[[ $INPUT == *push* ]] || exit 0
 parse_all
 [ -z "$CMD" ] && exit 0
 

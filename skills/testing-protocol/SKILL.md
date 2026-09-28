@@ -75,3 +75,13 @@ Use the **strongest applicable level**, and put its output in the report:
 
 - Verification impossible here? Say exactly what couldn't be checked, why, and what would
   be needed. Partial verification is fine when it is stated as partial.
+
+---
+
+## 4. Running the right slice
+
+While iterating, and before committing, run only the tests covering the files you changed —
+the full suite is CI's job, or run it yourself when the change is cross-cutting or the release
+has no CI. Organise a repo's tests into named sections or groups per feature, so that slice is
+answerable. Add a test only when a requirement or behaviour changes, and only once it clears
+the §2 bar.
