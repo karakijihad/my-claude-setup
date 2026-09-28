@@ -78,10 +78,14 @@ Use the **strongest applicable level**, and put its output in the report:
 
 ---
 
-## 4. Running the right slice
+## 4. Categories, never one big run
 
-While iterating, and before committing, run only the tests covering the files you changed —
-the full suite is CI's job, or run it yourself when the change is cross-cutting or the release
-has no CI. Organise a repo's tests into named sections or groups per feature, so that slice is
-answerable. Add a test only when a requirement or behaviour changes, and only once it clears
-the §2 bar.
+- **Group tests into named categories**, one per feature or component, each runnable on its
+  own (`<runner> <category>`). A category that can't finish in a few minutes gets split.
+- **Keep a map from source files to the categories that cover them**, next to the tests, so a
+  change selects its own categories (in this plugin: `bash tests/suite.sh --changed`).
+- **Locally, run only the categories your change touches**, while iterating and before the
+  commit. The full suite is CI's job on push. Run it locally only when the test harness itself
+  changed, or when the repo has no CI, and then once before a release, not after every edit.
+- **Add a category or a case only when a requirement or behaviour changes**, and only once it
+  clears the §2 bar.

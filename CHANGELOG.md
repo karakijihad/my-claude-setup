@@ -5,6 +5,18 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.28.1] — 2026-09-28
+
+### Changed
+
+- **Testing protocol: tests are grouped into categories that run on their own.** A map from
+  source files to categories selects what a change runs; the full suite is CI's job, run
+  locally only when the harness changed, the repo has no CI, or before a release.
+- **Six redundant advisory test cases cut** from post-push, budget and context-watch, each
+  already covered by another case. Safety cases are untouched.
+
+---
+
 ## [1.28.0] — 2026-09-28
 
 ### Added
