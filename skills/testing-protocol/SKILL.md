@@ -11,9 +11,6 @@ Generic testing advice is not here — deterministic tests, mocked boundaries, o
 per case, clean fixtures. This skill holds only what this setup decides differently, which
 is two things: **where the fast path ends**, and **what earns a test at all**.
 
-**Core principle: nothing ships without execution evidence. "I reviewed the code" is not
-verification.**
-
 ---
 
 ## 1. The tier boundary, and where TDD takes over
@@ -76,13 +73,5 @@ Use the **strongest applicable level**, and put its output in the report:
 | **Manual check** | Config, infra, one-off scripts | Say exactly what you checked and what you observed |
 | **Build/lint** | Any code change (minimum bar) | Zero warnings in changed files |
 
-- Pre-existing failures are blockers, not an excuse to skip.
-- Multi-file changes need integration verification — separately-green does not compose.
 - Verification impossible here? Say exactly what couldn't be checked, why, and what would
   be needed. Partial verification is fine when it is stated as partial.
-- If verification fails, the work goes back to implementation. Don't commit known failures,
-  and don't delete a test to make a suite green.
-
----
-
-*Where the resident session rules are terser, this skill wins.*

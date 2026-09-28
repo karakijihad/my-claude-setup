@@ -7,8 +7,6 @@ description: >
 
 # Git Workflow Protocol
 
-**Core principle: every change is traceable, reversible, and isolated until verified.**
-
 Conventional commits, one logical change per commit, imperative subject under 72 characters.
 That part is standard and not restated here. What follows is what this setup decides
 differently, plus the rules that get skipped under pressure.
@@ -20,9 +18,7 @@ differently, plus the rules that get skipped under pressure.
 - **Ask before creating a branch. Never create one unprompted.** Most repos here are
   single-maintainer, where a branch and a PR to yourself is pure ceremony: it splits the
   history, leaves a second branch to clean up, and delays the work landing for a review that
-  was never going to happen. This rule used to read "always branch for multi-file changes",
-  and it produced exactly the mess it was meant to prevent — rules that manufacture ceremony
-  get ignored, and an ignored rule is worse than no rule.
+  was never going to happen.
 - **Default: commit to the branch already checked out.** Usually `main`. Size is not the
   trigger — a 17-file change on a solo repo still belongs on `main`.
 - **Ask when there is a real reason to isolate, and name it:** others pull this branch and
@@ -40,24 +36,15 @@ costs far less than the cleanup when the guess is wrong.
 
 **Committing and pushing the work you were asked to do is not in this list. Do that.**
 
-## 3. Never
+## 3. Before every commit
 
-- **Force-push to a shared branch**, or rewrite history others have pulled.
-- **Commit a secret.** `guard.sh` scans the staged diff for value-shaped secrets, but it is
-  pattern-based — read the diff yourself. A secret that was ever committed must be rotated,
-  not just removed: git history is permanent.
-- **Commit generated files** unless the repo requires them, like a lock file.
-- **Merge with failing tests.** Nothing enforces this locally; run the suite and read the
-  output.
+- **No secrets in the diff.** `guard.sh` scans the staged diff for value-shaped secrets, but
+  it is pattern-based — read the diff yourself. A secret that was ever committed must be
+  rotated, not just removed: git history is permanent.
+- If the repo has CI, run what CI runs — its steps are often stricter than the local
+  defaults, and one command here saves a red run and a follow-up commit.
 
-## 4. Before every commit
-
-Tests passing · lint and format clean, using the project's own command · if the repo has CI,
-run what CI runs — its steps are often stricter than the local defaults, and one command here
-saves a red run and a follow-up commit · no secrets in the diff · changes scoped to one
-logical unit.
-
-## 5. After the push
+## 4. After the push
 
 **No CI in the repo → nothing to do.** `post-push.sh` stays silent and so should you; setting
 one up is `/setup`'s question or the user's request, not a mid-task suggestion.
@@ -69,7 +56,3 @@ finish the remaining work and check once more.
 
 **Record the repo's check command once in its `CLAUDE.md` under `## CI`.** `post-push.sh`
 points there rather than guessing a provider from the files in the tree.
-
----
-
-*Where the resident session rules are terser, this skill wins.*

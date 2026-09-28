@@ -51,10 +51,8 @@ file-list fields: they hold nothing, so nothing collides.
 `done` requires pasted verify output. Couldn't run the command → `partial`, and say why.
 Needs something you don't have → `blocked`.
 
-Nothing enforces this shape but you. A hook once read these reports and blocked a `done`
-with no verify output; it was deleted because it could only check that text *looked* like
-evidence, which is the part that was never in doubt. The brief asks for the block; **you**
-are the check that it came back.
+Nothing enforces this shape but you. The brief asks for the block; **you** are the check
+that it came back.
 
 ## Reading reports
 

@@ -69,12 +69,8 @@ Report it, and stop there. List every installed plugin that is not in 1.2, one p
 one-line note on what it does if you can tell. Then say that removing any of them is
 `claude plugin uninstall <name>`, and move on to 1.4.
 
-**This command does not remove anything.** An earlier version offered to, behind a batched
-yes/no with reassurances about reversibility — and the reassurance turned out to be false for
-one class of item, which is how a convenience became the only irreversible step in a command
-whose whole premise is that it is safe to run. Removing the feature removed the problem. A user
-who wants a plugin gone can run one command; they do not need this one to do it for them, and
-the cost of getting it wrong on someone else's machine is not worth the keystroke it saves.
+**This command does not remove anything.** A user who wants a plugin gone runs
+`claude plugin uninstall <name>` themselves — this command never does it for them.
 
 ## 1.4 `settings.json`
 
@@ -158,13 +154,8 @@ previously installed version on disk: the stale path still resolves, still runs,
 on rendering from a release nobody is using. The launcher is one file whose only job is to read
 `installed_plugins.json` and hand off to whichever release is current.
 
-**After this, updates run themselves.** `hooks/selfheal.py` fires on the first session after the
-installed version moves. It diffs the outgoing release against the incoming one, repairs the
-status-line wiring, deletes the superseded cached releases, and then hands this command back to
-the session to reconcile sections 1.1–1.5 against the machine. So a user who never types `/setup`
-again still ends up with the marketplaces, roster, settings and tuning of the release they are
-running — and a summary of what changed. On sessions where the version has not moved it does
-nothing and says nothing.
+**After this, updates run themselves.** `hooks/selfheal.py` keeps 1.1–1.5 in sync between
+releases and hands reconciliation back to the session.
 
 ---
 
@@ -220,13 +211,12 @@ with the survey — the point of this half is that the user sees the list before
 - **Missing `Docs/` trees** → add only the missing ones. Three is the whole convention; don't
   add one outside the tree because the repo happens to have it.
 - **`Logs/` or `Protocols/`** → leave them exactly as they are and don't recreate them
-  elsewhere. `Protocols/` was dropped because nothing ever loaded it: a project deviation
-  belongs in `CLAUDE.md`, which *is* loaded. If it holds real content, offer to move it there —
-  don't delete someone's writing.
+  elsewhere. If it holds real content, offer to move it to `CLAUDE.md` — don't delete
+  someone's writing.
 - **`Doclog/`** → leave the name alone. Same tree as `Decisions/`, older name. Say it's
   recognised and move on.
-- **`Sessions/`** → don't delete it. Report how many files it holds and say the convention
-  dropped it because `git log` covers the same ground. Removing it is the user's call.
+- **`Sessions/`** → don't delete it. Report how many files it holds. Removing it is the
+  user's call.
 - **`Docs/Changelog/`** → offer to consolidate into a root `CHANGELOG.md` grouped by release,
   using `changelog-entry.md`. Keep the originals until the user confirms the merge reads right.
 - **Stale plan files** → list them, propose deletion, delete nothing unprompted.
