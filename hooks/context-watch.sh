@@ -178,7 +178,7 @@ case "$PCT"  in ''|*[!0-9]*) exit 0 ;; esac
 # The percentage is the one most people want, because it keeps meaning the same
 # thing when the window changes; the absolute is kept for pinning a figure that
 # has nothing to do with window size. Both are validated the same way and both
-# fail to the 60% default rather than erroring — a hook that refuses to run
+# fail to the 50% default rather than erroring — a hook that refuses to run
 # because a config value is malformed is a hook that stopped reporting the one
 # number the session cannot otherwise see.
 PCT_LIMIT=""
@@ -187,7 +187,7 @@ case "${CLAUDE_HANDOFF_PCT:-}" in
   0) ;;
   *) [ "$CLAUDE_HANDOFF_PCT" -le 100 ] && PCT_LIMIT="$CLAUDE_HANDOFF_PCT" ;;
 esac
-[ -z "$PCT_LIMIT" ] && PCT_LIMIT=60
+[ -z "$PCT_LIMIT" ] && PCT_LIMIT=50
 
 BUDGET=""
 case "${CLAUDE_HANDOFF_BUDGET:-}" in

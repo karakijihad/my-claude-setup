@@ -5,6 +5,36 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.27.0] — 2026-09-28
+
+A pass against the Opus 5.5 prompting guidance. Nothing in the plugin told the model to think
+out loud or over-steered it, so the pass is cuts, plus one default moved.
+
+### Changed
+
+- **The handoff is due at 50% of the window, down from 60%** — 500k on a 1M window, 100k on a
+  200k one. `CLAUDE_HANDOFF_PCT` and `CLAUDE_HANDOFF_BUDGET` still override it.
+
+### Removed
+
+- **History prose from shipped files.** `setup.md` no longer tells the story of the retired
+  remove-plugins step, narrates `selfheal.py`, or explains why `Protocols/` and `Sessions/`
+  were dropped; `agent-protocol` no longer retells the deleted report gate; `git-protocol` no
+  longer quotes its own old branching rule. The rules stay; the why lives here.
+- **Generic practice the model already follows.** `git-protocol` loses the force-push,
+  generated-files and failing-merge bullets (`guard.sh` blocks force-push mechanically) and the
+  generic pre-commit checklist; it keeps the secrets rule and "run what CI runs".
+  `testing-protocol` loses its evidence banner, which `core.md` already states, and four
+  generic verification bullets.
+- **The "this skill wins" footer** on `git-protocol` and `testing-protocol` — `core.md` already
+  says a protocol beats the summary.
+
+The worker and advisor keep `effort: high`. Opus 5.5 at `medium` matches Opus 5 at `high`, but
+the model is chosen at the call site — the worker usually runs on the subagent default — so the
+Opus-specific calibration isn't the card's to make.
+
+---
+
 ## [1.26.0] — 2026-09-18
 
 The continuity threshold and the handoff's own size were both fixed numbers, and the one knob

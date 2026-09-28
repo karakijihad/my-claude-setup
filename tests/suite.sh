@@ -600,26 +600,26 @@ assert d["additionalContext"], "empty additionalContext"
       ok "the handoff directive names the skill and the override variable" ;;
     *) bad "the handoff directive names the skill and the override variable" "got: ${CW_OUT:0:160}" ;;
   esac
-  # Default budget is 60% of size (600k here); this state alone stays under it,
+  # Default budget is 50% of size (500k here); this state alone stays under it,
   # so the override alone must be what pushes it past.
   SID4="watch-session-four"
   write_state "$SID4" 100000 1000000 10
   OUT=$(printf '%s' "$(sidjson "$SID4")" \
     | HOME="$CWH" USERPROFILE="$CWH" CLAUDE_HANDOFF_BUDGET=50000 bash context-watch.sh 2>/dev/null)
   case "$OUT" in
-    *"past the 50k handoff budget"*) ok "CLAUDE_HANDOFF_BUDGET overrides the default 60% budget" ;;
-    *) bad "CLAUDE_HANDOFF_BUDGET overrides the default 60% budget" "got: ${OUT:0:160}" ;;
+    *"past the 50k handoff budget"*) ok "CLAUDE_HANDOFF_BUDGET overrides the default 50% budget" ;;
+    *) bad "CLAUDE_HANDOFF_BUDGET overrides the default 50% budget" "got: ${OUT:0:160}" ;;
   esac
 
   # The percentage knob, which is the one most people want: it keeps meaning the
   # same thing when the window changes. 20% of 1M is 200k, so this state is past
-  # it where the 60% default would have stayed quiet.
+  # it where the 50% default would have stayed quiet.
   SID4B="watch-session-four-b"
   write_state "$SID4B" 300000 1000000 30
   OUT=$(printf '%s' "$(sidjson "$SID4B")"     | HOME="$CWH" USERPROFILE="$CWH" CLAUDE_HANDOFF_PCT=20 bash context-watch.sh 2>/dev/null)
   case "$OUT" in
-    *"past the 200k handoff budget"*) ok "CLAUDE_HANDOFF_PCT moves the threshold off the 60% default" ;;
-    *) bad "CLAUDE_HANDOFF_PCT moves the threshold off the 60% default" "got: ${OUT:0:160}" ;;
+    *"past the 200k handoff budget"*) ok "CLAUDE_HANDOFF_PCT moves the threshold off the 50% default" ;;
+    *) bad "CLAUDE_HANDOFF_PCT moves the threshold off the 50% default" "got: ${OUT:0:160}" ;;
   esac
 
   # Absolute beats percentage when both are set, and a malformed value falls back
@@ -636,8 +636,8 @@ assert d["additionalContext"], "empty additionalContext"
   write_state "$SID4D" 650000 1000000 65
   OUT=$(printf '%s' "$(sidjson "$SID4D")"     | HOME="$CWH" USERPROFILE="$CWH" CLAUDE_HANDOFF_PCT="sixty%" bash context-watch.sh 2>/dev/null)
   case "$OUT" in
-    *"past the 600k handoff budget"*) ok "a malformed CLAUDE_HANDOFF_PCT falls back to 60%, silently" ;;
-    *) bad "a malformed CLAUDE_HANDOFF_PCT falls back to 60%, silently" "got: ${OUT:0:160}" ;;
+    *"past the 500k handoff budget"*) ok "a malformed CLAUDE_HANDOFF_PCT falls back to 50%, silently" ;;
+    *) bad "a malformed CLAUDE_HANDOFF_PCT falls back to 50%, silently" "got: ${OUT:0:160}" ;;
   esac
 
   # A state file at the expected name but carrying a different session_id inside

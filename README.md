@@ -81,7 +81,7 @@ assets/             statusline.mjs and the document templates
 | `guard.sh` | PreToolUse | Blocks `rm -rf /`, force-push, `reset --hard`, `clean -f`, `checkout -- `, `branch -D` (but not `-d`), `DROP TABLE`/`DROP DATABASE`/`TRUNCATE TABLE`, and the PowerShell equivalents; blocks writes to `.env*` (except `.env.example`), lockfiles and `.git/`; scans the **staged diff** on commit for value-shaped secrets and credential material |
 | `budget.sh` | PostToolUse | Warns when a project doc outgrows its budget — lines for plans, backlogs and code maps; estimated tokens for a handoff, which is the one document written to be read by a model. Ratcheted: it speaks on the first crossing and again only when an edit makes the overage worse, so the edits that fix the file never nag. Never blocks |
 | `post-push.sh` | PostToolUse | After a push, names the SHA and points at the repo's own CI command in its `CLAUDE.md`. It doesn't detect providers and doesn't claim the push landed — a confident wrong pointer is worse than silence. Exits 0 on every path |
-| `context-watch.sh` | PostToolBatch | Reads the context fill `statusline.mjs` writes to a state file each render — no hook payload carries it — and injects a `[context] 350k/1.0M (35%)` line once per 5%-of-window crossing. Past the handoff threshold (60% of the window by default; see **Configuration**) it says to write the handoff instead. Never blocks |
+| `context-watch.sh` | PostToolBatch | Reads the context fill `statusline.mjs` writes to a state file each render — no hook payload carries it — and injects a `[context] 350k/1.0M (35%)` line once per 5%-of-window crossing. Past the handoff threshold (50% of the window by default; see **Configuration**) it says to write the handoff instead. Never blocks |
 
 ### Skills
 
@@ -129,7 +129,7 @@ Three knobs, all optional, all read from the environment. Set them in `env` in
 ```json
 {
   "env": {
-    "CLAUDE_HANDOFF_PCT": "50",
+    "CLAUDE_HANDOFF_PCT": "40",
     "CLAUDE_HANDOFF_DOC_TOKENS": "8000"
   }
 }
@@ -137,7 +137,7 @@ Three knobs, all optional, all read from the environment. Set them in `env` in
 
 | Variable | Controls | Default |
 |-|-|-|
-| `CLAUDE_HANDOFF_PCT` | When the handoff becomes due, as a percentage of the context window | `60` |
+| `CLAUDE_HANDOFF_PCT` | When the handoff becomes due, as a percentage of the context window | `50` |
 | `CLAUDE_HANDOFF_BUDGET` | The same threshold as an absolute token count. Wins over the percentage when both are set — use it to pin a figure that has nothing to do with window size | unset |
 | `CLAUDE_HANDOFF_DOC_TOKENS` | How long the written handoff may be before `budget.sh` says to cut it, in estimated tokens (4 characters each) | `5000` |
 
