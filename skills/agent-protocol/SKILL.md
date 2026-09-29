@@ -16,10 +16,11 @@ git behind it.
 
 **Agent type, model and effort.** Work that writes code, gathers information or runs tests
 goes to `my-claude-setup:worker`; advice to `my-claude-setup:advisor`, which never writes
-code. Pass the session's subagent model as `model` on every dispatch, and the advisor model on
-a consult — the session-start line names both. Both cards run at effort high, fixed. A job that
-needs a stronger model: ask the operator first. A model the operator
-names applies to that dispatch only. Announce each dispatch in one line, model and effort
+code. The session-start line names both models and what to pass: the Agent tool's `model`
+takes only an alias and overrides the id in settings, so the worker usually goes out with none.
+Both cards run at effort high, fixed. A job that needs a stronger model: ask the operator
+first. A model the operator names applies to that dispatch only; one they want from now on
+goes into `.claude/settings.local.json`. Announce each dispatch in one line, model and effort
 included. `general-purpose` has no effort of its own; don't delegate to it.
 
 ## The brief

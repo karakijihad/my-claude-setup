@@ -268,10 +268,26 @@ if [ -n "$SEED" ] && [ -d "$SEED" ]; then
   GOT=$(bash py.sh -c "import json,sys; e=json.load(open(sys.argv[1],encoding='utf-8-sig'))['env']; print(e.get('CLAUDE_CODE_SUBAGENT_MODEL'), repr(e.get('CLAUDE_ADVISOR_MODEL')), e.get('KEEP'))" \
         "$SEED/.claude/settings.local.json" 2>/dev/null | tr -d '\r')
   case "$GOT|$OUT" in
-    "claude-"*" '' 1|"*"Subagent model: claude-"*)
-      ok "seeds missing model keys into settings.local.json, keeps the user's, names the model" ;;
-    *) bad "seeds missing model keys into settings.local.json, keeps the user's, names the model" \
+    "claude-"*" '' 1|"*"Subagent model: claude-"*"plugin default"*"Dispatch every subagent with \`model: sonnet\`"*)
+      ok "seeds missing model keys, keeps the user's, and passes the default's alias until loaded" ;;
+    *) bad "seeds missing model keys, keeps the user's, and passes the default's alias until loaded" \
            "got: $GOT / ${OUT:0:80}" ;;
+  esac
+  # Contract: the Agent tool's `model` takes only aliases, so a full id set in env
+  # reaches the worker by passing none, and pinned cards get the id's alias.
+  sst() { (cd "$SEED" && HOME="$SEED" USERPROFILE="$SEED" CLAUDE_PROJECT_DIR="$SEED" \
+          bash "$HOOKS/py.sh" "$HOOKS/session-start.py" </dev/null 2>/dev/null); }
+  OUT=$(CLAUDE_CODE_SUBAGENT_MODEL=test-sonnet-id CLAUDE_ADVISOR_MODEL=test-fable-id sst)
+  case "$OUT" in
+    *"test-sonnet-id (CLAUDE_CODE_SUBAGENT_MODEL). Dispatch the worker"*"with no \`model\`"*"code-reviewer: \`model: sonnet\`"*"Consult with \`model: fable\`"*)
+      ok "a full id in env: worker passes no model, pinned cards and the advisor get its alias" ;;
+    *) bad "a full id in env: worker passes no model, pinned cards and the advisor get its alias" \
+           "got: ${OUT:0:120}" ;;
+  esac
+  OUT=$(CLAUDE_CODE_SUBAGENT_MODEL= CLAUDE_ADVISOR_MODEL=test-custom-id sst)
+  case "$OUT" in
+    *"Subagent model: not set — ask the operator"*"Consult with the alias the operator picks — ask first"*) ok "an unset or alias-less model asks rather than inventing one" ;;
+    *) bad "an unset or alias-less model asks rather than inventing one" "got: ${OUT:0:120}" ;;
   esac
   rm -rf "$SEED"
 fi

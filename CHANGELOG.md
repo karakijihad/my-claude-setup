@@ -5,6 +5,19 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.28.3] — 2026-09-29
+
+### Fixed
+
+- **The full model id you set is the one the worker runs on.** The Agent tool's `model` takes
+  only an alias and overrides `CLAUDE_CODE_SUBAGENT_MODEL`, so 1.28.2's instruction to pass
+  the full id failed. The worker is now dispatched with no `model` and the harness applies
+  your id exactly. The advisor and cards that pin their own model get the id's alias. Asking
+  for a model from now on writes it to `.claude/settings.local.json`; naming one for a single
+  dispatch changes nothing.
+
+---
+
 ## [1.28.2] — 2026-09-29
 
 ### Changed

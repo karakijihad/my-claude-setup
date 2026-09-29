@@ -196,22 +196,40 @@ def seed_local_settings() -> str:
         return ""
 
 
+def _alias(model):
+    """The Agent tool's `model` takes only an alias: the one a full id belongs to."""
+    return next((a for a in ("sonnet", "opus", "haiku", "fable") if model and a in model), None)
+
+
 def dispatch_line() -> str:
-    """Which model every dispatch passes, so no subagent falls back to the session's."""
+    """Which model every dispatch runs on, so no subagent falls back to the session's."""
     try:
         sub, adv = (_model(k, d) for k, d in DEFAULT_MODELS)
-        sub_s = sub or "not set — ask the operator before the first dispatch"
-        adv_s = adv or "not set — ask the operator before the first consult"
-        eg = sub or "<model>"
+
+        def pass_(model):
+            a = _alias(model)
+            return "`model: %s`" % a if a else "the alias the operator picks — ask first"
+
+        if sub is None:
+            sub_s = "not set — ask the operator before the first dispatch."
+        elif "CLAUDE_CODE_SUBAGENT_MODEL" in os.environ:
+            sub_s = ("%s (CLAUDE_CODE_SUBAGENT_MODEL). Dispatch the worker, and any agent whose "
+                     "card pins no model, with no `model` — the harness then runs this exact "
+                     "id. A card that pins its own, like feature-dev:code-reviewer: %s."
+                     % (sub, pass_(sub)))
+        else:
+            sub_s = ("%s, the plugin default, not yet in settings. Dispatch every subagent with %s."
+                     % (sub, pass_(sub)))
+        adv_s = ("%s (CLAUDE_ADVISOR_MODEL). Consult with %s." % (adv, pass_(adv))
+                 if adv else "not set — ask the operator before the first consult.")
         return (
-            "\n\nSubagent model: %s (CLAUDE_CODE_SUBAGENT_MODEL). Pass it as `model` on every "
-            "dispatch — the worker and any other subagent, feature-dev:code-reviewer included, "
-            "whose card would otherwise pin its own. Advisor model: %s (CLAUDE_ADVISOR_MODEL). "
-            "Both cards run at effort high, fixed. If a job needs a stronger model, ask the "
-            "operator first. A model the operator names for one dispatch applies to that dispatch only; "
-            "change their settings only when they ask. Announce each dispatch in one line: "
-            "\"Dispatched worker (model: %s, effort: high)\". Both values come from settings "
-            "env — per repo in .claude/settings.local.json." % (sub_s, adv_s, eg)
+            "\n\nThe Agent tool's `model` takes only an alias and overrides the id in settings. "
+            "Subagent model: %s Advisor model: %s A model the operator names for one dispatch "
+            "goes in `model` as its alias, for that dispatch only; one they want from now on is "
+            "written to .claude/settings.local.json, full id or alias. Both cards run at effort "
+            "high, fixed. If a job needs a stronger model, ask the operator first. Announce each "
+            "dispatch in one line: \"Dispatched <agent> (model: <model it runs on>, effort: high)\"."
+            % (sub_s, adv_s)
         )
     except Exception:
         return ""
