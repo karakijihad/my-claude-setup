@@ -147,8 +147,8 @@ so a repo can differ from your user settings — edit that file to change them:
 
 | Variable | Controls | Default |
 |-|-|-|
-| `CLAUDE_CODE_SUBAGENT_MODEL` | Claude Code's own subagent model — a full id or an alias. The harness runs it on the worker as set; a card that pins its own model, like the reviewer, gets its alias, the only form a dispatch can pass. Empty or `ask`: Claude asks first | `claude-sonnet-5-5` |
-| `CLAUDE_ADVISOR_MODEL` | Model for `my-claude-setup:advisor` consults, dispatched as its alias. "Consult <model>" overrides it for one consult | `claude-fable-5-1` |
+| `CLAUDE_CODE_SUBAGENT_MODEL` | Claude Code's own subagent model — an alias, which follows new releases, or a full id such as `claude-sonnet-5-5`, which pins one. The harness runs it on the worker as set; a card that pins its own model, like the reviewer, gets its alias, the only form a dispatch can pass. Empty or `ask`: Claude asks first | `sonnet` |
+| `CLAUDE_ADVISOR_MODEL` | Model for `my-claude-setup:advisor` consults, dispatched as its alias. "Consult <model>" overrides it for one consult | `fable` |
 
 Both agent cards run at effort high — effort can only be set on a card, never per dispatch.
 A job that needs a stronger model is proposed to you first. Every dispatch is announced with its model and effort.

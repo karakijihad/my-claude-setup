@@ -268,7 +268,7 @@ if [ -n "$SEED" ] && [ -d "$SEED" ]; then
   GOT=$(bash py.sh -c "import json,sys; e=json.load(open(sys.argv[1],encoding='utf-8-sig'))['env']; print(e.get('CLAUDE_CODE_SUBAGENT_MODEL'), repr(e.get('CLAUDE_ADVISOR_MODEL')), e.get('KEEP'))" \
         "$SEED/.claude/settings.local.json" 2>/dev/null | tr -d '\r')
   case "$GOT|$OUT" in
-    "claude-"*" '' 1|"*"Subagent model: claude-"*"plugin default"*"Dispatch every subagent with \`model: sonnet\`"*)
+    "sonnet '' 1|"*"Subagent model: sonnet, the plugin default"*"Dispatch every subagent with \`model: sonnet\`"*)
       ok "seeds missing model keys, keeps the user's, and passes the default's alias until loaded" ;;
     *) bad "seeds missing model keys, keeps the user's, and passes the default's alias until loaded" \
            "got: $GOT / ${OUT:0:80}" ;;

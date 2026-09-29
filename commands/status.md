@@ -26,7 +26,7 @@ Run these first, in one batch. Read `${CLAUDE_PLUGIN_ROOT}` from the environment
    `## CI` line.
 6. **Models** — `CLAUDE_CODE_SUBAGENT_MODEL` and `CLAUDE_ADVISOR_MODEL`: the value in effect
    and which file set it (`./.claude/settings.local.json`, `./.claude/settings.json`,
-   `~/.claude/settings.json`), or the default (`claude-sonnet-5-5` / `claude-fable-5-1`) when none does.
+   `~/.claude/settings.json`), or the default (`sonnet` / `fable`) when none does.
 
 ## Report
 

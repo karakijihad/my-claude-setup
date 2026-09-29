@@ -5,6 +5,17 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.28.4] — 2026-09-29
+
+### Changed
+
+- **Default models are aliases again: `sonnet` and `fable`.** An alias follows each new
+  release without a plugin update; 1.28.2's full ids went stale on the next launch. To pin one
+  release, set a full id such as `claude-sonnet-5-5` in settings — the worker runs it exactly,
+  as 1.28.3 made possible. Values you already set are left alone.
+
+---
+
 ## [1.28.3] — 2026-09-29
 
 ### Fixed
