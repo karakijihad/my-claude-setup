@@ -268,7 +268,7 @@ if [ -n "$SEED" ] && [ -d "$SEED" ]; then
   GOT=$(bash py.sh -c "import json,sys; e=json.load(open(sys.argv[1],encoding='utf-8-sig'))['env']; print(e.get('CLAUDE_CODE_SUBAGENT_MODEL'), repr(e.get('CLAUDE_ADVISOR_MODEL')), e.get('KEEP'))" \
         "$SEED/.claude/settings.local.json" 2>/dev/null | tr -d '\r')
   case "$GOT|$OUT" in
-    "sonnet '' 1|"*"Subagent model: sonnet"*)
+    "claude-"*" '' 1|"*"Subagent model: claude-"*)
       ok "seeds missing model keys into settings.local.json, keeps the user's, names the model" ;;
     *) bad "seeds missing model keys into settings.local.json, keeps the user's, names the model" \
            "got: $GOT / ${OUT:0:80}" ;;

@@ -136,7 +136,7 @@ def reviewer_notice() -> str:
 # Subagent models come from settings `env`, so a repo's .claude/settings.local.json
 # can differ from the user's settings.json. CLAUDE_CODE_SUBAGENT_MODEL is Claude
 # Code's own variable; CLAUDE_ADVISOR_MODEL is ours. Effort lives on the cards.
-DEFAULT_MODELS = (("CLAUDE_CODE_SUBAGENT_MODEL", "sonnet"), ("CLAUDE_ADVISOR_MODEL", "fable"))
+DEFAULT_MODELS = (("CLAUDE_CODE_SUBAGENT_MODEL", "claude-sonnet-5-5"), ("CLAUDE_ADVISOR_MODEL", "claude-fable-5-1"))
 
 
 def _model(name: str, default: str):

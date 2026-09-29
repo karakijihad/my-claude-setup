@@ -5,6 +5,17 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.28.2] — 2026-09-29
+
+### Changed
+
+- **Default subagent and advisor models are full model ids, not aliases.** New settings get
+  `claude-sonnet-5-5` and `claude-fable-5-1`, so a dispatch runs on a named release rather
+  than whatever an alias resolves to. Values you already set, including seeded aliases, are
+  left alone.
+
+---
+
 ## [1.28.1] — 2026-09-28
 
 ### Changed
