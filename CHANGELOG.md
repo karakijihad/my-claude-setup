@@ -5,6 +5,24 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.29.0] — 2026-10-03
+
+### Added
+
+- **A context bar above the prompt.** The context window as one stacked bar, one colour per
+  `/context` category, with the used percentage. Refreshed after each turn and compaction.
+  Needs Claude Code 2.1.287 or later; it is the plugin's first function hook
+  (`hooks/context-bar.tsx`).
+
+### Changed
+
+- **Cleared the marketplace validator's findings.** The repo's contributor notes moved to
+  `.claude/CLAUDE.md`, where Claude Code still loads them and the plugin no longer ships a
+  root `CLAUDE.md` it never loads. The test suite's pass counter was renamed so it no longer
+  reads as a credential.
+
+---
+
 ## [1.28.4] — 2026-09-29
 
 ### Changed
@@ -420,7 +438,7 @@ spread across skills instead of stated where every session reads it.
   protected files (`.ENV`, `Package-Lock.json`, `.GIT/`) all got through. The same `-c` gap
   skipped the staged-secret scan for any commit written that way.
 - **`subagent-verify.sh`** only recognised `**Label:**`; `**Label**:` or plain `Label:` switched
-  the gate off. Now any of those count, while unbolded `PASS: 10` lines in pasted output stay
+  the gate off. Now any of those count, while unbolded `ok: 10` lines in pasted output stay
   output.
 - **`selfheal.py`** said nothing when `settings.json` failed to parse and the status-line check
   was skipped.

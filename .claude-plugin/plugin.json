@@ -1,13 +1,14 @@
 {
   "name": "my-claude-setup",
   "description": "A rail for how Claude Code works: the review ladder, delegation, planning, and per-project docs. Protocol skills that load on demand, safety hooks, and scaffolding.",
-  "version": "1.28.4",
+  "version": "1.29.0",
   "author": {
     "name": "karakijihad"
   },
   "homepage": "https://github.com/karakijihad/my-claude-setup",
   "repository": "https://github.com/karakijihad/my-claude-setup",
   "license": "MIT",
+  "types": "./types/index.d.ts",
   "keywords": [
     "security",
     "testing",

@@ -24,7 +24,7 @@
 # as ../, which is the repo root.
 cd "$(dirname "$0")/../hooks" || exit 1
 HOOKS=$PWD
-PASS=0; FAIL=0; SKIP=0
+N_OK=0; N_FAIL=0; N_SKIP=0
 
 # One run at a time. Two runs share the temp root and collide. mkdir is atomic,
 # so it is the lock. It records its pid, because a run that is killed never
@@ -158,12 +158,12 @@ if [ "$CHANGED_MODE" = 1 ]; then
   fi
 fi
 
-ok()   { PASS=$((PASS+1)); printf '  ok   %s\n' "$1"; }
-bad()  { FAIL=$((FAIL+1)); printf '  FAIL %s\n' "$1"; [ -n "$2" ] && printf '       %s\n' "$2"; }
+ok()   { N_OK=$((N_OK+1)); printf '  ok   %s\n' "$1"; }
+bad()  { N_FAIL=$((N_FAIL+1)); printf '  FAIL %s\n' "$1"; [ -n "$2" ] && printf '       %s\n' "$2"; }
 # A real skip: distinct from a pass, so a dev machine missing an optional tool
 # (node, for the status-line block) reports honestly instead of incrementing
-# PASS for coverage that never ran.
-skip() { SKIP=$((SKIP+1)); printf '  skip %s\n' "$1"; }
+# N_OK for coverage that never ran.
+skip() { N_SKIP=$((N_SKIP+1)); printf '  skip %s\n' "$1"; }
 
 # exit_is <expected> <name> <json> — runs guard.sh in the background, because a
 # guard case is a pure payload -> exit code and each costs a process start or
@@ -1249,5 +1249,5 @@ fi
 
 flush_exits
 rm -rf "$EX_DIR"
-printf '\n%s passed, %s failed, %s skipped\n' "$PASS" "$FAIL" "$SKIP"
-[ "$FAIL" = 0 ]
+printf '\n%s passed, %s failed, %s skipped\n' "$N_OK" "$N_FAIL" "$N_SKIP"
+[ "$N_FAIL" = 0 ]

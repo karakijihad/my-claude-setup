@@ -27,6 +27,7 @@ gate were all deleted for it.
 | `hooks/budget.sh` | Doc line budgets. **The ratchet is the design** — warn once, again only if an edit worsens it. A hook that re-warns on the corrective edit gets ignored. Keyed on file *names*, which is why `project-docs` makes `INDEX.md` and `phase-*.md` normative. |
 | `hooks/post-push.sh` | CI reminder. Fires on every Bash/PowerShell call, so rejections are ordered cheapest-first. Names the SHA and points at the repo's `## CI` line; it does **not** detect providers or claim a push landed, and is silent for a `-C` push at another repo. Exit 0 always — PostToolUse cannot block. |
 | `hooks/context-watch.sh` | PostToolBatch. Injects the session's context fill once per 5% crossing, escalating past a budget. Reads the state file `statusline.mjs` writes — no hook payload carries `context_window`. Silent for subagents. Exit 0 always. |
+| `hooks/context-bar.tsx` | The one function hook (`modules` in `hooks.json`): the stacked context bar above the prompt. Fetches the breakdown after a turn, never while drawing. Tested by `claude plugin test .`, not `suite.sh`. |
 | `hooks/onboarding.py` | One-time first-run check. Must never nag a user already set up. Reads settings as **`utf-8-sig`** — a BOM makes a healthy config look absent. |
 | `hooks/selfheal.py` | The update path. Python does what is deterministic; the session does what needs judgement. Never overwrites a user's value. **The diff runs before the prune.** |
 | `hooks/py.sh` | Interpreter resolver. Every Python entry point goes through it. |
