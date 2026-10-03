@@ -2,7 +2,7 @@
 description: Set up a machine or a project for this plugin. Use on a new PC to install the companion marketplaces, plugins and settings, or inside a repo to scaffold its CLAUDE.md and Docs/ convention. Surveys before it writes either way.
 ---
 
-The one command this plugin ships. It has two halves and they run at different times:
+One of the two commands this plugin ships (the other is `status`). It has two halves and they run at different times:
 
 - **Part 1 — machine.** Once per PC. Installs the companions and writes `settings.json`.
 - **Part 2 — project.** Once per repo. Writes that project's `CLAUDE.md` and `Docs/` tree.

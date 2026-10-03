@@ -714,28 +714,41 @@ if [ -n "$CWH" ] && [ -d "$CWH" ]; then
 
   cw quiet "exits 0 with no state file" "$(sidjson "watch-no-state")"
 
+  # Two stages. Default budget is 50% of the window (500k here), so the heads-up
+  # sits at 80% of that: 400k. Below it nothing is said and nothing is written.
   SID1="watch-session-one"
   write_state "$SID1" 100000 1000000 10
-  cw speaks "emits a state line under budget" "$(sidjson "$SID1")"
-  # Assert the consumer's contract — the key Claude Code actually reads — not
-  # merely that some JSON came out.
+  cw quiet "silent below 80% of the budget" "$(sidjson "$SID1")"
+
+  # The heads-up fires once. Assert the consumer's contract — the key Claude Code
+  # actually reads — not merely that some JSON came out. Then the ratchet: a
+  # later batch still short of the budget stays silent.
+  write_state "$SID1" 420000 1000000 42
+  cw speaks "heads-up at 80% of the budget" "$(sidjson "$SID1")"
   printf '%s' "$CW_OUT" | bash py.sh -c '
 import json,sys
 d=json.load(sys.stdin)["hookSpecificOutput"]
 assert d["hookEventName"]=="PostToolBatch", d
-assert d["additionalContext"], "empty additionalContext"
-' >/dev/null 2>&1 && ok "the emitted JSON carries hookSpecificOutput.hookEventName" \
-    || bad "the emitted JSON carries hookSpecificOutput.hookEventName" "got: ${CW_OUT:0:120}"
+assert "nearing the 500k handoff budget" in d["additionalContext"], d
+' >/dev/null 2>&1 && ok "the heads-up carries hookSpecificOutput.hookEventName and names the budget" \
+    || bad "the heads-up carries hookSpecificOutput.hookEventName and names the budget" "got: ${CW_OUT:0:120}"
+  write_state "$SID1" 480000 1000000 48
+  cw quiet "the heads-up is not repeated on the next batch" "$(sidjson "$SID1")"
 
-  # The ratchet: silent again at the same 5% bucket, speaks again once the bucket
-  # advances. Re-warning on every batch is how this becomes noise.
-  cw quiet "silent on a second call at the same 5% bucket" "$(sidjson "$SID1")"
-  write_state "$SID1" 160000 1000000 16
-  cw speaks "speaks again once the bucket advances" "$(sidjson "$SID1")"
+  # At the budget the directive follows even though the heads-up already fired,
+  # and repeats once the 5% bucket advances but not within it.
+  write_state "$SID1" 520000 1000000 52
+  OUT=$(printf '%s' "$(sidjson "$SID1")" | HOME="$CWH" USERPROFILE="$CWH" bash context-watch.sh 2>/dev/null)
+  case "$OUT" in
+    *"past the 500k handoff budget"*) ok "directive at the budget, after the heads-up" ;;
+    *) bad "directive at the budget, after the heads-up" "got: ${OUT:0:160}" ;;
+  esac
+  cw quiet "the directive is silent within the same 5% bucket" "$(sidjson "$SID1")"
+  write_state "$SID1" 600000 1000000 60
+  cw speaks "the directive repeats once the bucket advances" "$(sidjson "$SID1")"
 
-  # Past budget the line has to name what to do; this case asserts the directive.
-  # Default budget is 50% of size (500k here); this state alone stays under it,
-  # so the override alone must be what pushes it past.
+  # The budget knobs. This state alone stays under the default budget, so the
+  # override alone must be what pushes it past.
   SID4="watch-session-four"
   write_state "$SID4" 100000 1000000 10
   OUT=$(printf '%s' "$(sidjson "$SID4")" \
@@ -745,15 +758,24 @@ assert d["additionalContext"], "empty additionalContext"
     *) bad "CLAUDE_HANDOFF_BUDGET overrides the default 50% budget" "got: ${OUT:0:160}" ;;
   esac
 
-  # The percentage knob, which is the one most people want: it keeps meaning the
-  # same thing when the window changes. 20% of 1M is 200k, so this state is past
-  # it where the 50% default would have stayed quiet.
-  SID4B="watch-session-four-b"
+  # The percentage knobs, which are the ones most people want: they keep meaning
+  # the same thing when the window changes. 20% of 1M is 200k, so this state is
+  # past it where the 50% default would have stayed quiet. The soft knob is a
+  # percentage of the window too: 15% puts the heads-up at 150k, so 155k speaks
+  # where the 80%-of-budget default (160k) would not; and a soft knob at or past
+  # the budget is ignored, falling back to that default.
+  SID4B="watch-session-four-b"; SID4C="watch-session-four-c"; SID4D="watch-session-four-d"
   write_state "$SID4B" 300000 1000000 30
-  OUT=$(printf '%s' "$(sidjson "$SID4B")"     | HOME="$CWH" USERPROFILE="$CWH" CLAUDE_HANDOFF_PCT=20 bash context-watch.sh 2>/dev/null)
-  case "$OUT" in
-    *"past the 200k handoff budget"*) ok "CLAUDE_HANDOFF_PCT moves the threshold off the 50% default" ;;
-    *) bad "CLAUDE_HANDOFF_PCT moves the threshold off the 50% default" "got: ${OUT:0:160}" ;;
+  write_state "$SID4C" 155000 1000000 15
+  write_state "$SID4D" 170000 1000000 17
+  OUT=$(printf '%s' "$(sidjson "$SID4B")" | HOME="$CWH" USERPROFILE="$CWH" CLAUDE_HANDOFF_PCT=20 bash context-watch.sh 2>/dev/null)
+  OUTC=$(printf '%s' "$(sidjson "$SID4C")" | HOME="$CWH" USERPROFILE="$CWH" CLAUDE_HANDOFF_PCT=20 CLAUDE_HANDOFF_SOFT_PCT=15 bash context-watch.sh 2>/dev/null)
+  OUTD=$(printf '%s' "$(sidjson "$SID4D")" | HOME="$CWH" USERPROFILE="$CWH" CLAUDE_HANDOFF_PCT=20 CLAUDE_HANDOFF_SOFT_PCT=25 bash context-watch.sh 2>/dev/null)
+  case "$OUT|$OUTC|$OUTD" in
+    *"past the 200k handoff budget"*"|"*"nearing the 200k handoff budget"*"|"*"nearing the 200k handoff budget"*)
+      ok "CLAUDE_HANDOFF_PCT and CLAUDE_HANDOFF_SOFT_PCT move the thresholds, a soft knob past the budget is ignored" ;;
+    *) bad "CLAUDE_HANDOFF_PCT and CLAUDE_HANDOFF_SOFT_PCT move the thresholds, a soft knob past the budget is ignored" \
+         "got: ${OUT:0:60} | ${OUTC:0:60} | ${OUTD:0:60}" ;;
   esac
 
   # A state file at the expected name but carrying a different session_id inside
@@ -761,7 +783,7 @@ assert d["additionalContext"], "empty additionalContext"
   # acted on. Reporting another session's fill as this one's is the failure that
   # makes the whole reading untrustworthy.
   SID5="watch-session-five"
-  printf '{"session_id":"%s","used":100000,"size":1000000,"pct":10}' \
+  printf '{"session_id":"%s","used":700000,"size":1000000,"pct":70}' \
     "not-$SID5" > "$CACHE_DIR/$SID5.json"
   cw quiet "silent when the state file's own session_id disagrees with the payload's" \
      "$(sidjson "$SID5")"
@@ -773,7 +795,7 @@ assert d["additionalContext"], "empty additionalContext"
   # also has a state file, at unmistakably different numbers, so a wrong read
   # shows up as the wrong fill rather than as silence.
   SIDREAL="watch-nested-real"; SIDNEST="watch-nested-decoy"
-  write_state "$SIDREAL" 100000 1000000 10
+  write_state "$SIDREAL" 450000 1000000 45
   write_state "$SIDNEST" 900000 1000000 90
   OUT=$(printf '{"tool_calls":[{"tool_input":{"session_id":"%s"}}],"session_id":"%s"}' \
         "$SIDNEST" "$SIDREAL" \
@@ -785,7 +807,9 @@ assert d["additionalContext"], "empty additionalContext"
   esac
 
   # Subagents must never see this line: it is the orchestrator's budget.
-  OUT=$(printf '{"session_id":"%s","agent_id":"sub-1"}' "$SID1" \
+  SIDSUB="watch-session-sub"
+  write_state "$SIDSUB" 700000 1000000 70
+  OUT=$(printf '{"session_id":"%s","agent_id":"sub-1"}' "$SIDSUB" \
         | HOME="$CWH" USERPROFILE="$CWH" bash context-watch.sh 2>/dev/null)
   [ -z "$OUT" ] && ok "silent for a subagent batch" \
     || bad "silent for a subagent batch" "got: ${OUT:0:120}"
@@ -991,10 +1015,14 @@ done
 # whether the hook is still wired at all: point a command somewhere else, or
 # delete it, and the matcher keeps it green while nothing runs. So assert the
 # commands too, and that every registered command resolves to a file that
-# exists — a path typo in hooks.json is silent at runtime.
+# exists — a path typo in hooks.json is silent at runtime. The same goes for a
+# top-level `modules` entry, which names a file relative to hooks/. None ships
+# today; 1.30.0 briefly shipped a dangling one. HOOKS_JSON points the check at a
+# copy, which is how its failure on a bogus entry was confirmed by hand.
 bash py.sh -c '
 import json,os,sys
-h=json.load(open("hooks.json"))["hooks"]
+doc=json.load(open(os.environ.get("HOOKS_JSON","hooks.json")))
+h=doc["hooks"]
 want={("PreToolUse",0):"guard.sh",("PostToolUse",0):"post-push.sh",
       ("PostToolUse",1):"budget.sh",("PostToolBatch",0):"context-watch.sh",
       ("SessionStart",0):"session-start.sh"}
@@ -1016,9 +1044,13 @@ for event,entries in h.items():
             rel=cmd.strip(chr(34)).split("${CLAUDE_PLUGIN_ROOT}/",1)[-1]
             if not os.path.exists(os.path.join("..",rel)):
                 bad.append("%s[%d] points at a missing file: %s"%(event,i,rel))
+for m in doc.get("modules",[]):
+    rel=m.get("path","") if isinstance(m,dict) else m
+    if not isinstance(rel,str) or not rel or not os.path.isfile(rel):
+        bad.append("modules entry points at a missing file: %r"%(m,))
 sys.exit(0 if not bad else 1)
-' >/dev/null 2>&1 && ok "every hooks.json command names the script it claims and that file exists" \
-  || bad "every hooks.json command names the script it claims and that file exists"
+' >/dev/null 2>&1 && ok "every hooks.json command names the script it claims, and it and every module exist" \
+  || bad "every hooks.json command names the script it claims, and it and every module exist"
 
 # project-docs names the template header as the single source of truth for every
 # line budget, and budget.sh necessarily holds a second copy — a hook cannot read

@@ -5,6 +5,28 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.31.0] — 2026-10-03
+
+### Changed
+
+- **Context warnings come at two points instead of every 5%.** Silent until a heads-up near
+  the handoff budget, then the handoff directive once past it. A running fill countdown can
+  make current models wrap up early; two well-placed lines can't.
+- **Both thresholds are percentages you can set.** `CLAUDE_HANDOFF_PCT` (default 50% of the
+  window) moves the handoff; the new `CLAUDE_HANDOFF_SOFT_PCT` moves the heads-up, which
+  defaults to 80% of the handoff threshold.
+- **The README is rewritten as the plugin's public documentation.** Install, requirements,
+  every setting with its default, exactly what the hooks read and write (nothing leaves the
+  machine), uninstall and troubleshooting.
+
+### Fixed
+
+- **`/status` gave the wrong handoff default.** It said 60%; the hook has always used 50%.
+- **The test suite now fails if `hooks.json` names a module file that doesn't exist.** 1.30.0
+  briefly shipped such a reference without a test noticing.
+
+---
+
 ## [1.30.0] — 2026-10-03
 
 ### Removed

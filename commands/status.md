@@ -37,17 +37,18 @@ broken.
 `ok` or `MISSING`. A hook whose script is absent is the only thing here worth flagging
 loudly — it fails open, so it is silent at runtime.
 
-**Continuity.** The three knobs, each with its effective value and where that value came
+**Continuity.** The four knobs, each with its effective value and where that value came
 from — an environment variable, `env` in settings.json, or the built-in default:
 
 | Knob | Controls | Default |
 |-|-|-|
-| `CLAUDE_HANDOFF_PCT` | when the handoff is due, as a percentage of the window | `60` |
+| `CLAUDE_HANDOFF_PCT` | when the handoff is due, as a percentage of the window | `50` |
 | `CLAUDE_HANDOFF_BUDGET` | the same threshold as an absolute token count; wins over the percentage when both are set | unset |
+| `CLAUDE_HANDOFF_SOFT_PCT` | when the one heads-up arrives, as a percentage of the window; ignored at or above the handoff threshold | 80% of the handoff threshold |
 | `CLAUDE_HANDOFF_DOC_TOKENS` | how long the written handoff may be, in estimated tokens | `5000` |
 
-Say plainly that the `[context]` reading itself fires once per 5% of the window and that
-this cadence is not configurable — only the handoff threshold is.
+Say plainly that the session is silent below the heads-up, gets it once, and past the handoff
+threshold gets the directive again on each further 5% of the window.
 
 Note whether `statusLine` in settings.json points at `~/.claude/statusline.mjs`. It is the
 only component the harness hands `context_window` to, so if it is absent or points into the

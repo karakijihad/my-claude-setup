@@ -4,9 +4,10 @@
 #
 # The model cannot see its own token usage -- no hook payload carries it. A
 # sibling piece (assets/statusline.mjs) writes the session's fill to a state
-# file on every status-line render; this hook reads that file and, once per
-# 5%-of-context crossing, tells the model where it stands. Past a budget it
-# escalates to a handoff directive.
+# file on every status-line render; this hook reads that file and speaks in two
+# stages: once, as a heads-up, when the fill nears the handoff budget, and past
+# the budget as a handoff directive, repeated per 5%-of-context crossing. Below
+# the heads-up it says nothing at all.
 #
 # PostToolBatch, not PostToolUse: PostToolUse fires per tool call and runs
 # concurrently for a parallel batch, which would race the ratchet file below.
@@ -170,10 +171,14 @@ case "$PCT"  in ''|*[!0-9]*) exit 0 ;; esac
 [ "$SIZE" -le 0 ] && exit 0
 
 # --- 3. Budget in tokens -------------------------------------------------
-# Two knobs, both optional, absolute winning over percentage when both are set:
+# Two knobs set the budget, both optional, absolute winning over percentage when
+# both are set:
 #
 #   CLAUDE_HANDOFF_BUDGET  an absolute number of tokens
 #   CLAUDE_HANDOFF_PCT     a percentage of whatever window the session reports
+#
+# A third, CLAUDE_HANDOFF_SOFT_PCT, places the one-time heads-up below it; see
+# SOFT further down.
 #
 # The percentage is the one most people want, because it keeps meaning the same
 # thing when the window changes; the absolute is kept for pinning a figure that
@@ -197,8 +202,26 @@ case "${CLAUDE_HANDOFF_BUDGET:-}" in
 esac
 [ -z "$BUDGET" ] && BUDGET=$((SIZE * PCT_LIMIT / 100))
 
-# --- 4. Ratchet on the 5%-of-context bucket -------------------------------
-BUCKET=$((PCT / 5))
+# The heads-up threshold. CLAUDE_HANDOFF_SOFT_PCT is a percentage of the window,
+# validated like CLAUDE_HANDOFF_PCT. Unset, malformed, or at or past the budget
+# (a heads-up that arrives after the directive is no heads-up) it falls back to
+# 80% of the budget -- 40% of the window under the defaults.
+SOFT=""
+case "${CLAUDE_HANDOFF_SOFT_PCT:-}" in
+  ''|*[!0-9]*) ;;
+  0) ;;
+  *) [ "$CLAUDE_HANDOFF_SOFT_PCT" -le 100 ] && SOFT=$((SIZE * CLAUDE_HANDOFF_SOFT_PCT / 100)) ;;
+esac
+{ [ -z "$SOFT" ] || [ "$SOFT" -ge "$BUDGET" ]; } && SOFT=$((BUDGET * 80 / 100))
+
+# Below the heads-up: silent, and nothing written.
+[ "$USED" -lt "$SOFT" ] && exit 0
+
+# --- 4. Ratchet ------------------------------------------------------------
+# One integer in the band file. Level 0 is the heads-up, which fires once;
+# past the budget the level is 1 plus the 5%-of-context bucket, so the
+# directive repeats each time the bucket advances. A level only ever rises.
+if [ "$USED" -ge "$BUDGET" ]; then LEVEL=$((1 + PCT / 5)); else LEVEL=0; fi
 BAND_FILE="$CACHE_DIR/$SAFE_ID.band"
 
 # Trust the cache dir or don't use it -- same reasoning as budget.sh's
@@ -216,11 +239,11 @@ if [ "$CACHE_OK" = 1 ] && [ -f "$BAND_FILE" ] && [ ! -L "$BAND_FILE" ]; then
   case "$LAST" in ''|*[!0-9]*) LAST=-1 ;; esac
 fi
 
-[ "$BUCKET" -le "$LAST" ] && exit 0
+[ "$LEVEL" -le "$LAST" ] && exit 0
 
 if [ "$CACHE_OK" = 1 ]; then
   [ -L "$BAND_FILE" ] && rm -f -- "$BAND_FILE" 2>/dev/null
-  printf '%s' "$BUCKET" > "$BAND_FILE" 2>/dev/null
+  printf '%s' "$LEVEL" > "$BAND_FILE" 2>/dev/null
 fi
 
 # --- 5. Format and emit ---------------------------------------------------
@@ -237,7 +260,7 @@ if [ "$SIZE" -ge 1000000 ]; then WIN="${SM}M"; else WIN="${KS}k"; fi
 if [ "$USED" -ge "$BUDGET" ]; then
   MSG="[context] ${KU}k/${WIN} (${PCT}%) — past the ${KB}k handoff budget. Write the handoff per my-claude-setup:project-docs now, and in your next reply give the operator its path and tell them to start a fresh session; you cannot start one yourself. If this budget is wrong, set CLAUDE_HANDOFF_PCT (a percentage) or CLAUDE_HANDOFF_BUDGET (absolute tokens)."
 else
-  MSG="[context] ${KU}k/${WIN} (${PCT}%) · handoff budget ${KB}k"
+  MSG="[context] ${KU}k/${WIN} (${PCT}%) — nearing the ${KB}k handoff budget. Keep working; note what a handoff would need to carry."
 fi
 
 # hookSpecificOutput WITH hookEventName -- a bare additionalContext is the

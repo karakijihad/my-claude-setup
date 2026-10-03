@@ -62,10 +62,10 @@ a 1,200-line one.
 
 ## Handoff
 
-**Watch your own context.** A `[context]` line arrives each 5%-of-window crossing, carrying
-the status line's own fill and a handoff budget. Short of that budget it is still a judgement
-against the objective, not a threshold to wait for; past it, the injection says the handoff is
-due.
+**Watch your own context.** A `[context]` line arrives once as a heads-up near the handoff
+budget (`CLAUDE_HANDOFF_SOFT_PCT` moves it), carrying the status line's own fill, and again
+once you are past that budget, when it says the handoff is due. Short of the budget it is still
+a judgement against the objective, not a threshold to wait for.
 
 At each natural break, ask: does what the objective still needs fit cleanly in what is left,
 or is this session carrying enough stale output, dead ends and spent detail that a fresh one
