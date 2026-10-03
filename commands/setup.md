@@ -85,6 +85,7 @@ and stop — this command is idempotent.
 | `effortLevel` | `"high"` | |
 | `env.CLAUDE_CODE_SUBAGENT_MODEL` | `"sonnet"`, only if absent | Subagent model — an alias, or a full id such as `claude-sonnet-5-5` to pin one release. A repo overrides it in `.claude/settings.local.json` |
 | `env.CLAUDE_ADVISOR_MODEL` | `"fable"`, only if absent | The advisor's model, overridable the same way |
+| `advisorModel` | `"fable"`, only if absent | Claude Code's built-in advisor, which sees the whole transcript — not the `my-claude-setup:advisor` consult. Anthropic API only; ignored elsewhere |
 | `enabledPlugins` | every plugin from 1.2, `true` | |
 
 Otherwise do **not** set `model` — leave the user's choice alone.

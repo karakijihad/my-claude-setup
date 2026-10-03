@@ -27,7 +27,6 @@ gate were all deleted for it.
 | `hooks/budget.sh` | Doc line budgets. **The ratchet is the design** — warn once, again only if an edit worsens it. A hook that re-warns on the corrective edit gets ignored. Keyed on file *names*, which is why `project-docs` makes `INDEX.md` and `phase-*.md` normative. |
 | `hooks/post-push.sh` | CI reminder. Fires on every Bash/PowerShell call, so rejections are ordered cheapest-first. Names the SHA and points at the repo's `## CI` line; it does **not** detect providers or claim a push landed, and is silent for a `-C` push at another repo. Exit 0 always — PostToolUse cannot block. |
 | `hooks/context-watch.sh` | PostToolBatch. Injects the session's context fill once per 5% crossing, escalating past a budget. Reads the state file `statusline.mjs` writes — no hook payload carries `context_window`. Silent for subagents. Exit 0 always. |
-| `hooks/context-bar.tsx` | The one function hook (`modules` in `hooks.json`): the stacked context bar above the prompt. Fetches the breakdown after a turn, never while drawing. Tested by `claude plugin test .`, not `suite.sh`. |
 | `hooks/onboarding.py` | One-time first-run check. Must never nag a user already set up. Reads settings as **`utf-8-sig`** — a BOM makes a healthy config look absent. |
 | `hooks/selfheal.py` | The update path. Python does what is deterministic; the session does what needs judgement. Never overwrites a user's value. **The diff runs before the prune.** |
 | `hooks/py.sh` | Interpreter resolver. Every Python entry point goes through it. |
@@ -35,7 +34,7 @@ gate were all deleted for it.
 | `assets/statusline.mjs` | The status line, and the only component the harness hands `context_window` to. Writes the context state file as a side effect. |
 | `skills/*/SKILL.md` | The `description:` is the router (see Gotchas). Resident in **every** session — budget like `core.md`, ~30–70 tokens, naming trigger situations rather than topic vocabulary. A skill holds what *this setup decides differently*; generic best practice is the model's job already. |
 | `skills/security-protocol/` | Escalation and agent/MCP tool authority only. The ten reference files were deleted: `core.md` assigns security expertise to the `security-guidance` companion, and shipping both was the plugin breaking its own one-job rule. |
-| `agents/` | `worker` and `advisor`. **They exist for `effort: high`** — the Agent tool passes `model` but not effort, so a definition is the only place to set it. Model stays off both cards so a call-site model wins. |
+| `agents/` | `worker` and `advisor`. **They exist for `effort: high`** — the Agent tool passes `model` but not effort, and a card without `effort` inherits the session's, so a definition is the only place to fix it. Fixed at high by decision, not made a knob. Model stays off both cards so a call-site model wins. |
 | `tests/suite.sh` | The whole suite. Outside `hooks/` because `hooks/` is what ships; still `cd`s there. |
 | `.claude-plugin/` | Bump `version` on release, add the `CHANGELOG.md` section in the same commit. Each bullet's **bold lead** is what users see on update — write it to stand alone. |
 

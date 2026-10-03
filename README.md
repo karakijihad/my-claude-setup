@@ -82,7 +82,6 @@ assets/             statusline.mjs and the document templates
 | `budget.sh` | PostToolUse | Warns when a project doc outgrows its budget — lines for plans, backlogs and code maps; estimated tokens for a handoff, which is the one document written to be read by a model. Ratcheted: it speaks on the first crossing and again only when an edit makes the overage worse, so the edits that fix the file never nag. Never blocks |
 | `post-push.sh` | PostToolUse | After a push, names the SHA and points at the repo's own CI command in its `CLAUDE.md`. It doesn't detect providers and doesn't claim the push landed — a confident wrong pointer is worse than silence. Exits 0 on every path |
 | `context-watch.sh` | PostToolBatch | Reads the context fill `statusline.mjs` writes to a state file each render — no hook payload carries it — and injects a `[context] 350k/1.0M (35%)` line once per 5%-of-window crossing. Past the handoff threshold (50% of the window by default; see **Configuration**) it says to write the handoff instead. Never blocks |
-| `context-bar.tsx` | AbovePrompt | A function hook: the context window as one stacked bar above the prompt, one colour per `/context` category, with the used percentage. Refreshed after each turn and compaction. Needs Claude Code 2.1.287+ |
 
 ### Skills
 

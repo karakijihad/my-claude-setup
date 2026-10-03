@@ -242,8 +242,13 @@ _MODEL_NEWS_INTERVAL_S = 7 * 24 * 60 * 60
 
 
 def model_news_nudge() -> str:
-    """At most weekly: surface newer models, without a model list here to go stale."""
+    """At most weekly: surface newer models, without a model list here to go stale.
+
+    Only for a pinned full id: an alias already follows each new release.
+    """
     try:
+        if all(m is None or _alias(m) == m for m in (_model(k, d) for k, d in DEFAULT_MODELS)):
+            return ""
         try:
             with open(_MODEL_NEWS_MARKER, encoding="utf-8-sig") as fh:
                 last = json.loads(fh.read() or "{}").get("last", 0)

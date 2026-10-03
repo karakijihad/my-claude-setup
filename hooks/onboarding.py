@@ -146,8 +146,8 @@ def _compose(missing: list, gaps: list, legacy: list) -> str:
         "FIRST RUN — my-claude-setup was just installed. Open your very next reply "
         "with this, before answering whatever the user asked: list what is missing "
         "below and offer to walk through it. This is the one message that overrides "
-        "the brevity rule — the resident core says no preamble and under 100 words, "
-        "and following that here would swallow the notice entirely. Do not run "
+        "the brevity rule — the resident core says lead with the outcome and keep it "
+        "short, and following that here would swallow the notice entirely. Do not run "
         "anything without their agreement. Say that it stops appearing once they "
         "are set up.",
     ]

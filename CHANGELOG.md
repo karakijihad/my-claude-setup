@@ -5,6 +5,29 @@ file — see `git log --grep="bump to"`.
 
 ---
 
+## [1.30.0] — 2026-10-03
+
+### Removed
+
+- **The context bar above the prompt is gone.** 1.29.0's function hook and its files are
+  removed; nothing to clean up on your side.
+
+### Changed
+
+- **The brevity rule asks for selection, not a word count.** Lead with the outcome and keep
+  replies short by choosing what to include; the 100-word cap and the bans on preamble and
+  closing summaries are dropped, since current models already err terse.
+- **Two sentences pushing extra delegation are cut from the core.** The four-file fan-out rule
+  stays; "having read the files is no reason to go on alone" and "send reads and searches to
+  subagents" are gone.
+- **The core names Claude Code's built-in advisor as a separate job.** It sees the whole
+  transcript; the `my-claude-setup:advisor` consult sees only its brief, which is what keeps
+  it independent. `/setup` now offers `advisorModel`, only if absent.
+- **The weekly new-model reminder only fires for a pinned model id.** An alias already
+  follows each release, so the reminder had nothing to say to alias users.
+
+---
+
 ## [1.29.0] — 2026-10-03
 
 ### Added
